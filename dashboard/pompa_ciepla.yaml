@@ -48,6 +48,8 @@ button_card_templates:
         - overflow: visible
     extra_styles: |
       :host { --u: calc(100cqw / 1672); }
+      .fl { fill: none; stroke-linecap: round; stroke-dasharray: 7 13; animation: hpfl var(--d, 1.6s) linear infinite; }
+      @keyframes hpfl { to { stroke-dashoffset: -20; } }
       .g { position: absolute; inset: 0; box-sizing: border-box;
         background: linear-gradient(180deg, rgba(42,48,58,.80), rgba(20,24,31,.86));
         border: 1px solid rgba(255,255,255,.13); border-radius: calc(var(--u) * 9);
@@ -70,6 +72,36 @@ views:
       style: |
         ha-card { container-type: inline-size; overflow: hidden; border-radius: 12px; }
     elements:
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};
+          const D={"sup": "M566,362 L718,362", "co": "M738,362 L810.0,362.0 Q822,362 828.5,368.5 L828.5,368.5 Q835,375 835.0,387.0 L835.0,388.0 Q835,400 841.0,406.0 L841.0,406.0 Q847,412 859.0,412.0 L890,412", "cwu": "M738,362 L770.0,362.0 Q782,362 787.5,356.5 L787.5,356.5 Q793,351 793.0,339.0 L793.0,220.0 Q793,208 799.0,202.0 L799.0,202.0 Q805,196 817.0,196.0 L945,196", "cwur": "M945,282 L841.0,282.0 Q829,282 823.0,288.0 L823.0,288.0 Q817,294 817.0,306.0 L817.0,467.0 Q817,479 823.0,485.0 L823.0,485.0 Q829,491 841.0,491.0 L892,491", "ret": "M652,374 L652.0,468.0 Q652,480 646.0,486.5 L646.0,486.5 Q640,493 628.0,493.0 L507.0,493.0 Q495,493 488.5,487.0 L488.5,487.0 Q482,481 482.0,471.5 L482,462", "dsup": "M1052,425 L1430,425", "dret": "M1430,494 L1052,494", "hwc": "M1114,122 L1129.0,122.0 Q1141,122 1147.0,128.0 L1147.0,128.0 Q1153,134 1153.0,146.0 L1153.0,211.0 Q1153,223 1159.0,229.0 L1159.0,229.0 Q1165,235 1177.0,235.0 L1228.0,235.0 Q1240,235 1246.0,241.0 L1246.0,241.0 Q1252,247 1252.0,255.0 L1252.0,255.0 Q1252,263 1246.0,269.0 L1246.0,269.0 Q1240,275 1228.0,275.0 L1116,275"}, M={"sup": [true, "bt12"], "co": [true, "bt12"], "cwu": [true, "bt7"], "cwur": [false, "bt3"], "ret": [false, "bt3"], "dsup": [true, "bt25"], "dret": [false, "bt71"], "hwc": [true, "hwc_run"]}, K={sup:'sensor.hydrolution_zasilanie_z_pompy_bt12',co:'sensor.hydrolution_zasilanie_z_pompy_bt12',cwu:'sensor.hydrolution_cwu_gora_bt7',cwur:'sensor.hydrolution_powrot_do_pompy_bt3',ret:'sensor.hydrolution_powrot_do_pompy_bt3',dsup:'sensor.hydrolution_zasilanie_zewn_bt25',dret:'sensor.hydrolution_powrot_zewn_bt71',hwc:'number.hydrolution_cyrkulacja_cwu_czas_pracy'};
+          const p=st('sensor.hydrolution_priorytet_pracy'), fl=n('sensor.hydrolution_przeplyw_bf1')||0, gp=n('sensor.hydrolution_pompa_ladujaca_predkosc')||0, cp=st('binary_sensor.hydrolution_sprezarka_pracuje')==='on';
+          const run=fl>0.2||gp>0||cp||p==='Ogrzewanie'||p==='CWU';
+          const mode=!run?null:(p==='CWU'?'cwu':'co');
+          const hwc=!((n('number.hydrolution_cyrkulacja_cwu_czas_pracy')||0)<=1&&(n('number.hydrolution_cyrkulacja_cwu_czas_postoju')||0)>=60);
+          const dist=p!=='Wylaczona'&&p!==undefined;
+          const on={sup:!!mode,ret:!!mode,co:mode==='co',cwu:mode==='cwu',cwur:mode==='cwu',dsup:dist,dret:dist,hwc:hwc};
+          const sp=fl>0.2?Math.max(0.5,Math.min(2.6,3.2-fl*0.3)):1.6;
+          const T=Date.now()/1000;
+          let s='';
+          for(const k in D){ if(!on[k]) continue;
+           const hot=M[k][0], c=hot?'#ff5a3c':'#36b4ff', g=hot?'rgba(255,90,60,.9)':'rgba(54,180,255,.9)';
+           const d=(k==='hwc'||k==='dsup'||k==='dret')?1.9:sp;
+           s+='<path d="'+D[k]+'" fill="none" stroke="'+c+'" stroke-opacity=".35" stroke-width="9" stroke-linecap="round" style="filter:blur(2px)"/>'
+            +'<path class="fl" d="'+D[k]+'" stroke="'+(hot?'#ffd2c4':'#d4f0ff')+'" stroke-width="4.2" style="--d:'+d.toFixed(2)+'s;animation-delay:-'+(T%d).toFixed(2)+'s;filter:drop-shadow(0 0 3px '+g+')"/>';}
+          for(const k in D) s+='<path d="'+D[k]+'" fill="none" stroke="transparent" stroke-width="16" pointer-events="stroke" style="cursor:pointer" data-k="'+K[k]+'"/>';
+          return '<svg viewBox="460 100 980 420" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none">'+s+'</svg>';
+          ]]]
+      style:
+        left: 27.512%
+        top: 10.627%
+        width: 58.612%
+        height: 44.633%
+        transform: none
     - type: custom:button-card
       template: hp
       custom_fields:
@@ -408,7 +440,7 @@ views:
           return '<div class="g" style="bottom:'+u(9)+'"></div>'
            + '<div style="position:absolute;left:'+u(45)+';bottom:'+u(1)+';width:0;height:0;border-left:'+u(8)+' solid transparent;border-right:'+u(8)+' solid transparent;border-top:'+u(9)+' solid rgba(30,35,44,.9)"></div>'
            + C(1233,96,'Cyrkulacja CWU',F(15.5,600,'#fff'))
-           + P(1179,118,I('mdi:record-circle-outline',17,'#7ee04a')) + P(1201,118,'Włączona',F(14,500,'#7ee04a'))
+           + (()=>{const on=!((n('number.hydrolution_cyrkulacja_cwu_czas_pracy')||0)<=1&&(n('number.hydrolution_cyrkulacja_cwu_czas_postoju')||0)>=60);const c=on?'#7ee04a':'#9aa4af';return P(1179,118,I(on?'mdi:record-circle-outline':'mdi:circle-off-outline',17,c)) + P(1201,118,on?'Włączona':'Wyłączona',F(14,500,c));})()
            + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(48)+';border-top:1px solid rgba(255,255,255,.12)"></div>'
            + P(1181,144,'Praca: &nbsp;'+f('number.hydrolution_cyrkulacja_cwu_czas_pracy',0)+' min',F(13.5,400,'#e3e8ee'))
            + P(1181,163,'Postój: &nbsp;'+f('number.hydrolution_cyrkulacja_cwu_czas_postoju',0)+' min',F(13.5,400,'#e3e8ee'))
@@ -514,7 +546,7 @@ views:
         c: |-
           [[[
           const OX=1181,OY=220;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          const on=(n('number.hydrolution_cyrkulacja_cwu_czas_pracy')||0)>0;
+          const on=!((n('number.hydrolution_cyrkulacja_cwu_czas_pracy')||0)<=1&&(n('number.hydrolution_cyrkulacja_cwu_czas_postoju')||0)>=60);
           return '<div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#1d2229 55%,#0f1216 100%);border:2px solid '+(on?'#43d343':'#59626d')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(67,211,67,.7)':'none')+'"></div>'
            + C(1198,236,I('mdi:play',22,on?'#43d343':'#7d8894'));
           ]]]
@@ -523,132 +555,6 @@ views:
         top: 23.379%
         width: 1.914%
         height: 3.401%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=614,OY=355;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(622,363,I('mdi:menu-right',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 36.722%
-        top: 37.726%
-        width: 0.957%
-        height: 1.700%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=864,OY=188;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(872,196,I('mdi:menu-right',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 51.675%
-        top: 19.979%
-        width: 0.957%
-        height: 1.700%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=876,OY=274;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(884,282,I('mdi:menu-left',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 52.392%
-        top: 29.118%
-        width: 0.957%
-        height: 1.700%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=785,OY=268;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(793,276,I('mdi:menu-up',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 46.950%
-        top: 28.480%
-        width: 0.957%
-        height: 1.700%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=645,OY=420;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(653,428,I('mdi:menu-up',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 38.577%
-        top: 44.633%
-        width: 0.957%
-        height: 1.700%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=824,OY=374;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(832,382,I('mdi:menu-down',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 49.282%
-        top: 39.745%
-        width: 0.957%
-        height: 1.700%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=1112,OY=417;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(1120,425,I('mdi:menu-right',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 66.507%
-        top: 44.315%
-        width: 0.957%
-        height: 1.700%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=1112,OY=487;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(1120,495,I('mdi:menu-left',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 66.507%
-        top: 51.753%
-        width: 0.957%
-        height: 1.700%
-        transform: none
-    - type: custom:button-card
-      template: hp
-      custom_fields:
-        c: |-
-          [[[
-          const OX=1150,OY=269;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
-          return C(1158,277,I('mdi:menu-right',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
-          ]]]
-      style:
-        left: 68.780%
-        top: 28.587%
-        width: 0.957%
-        height: 1.700%
         transform: none
     - type: custom:button-card
       template: hp
@@ -897,6 +803,23 @@ views:
     - type: custom:button-card
       template: hp_hit
       tap_action:
+        action: more-info
+        entity: number.hydrolution_krzywa_grzewcza_numer
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 3.589%
+        top: 80.978%
+        width: 2.572%
+        height: 3.613%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
         action: call-service
         service: number.set_value
         data:
@@ -950,6 +873,23 @@ views:
         top: 78.640%
         width: 6.878%
         height: 6.164%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_przesuniecie_krzywej_grzewczej
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 11.603%
+        top: 80.978%
+        width: 1.854%
+        height: 3.613%
         transform: none
     - type: custom:button-card
       template: hp_hit
@@ -1011,6 +951,23 @@ views:
     - type: custom:button-card
       template: hp_hit
       tap_action:
+        action: more-info
+        entity: number.hydrolution_min_temperatura_zasilania
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 18.840%
+        top: 80.978%
+        width: 1.854%
+        height: 3.613%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
         action: call-service
         service: number.set_value
         data:
@@ -1064,6 +1021,23 @@ views:
         top: 78.640%
         width: 6.519%
         height: 6.164%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_max_temperatura_zasilania
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 26.136%
+        top: 80.978%
+        width: 1.495%
+        height: 3.613%
         transform: none
     - type: custom:button-card
       template: hp_hit
@@ -1561,7 +1535,7 @@ views:
         c: |-
           [[[
           const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';
-          const on=(n('number.hydrolution_cyrkulacja_cwu_czas_pracy')||0)>0;
+          const on=!((n('number.hydrolution_cyrkulacja_cwu_czas_pracy')||0)<=1&&(n('number.hydrolution_cyrkulacja_cwu_czas_postoju')||0)>=60);
           return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
            + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
           ]]]

@@ -64,6 +64,9 @@ E = dict(
     starts='sensor.hp_starty_dzis',
 )
 
+# cyrkulacja CWU "wlaczona" = nie jest w stanie praca 1 min / postoj 60 min (brak rejestru wl/wyl w SMO40)
+HWC = "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)"
+
 FONT = "'Segoe UI', Roboto, 'Noto Sans', 'Open Sans', sans-serif"
 
 # --- wspolne pomocniki JS (wklejane na poczatek kazdego szablonu) ---
@@ -108,8 +111,9 @@ def pos(x, y, w, h):
             'transform': 'none'}
 
 ELEMENTS = []   # (dict yaml, preview info)
+JSTAP = {}
 
-def el(x, y, w, h, body, entity=None, tap=None, template='hp'):
+def el(x, y, w, h, body, entity=None, tap=None, template='hp', jstap=None, at=None):
     d = {'type': 'custom:button-card', 'template': template}
     if entity:
         d['entity'] = E.get(entity, entity)
@@ -117,7 +121,12 @@ def el(x, y, w, h, body, entity=None, tap=None, template='hp'):
         d['tap_action'] = tap
     d['custom_fields'] = {'c': js(body, x, y)}
     d['style'] = pos(x, y, w, h)
-    ELEMENTS.append(d)
+    if jstap:
+        JSTAP[id(d)] = jstap      # akcja tylko dla karty JS (YAML zostaje przy tap_action)
+    if at is None:
+        ELEMENTS.append(d)
+    else:
+        ELEMENTS.insert(at, d)
 
 def glass(extra=''):
     return "'<div class=\"g\" style=\"%s\"></div>'" % extra
@@ -228,7 +237,7 @@ el(1163, 83, 141, 122, """
 return '<div class="g" style="bottom:'+u(9)+'"></div>'
  + '<div style="position:absolute;left:'+u(45)+';bottom:'+u(1)+';width:0;height:0;border-left:'+u(8)+' solid transparent;border-right:'+u(8)+' solid transparent;border-top:'+u(9)+' solid rgba(30,35,44,.9)"></div>'
  + C(1233,96,'Cyrkulacja CWU',F(15.5,600,'#fff'))
- + P(1179,118,I('mdi:record-circle-outline',17,'#7ee04a')) + P(1201,118,'Włączona',F(14,500,'#7ee04a'))
+ + (()=>{const on=!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60);const c=on?'#7ee04a':'#9aa4af';return P(1179,118,I(on?'mdi:record-circle-outline':'mdi:circle-off-outline',17,c)) + P(1201,118,on?'Włączona':'Wyłączona',F(14,500,c));})()
  + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(48)+';border-top:1px solid rgba(255,255,255,.12)"></div>'
  + P(1181,144,'Praca: &nbsp;'+f(@hwc_run,0)+' min',F(13.5,400,'#e3e8ee'))
  + P(1181,163,'Postój: &nbsp;'+f(@hwc_still,0)+' min',F(13.5,400,'#e3e8ee'))
@@ -251,22 +260,18 @@ return %s + C(1424,360,'Rozdzielacz',F(16.5,700,'#fff')) + C(1424,380,'Ogrzewani
 """ % glass())
 
 # pompy (wskaznik pracy)
-def pump(cx, cy, cond, ent):
+def pump(cx, cy, cond, ent, jstap=None):
     el(cx - 16, cy - 16, 32, 32, """
 const on=%s;
 return '<div style="position:absolute;inset:0;border-radius:50%%;background:radial-gradient(circle,#1d2229 55%%,#0f1216 100%%);border:2px solid '+(on?'#43d343':'#59626d')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(67,211,67,.7)':'none')+'"></div>'
  + C(%d,%d,I('mdi:play',22,on?'#43d343':'#7d8894'));
-""" % (cond, cx + 1, cy), template='hp_hit', tap=more(ent))
+""" % (cond, cx + 1, cy), template='hp_hit', tap=more(ent), jstap=jstap)
 
 pump(857, 491, "(n(@gp12)||0)>0", 'gp12')
 pump(1187, 493, "st(@prio)!=='Wylaczona'&&st(@prio)!==undefined", 'prio')
-pump(1197, 236, "(n(@hwc_run)||0)>0", 'hwc_run')
+pump(1197, 236, "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)", 'hwc_run', jstap={'a': 'hwc'})
 
-# strzalki przeplywu
-for (ax, ay, ic) in [(622, 363, 'mdi:menu-right'), (872, 196, 'mdi:menu-right'), (884, 282, 'mdi:menu-left'),
-                     (793, 276, 'mdi:menu-up'), (653, 428, 'mdi:menu-up'), (832, 382, 'mdi:menu-down'),
-                     (1120, 425, 'mdi:menu-right'), (1120, 495, 'mdi:menu-left'), (1158, 277, 'mdi:menu-right')]:
-    el(ax - 8, ay - 8, 16, 16, "return C(%d,%d,I('%s',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');" % (ax, ay, ic))
+# strzalki przeplywu: zastapione animowanymi paskami (FLOW na dole pliku)
 
 # ====================== TRYB SYSTEMU ======================
 el(1322, 55, 338, 118, """
@@ -300,8 +305,11 @@ for i, (ic, col, lab, vjs, ent) in enumerate(ROWS):
     if i < 3:
         body += "\n + '<div style=\"position:absolute;left:%s;right:%s;top:%s;border-top:1px solid rgba(255,255,255,.08)\"></div>'" % ("'+u(10)+'", "'+u(10)+'", "'+u(%d)+'" % (y + 16 - 182))
 el(1325, 182, 335, 133, body + ";")
+ROWJS = {'hwmode': {'a': 'sel', 'k': 'hwmode', 'l': 'Tryb CWU'},
+         'add': {'a': 'sw', 'k': 'add', 'l': 'Grzałka elektryczna'},
+         'leg': {'a': 'sw', 'k': 'leg', 'l': 'Antylegionella (okresowe podgrzewanie)'}}
 for i, r in enumerate(ROWS):
-    el(1325, 182 + i * 32 + 1, 335, 32, "return '';", template='hp_hit', tap=more(r[4]))
+    el(1325, 182 + i * 32 + 1, 335, 32, "return '';", template='hp_hit', tap=more(r[4]), jstap=ROWJS.get(r[4]))
 
 # ====================== PANEL: KRZYWA GRZEWCZA ======================
 el(8, 563, 505, 362, """
@@ -341,6 +349,7 @@ return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)
  + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(26)+';height:'+u(26)+';border-radius:'+u(13)+';background:rgba(62,70,82,.75);border:1px solid rgba(255,255,255,.08)"></div>'
  + P(%d,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(%d,779,%s,F(16.5,600,'#fff')) + R(%d,779,I('mdi:chevron-right',18,'#dfe5ec'));
 """ % (x + w / 2, label, x + 14, x + w / 2, fmt, x + w - 14))
+    el(x + 42, 762, w - 84, 34, "return '';", template='hp_hit', tap=more(ent), jstap={'a': 'num', 'k': ent, 'l': label})
     for side, dx in (('-', 6), ('+', w - 42)):
         el(x + dx, 765, 36, 28, "return '';", template='hp_hit',
            tap={'action': 'call-service', 'service': 'number.set_value',
@@ -368,7 +377,8 @@ return h;
 """
 el(18, 805, 485, 113, body)
 for i in range(7):
-    el(30 + i * 66, 838, 66, 76, "return '';", template='hp_hit', tap=more('p%d' % (i + 1)))
+    el(30 + i * 66, 838, 66, 76, "return '';", template='hp_hit', tap=more('p%d' % (i + 1)),
+       jstap={'a': 'num', 'k': 'p%d' % (i + 1), 'l': 'Własna krzywa P%d (%s °C)' % (i + 1, ['-30', '-20', '-10', '0', '10', '20', '30'][i])})
 
 # ====================== TRENDY (apexcharts) ======================
 el(520, 563, 495, 174, """
@@ -469,7 +479,7 @@ return %s + P(876,816,'Cyrkulacja CWU',F(17.5,600,'#fff')) + inner
  + P(884,895,I('mdi:timer-outline',28,'#ffb300')) + P(928,886,'Czas postoju',F(13.5,400,'#dfe5ec')) + P(928,905,f(@hwc_still,0)+' min',F(16.5,600,'#fff'));
 """ % glass())
 # brak rejestru "cyrkulacja wl/wyl" -> wskaznik: wl. gdy czas pracy > 0, klik = ustawienia czasu pracy
-el(1038, 843, 38, 20, TOG.replace("entity&&entity.state==='on'", "(n(@hwc_run)||0)>0"), template='hp_hit', tap=more('hwc_run'))
+el(1038, 843, 38, 20, TOG.replace("entity&&entity.state==='on'", "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)"), template='hp_hit', tap=more('hwc_run'), jstap={'a': 'hwc'})
 
 # ====================== ANTYLEGIONELLA ======================
 el(1106, 802, 261, 118, """
@@ -513,8 +523,63 @@ for row in PAR:
     y += 27.5 if y < 760 else 28.5
 el(1378, 563, 288, 358, body + ";")
 
+# ====================== PRZEPLYW (animowane paski na rurach) ======================
+# Sciezki w ukladzie tla 1672x941. Kierunek = kolejnosc punktow. Warstwa idzie pod wszystkie inne elementy.
+def path(pts, r=12):
+    """Polilinia z zaokraglonymi rogami (luk kwadratowy) -> atrybut d."""
+    d = 'M%d,%d' % pts[0]
+    for i in range(1, len(pts) - 1):
+        (x0, y0), (x1, y1), (x2, y2) = pts[i - 1], pts[i], pts[i + 1]
+        def towards(ax, ay, bx, by, k):
+            L = math.hypot(bx - ax, by - ay) or 1
+            k = min(k, L / 2)
+            return ax + (bx - ax) * k / L, ay + (by - ay) * k / L
+        ax, ay = towards(x1, y1, x0, y0, r)
+        bx, by = towards(x1, y1, x2, y2, r)
+        d += ' L%.1f,%.1f Q%d,%d %.1f,%.1f' % (ax, ay, x1, y1, bx, by)
+    d += ' L%d,%d' % pts[-1]
+    return d
+
+FX, FY, FW, FH = 460, 100, 980, 420
+PIPES = [  # (nazwa, punkty, goraca?, klucz encji po kliknieciu)
+    ('sup',   [(566, 362), (718, 362)], True, 'bt12'),                                         # pompa -> zawor
+    ('co',    [(738, 362), (822, 362), (835, 375), (835, 400), (847, 412), (890, 412)], True, 'bt12'),   # zawor -> bufor
+    ('cwu',   [(738, 362), (782, 362), (793, 351), (793, 208), (805, 196), (945, 196)], True, 'bt7'),    # zawor -> CWU
+    ('cwur',  [(945, 282), (829, 282), (817, 294), (817, 479), (829, 491), (892, 491)], False, 'bt3'),   # CWU -> GP12
+    ('ret',   [(652, 374), (652, 480), (640, 493), (495, 493), (482, 481), (482, 462)], False, 'bt3'),   # powrot -> pompa
+    ('dsup',  [(1052, 425), (1430, 425)], True, 'bt25'),                                        # bufor -> rozdzielacz
+    ('dret',  [(1430, 494), (1052, 494)], False, 'bt71'),                                       # rozdzielacz -> bufor
+    ('hwc',   [(1114, 122), (1141, 122), (1153, 134), (1153, 223), (1165, 235), (1240, 235), (1252, 247),
+               (1252, 263), (1240, 275), (1116, 275)], True, 'hwc_run'),                           # cyrkulacja CWU
+]
+pj = json.dumps({k: path(pts) for k, pts, _, _ in PIPES})
+meta = json.dumps({k: [hot, ent] for k, _, hot, ent in PIPES})
+# klucze encji klikniecia jako @klucz (podstawi js())
+kmap = '{' + ','.join("%s:@%s" % (k, ent) for k, _, _, ent in PIPES) + '}'
+el(FX, FY, FW, FH, """
+const D=%s, M=%s, K=%s;
+const p=st(@prio), fl=n(@flow)||0, gp=n(@gp12)||0, cp=st(@cpr)==='on';
+const run=fl>0.2||gp>0||cp||p==='Ogrzewanie'||p==='CWU';
+const mode=!run?null:(p==='CWU'?'cwu':'co');
+const hwc=%s;
+const dist=p!=='Wylaczona'&&p!==undefined;
+const on={sup:!!mode,ret:!!mode,co:mode==='co',cwu:mode==='cwu',cwur:mode==='cwu',dsup:dist,dret:dist,hwc:hwc};
+const sp=fl>0.2?Math.max(0.5,Math.min(2.6,3.2-fl*0.3)):1.6;
+const T=Date.now()/1000;
+let s='';
+for(const k in D){ if(!on[k]) continue;
+ const hot=M[k][0], c=hot?'#ff5a3c':'#36b4ff', g=hot?'rgba(255,90,60,.9)':'rgba(54,180,255,.9)';
+ const d=(k==='hwc'||k==='dsup'||k==='dret')?1.9:sp;
+ s+='<path d="'+D[k]+'" fill="none" stroke="'+c+'" stroke-opacity=".35" stroke-width="9" stroke-linecap="round" style="filter:blur(2px)"/>'
+  +'<path class="fl" d="'+D[k]+'" stroke="'+(hot?'#ffd2c4':'#d4f0ff')+'" stroke-width="4.2" style="--d:'+d.toFixed(2)+'s;animation-delay:-'+(T%%d).toFixed(2)+'s;filter:drop-shadow(0 0 3px '+g+')"/>';}
+for(const k in D) s+='<path d="'+D[k]+'" fill="none" stroke="transparent" stroke-width="16" pointer-events="stroke" style="cursor:pointer" data-k="'+K[k]+'"/>';
+return '<svg viewBox="%d %d %d %d" style="position:absolute;inset:0;width:100%%;height:100%%;overflow:visible;pointer-events:none">'+s+'</svg>';
+""" % (pj, meta, kmap, HWC, FX, FY, FW, FH), at=0)
+
 # ====================== ZLOZENIE ======================
 EXTRA = """:host { --u: calc(100cqw / 1672); }
+.fl { fill: none; stroke-linecap: round; stroke-dasharray: 7 13; animation: hpfl var(--d, 1.6s) linear infinite; }
+@keyframes hpfl { to { stroke-dashoffset: -20; } }
 .g { position: absolute; inset: 0; box-sizing: border-box;
   background: linear-gradient(180deg, rgba(42,48,58,.80), rgba(20,24,31,.86));
   border: 1px solid rgba(255,255,255,.13); border-radius: calc(var(--u) * 9);
@@ -653,6 +718,8 @@ return '<svg viewBox="0 0 484 138" style="position:absolute;inset:0;width:100%;h
                 elif t.get('service') == 'number.set_value':
                     tap = {'a': 'num', 'k': REV[t['data']['entity_id']], 'd': -1 if ')-1' in t['data']['value'] else 1}
                 else: raise SystemExit('tap? %r' % t)
+            if id(e) in JSTAP:
+                tap = JSTAP[id(e)]
         out.append('{style:%s,keys:%s,ent:%s,tap:%s,hist:%s,fn:(states,entity,E,H)=>{%s\n}}' % (
             json.dumps(style), json.dumps(keys), json.dumps(ent), json.dumps(tap), 'true' if hist else 'false', body))
     bg = base64.b64encode(open('tlo.jpg', 'rb').read()).decode()
