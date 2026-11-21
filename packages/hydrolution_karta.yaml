@@ -1,0 +1,197 @@
+# =====================================================================
+# Pakiet HA pod karte "Pompa ciepla" (ESPHome hydrolution v5.3)
+# Wrzuc do /config/packages/ i dodaj w configuration.yaml:
+#   homeassistant:
+#     packages: !include_dir_named packages
+# Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...).
+# NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
+# =====================================================================
+
+template:
+  - sensor:
+      # Moc grzewcza: z przeplywu BF1 i dT (BT12-BT3); gdy brak przeplywu -> 44706 z ESP (calkowite kW)
+      - name: "HP moc grzewcza"
+        unique_id: hp_moc_grzewcza
+        unit_of_measurement: "kW"
+        device_class: power
+        state_class: measurement
+        state: >
+          {% set f = states('sensor.hydrolution_przeplyw_bf1') | float(0) %}
+          {% set dt = states('sensor.hydrolution_zasilanie_z_pompy_bt12') | float(0)
+                    - states('sensor.hydrolution_powrot_do_pompy_bt3') | float(0) %}
+          {% if f > 1 and dt > 0 %}
+            {{ (f / 60 * 4.186 * dt) | round(2) }}
+          {% else %}
+            {{ states('sensor.hydrolution_moc_grzewcza_szacowana') | float(0) }}
+          {% endif %}
+
+      # Moc elektryczna (SZACUNEK): prad jedn. zewn. (44866) x 230 V + grzalka
+      - name: "HP moc elektryczna"
+        unique_id: hp_moc_elektryczna
+        unit_of_measurement: "kW"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ (states('sensor.hydrolution_prad_jednostki_zewn') | float(0) * 230 / 1000
+              + states('sensor.hydrolution_grzalka_moc') | float(0)) | round(2) }}
+
+      - name: "HP COP chwilowy"
+        unique_id: hp_cop_chwilowy
+        state_class: measurement
+        availability: "{{ states('sensor.hp_moc_elektryczna') | float(0) > 0.15 }}"
+        state: >
+          {{ (states('sensor.hp_moc_grzewcza') | float(0)
+              / states('sensor.hp_moc_elektryczna') | float(1)) | round(2) }}
+
+      - name: "HP cieplo dzis"
+        unique_id: hp_cieplo_dzis
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state: >
+          {{ (states('sensor.hp_cieplo_co_dzis') | float(0)
+              + states('sensor.hp_cieplo_cwu_dzis') | float(0)) | round(1) }}
+
+      - name: "HP cieplo miesiac"
+        unique_id: hp_cieplo_miesiac
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state: >
+          {{ (states('sensor.hp_cieplo_co_miesiac') | float(0)
+              + states('sensor.hp_cieplo_cwu_miesiac') | float(0)) | round(1) }}
+
+      # Podswietlenie przyciskow "Tryb systemu" na karcie
+      - name: "HP tryb systemu"
+        unique_id: hp_tryb_systemu
+        icon: mdi:cog-transfer
+        state: >
+          {% if is_state('switch.hydrolution_tryb_urlopowy', 'on') %}Urlop
+          {% elif is_state('select.hydrolution_tryb_pracy', 'Auto') %}Auto
+          {% elif is_state('switch.hydrolution_ogrzewanie_dozwolone', 'on') %}CO
+          {% else %}CWU{% endif %}
+
+      - name: "HP antylegionella za dni"
+        unique_id: hp_antylegionella_za_dni
+        unit_of_measurement: "d"
+        availability: "{{ has_value('sensor.hp_antylegionella_ostatnio') }}"
+        state: >
+          {% set last = as_datetime(states('sensor.hp_antylegionella_ostatnio')) %}
+          {% set co_ile = states('number.hydrolution_antylegionella_co_ile_dni') | int(0) %}
+          {{ [0, co_ile - (now() - last).days] | max }}
+
+  - binary_sensor:
+      - name: "HP sprezarka CO"
+        unique_id: hp_sprezarka_co
+        device_class: running
+        state: >
+          {{ is_state('binary_sensor.hydrolution_sprezarka_pracuje', 'on')
+             and is_state('sensor.hydrolution_priorytet_pracy', 'Ogrzewanie') }}
+      - name: "HP sprezarka CWU"
+        unique_id: hp_sprezarka_cwu
+        device_class: running
+        state: >
+          {{ is_state('binary_sensor.hydrolution_sprezarka_pracuje', 'on')
+             and is_state('sensor.hydrolution_priorytet_pracy', 'CWU') }}
+
+  # Ostatnie przegrzanie antylegionella: BT7 doszlo do temp. koncowej (-1 C)
+  - triggers:
+      - trigger: template
+        value_template: >
+          {{ states('sensor.hydrolution_cwu_gora_bt7') | float(0)
+             >= states('number.hydrolution_antylegionella_temperatura_koncowa') | float(99) - 1 }}
+    sensor:
+      - name: "HP antylegionella ostatnio"
+        unique_id: hp_antylegionella_ostatnio
+        device_class: timestamp
+        state: "{{ now().isoformat() }}"
+
+utility_meter:
+  hp_cieplo_co_dzis:
+    name: "HP cieplo CO dzis"
+    source: sensor.hydrolution_licznik_ciepla_co
+    cycle: daily
+  hp_cieplo_cwu_dzis:
+    name: "HP cieplo CWU dzis"
+    source: sensor.hydrolution_licznik_ciepla_cwu
+    cycle: daily
+  hp_cieplo_co_miesiac:
+    name: "HP cieplo CO miesiac"
+    source: sensor.hydrolution_licznik_ciepla_co
+    cycle: monthly
+  hp_cieplo_cwu_miesiac:
+    name: "HP cieplo CWU miesiac"
+    source: sensor.hydrolution_licznik_ciepla_cwu
+    cycle: monthly
+  hp_starty_dzis:
+    name: "HP starty dzis"
+    source: sensor.hydrolution_sprezarka_liczba_startow
+    cycle: daily
+
+sensor:
+  - platform: history_stats
+    name: "HP czas pracy dzis"
+    unique_id: hp_czas_pracy_dzis
+    entity_id: binary_sensor.hydrolution_sprezarka_pracuje
+    state: "on"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "HP czas pracy CO dzis"
+    unique_id: hp_czas_pracy_co_dzis
+    entity_id: binary_sensor.hp_sprezarka_co
+    state: "on"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+  - platform: history_stats
+    name: "HP czas pracy CWU dzis"
+    unique_id: hp_czas_pracy_cwu_dzis
+    entity_id: binary_sensor.hp_sprezarka_cwu
+    state: "on"
+    type: time
+    start: "{{ today_at() }}"
+    end: "{{ now() }}"
+
+# Przyciski "Tryb systemu" (moja interpretacja, sprawdz na sterowniku):
+#   Auto  = tryb pracy Auto, urlop wyl.
+#   CO    = tryb Reczny + ogrzewanie dozwolone, urlop wyl.
+#   CWU   = tryb Reczny + ogrzewanie zablokowane (zostaje tylko CWU), urlop wyl.
+#   Urlop = tryb urlopowy wl.
+script:
+  hp_tryb_auto:
+    alias: "HP tryb Auto"
+    icon: mdi:alpha-a-circle-outline
+    sequence:
+      - action: switch.turn_off
+        target: {entity_id: switch.hydrolution_tryb_urlopowy}
+      - action: select.select_option
+        target: {entity_id: select.hydrolution_tryb_pracy}
+        data: {option: "Auto"}
+  hp_tryb_co:
+    alias: "HP tryb CO"
+    icon: mdi:thermometer-lines
+    sequence:
+      - action: switch.turn_off
+        target: {entity_id: switch.hydrolution_tryb_urlopowy}
+      - action: select.select_option
+        target: {entity_id: select.hydrolution_tryb_pracy}
+        data: {option: "Reczny"}
+      - action: switch.turn_on
+        target: {entity_id: switch.hydrolution_ogrzewanie_dozwolone}
+  hp_tryb_cwu:
+    alias: "HP tryb CWU"
+    icon: mdi:water-outline
+    sequence:
+      - action: switch.turn_off
+        target: {entity_id: switch.hydrolution_tryb_urlopowy}
+      - action: select.select_option
+        target: {entity_id: select.hydrolution_tryb_pracy}
+        data: {option: "Reczny"}
+      - action: switch.turn_off
+        target: {entity_id: switch.hydrolution_ogrzewanie_dozwolone}
+  hp_tryb_urlop:
+    alias: "HP tryb Urlop"
+    icon: mdi:briefcase-outline
+    sequence:
+      - action: switch.turn_on
+        target: {entity_id: switch.hydrolution_tryb_urlopowy}

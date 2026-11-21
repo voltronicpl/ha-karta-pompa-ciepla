@@ -1,0 +1,1652 @@
+# =====================================================================
+# Dashboard HA "Pompa ciepla" - MHI Hydrolution (ESPHome hydrolution v5.3)
+# Wymaga (HACS -> Frontend): button-card, apexcharts-card, card-mod
+# Tlo: /config/www/hydrolution/tlo.png  (-> /local/hydrolution/tlo.png)
+# Wklej CALOSC w: Ustawienia -> Dashboardy -> nowy dashboard -> Edytuj -> 3 kropki -> Edytor kodu (raw)
+# Plik wygenerowany - pozycje w % tla 1672x941, czcionki skalowane do szerokosci karty (cqw).
+# =====================================================================
+title: Pompa ciepła
+button_card_templates:
+  hp:
+    show_name: false
+    show_icon: false
+    show_state: false
+    show_label: false
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+    double_tap_action:
+      action: none
+    styles:
+      card:
+      - padding: '0'
+      - margin: '0'
+      - background: none
+      - border: none
+      - box-shadow: none
+      - border-radius: '0'
+      - height: 100%
+      - width: 100%
+      - overflow: visible
+      - color: '#eef2f6'
+      - font-family: '''Segoe UI'', Roboto, ''Noto Sans'', ''Open Sans'', sans-serif'
+      - line-height: '1.15'
+      - --ha-card-background: none
+      - cursor: default
+      grid:
+      - grid-template-areas: '"c"'
+      - grid-template-columns: 100%
+      - grid-template-rows: 100%
+      - height: 100%
+      - width: 100%
+      custom_fields:
+        c:
+        - position: relative
+        - height: 100%
+        - width: 100%
+        - overflow: visible
+    extra_styles: |
+      :host { --u: calc(100cqw / 1672); }
+      .g { position: absolute; inset: 0; box-sizing: border-box;
+        background: linear-gradient(180deg, rgba(42,48,58,.80), rgba(20,24,31,.86));
+        border: 1px solid rgba(255,255,255,.13); border-radius: calc(var(--u) * 9);
+        box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 18) rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.07);
+        -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); }
+  hp_hit:
+    template: hp
+    styles:
+      card:
+      - cursor: pointer
+views:
+- title: Pompa ciepła
+  path: pompa-ciepla
+  type: panel
+  icon: mdi:heat-pump
+  cards:
+  - type: picture-elements
+    image: /local/hydrolution/tlo.png
+    card_mod:
+      style: |
+        ha-card { container-type: inline-size; overflow: hidden; border-radius: 12px; }
+    elements:
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=25,OY=50;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');
+          return '<div style="position:absolute;left:'+u(3)+';top:'+u(3)+';width:'+u(62)+';height:'+u(55)+'"><svg viewBox="6 2 52 45" style="width:100%;height:100%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))"><polygon points="32.00,32.00 40.66,17.00 32.00,2.00 23.34,17.00" fill="#e60012"/><polygon points="32.00,32.00 40.66,47.00 57.98,47.00 49.32,32.00" fill="#e60012"/><polygon points="32.00,32.00 14.68,32.00 6.02,47.00 23.34,47.00" fill="#e60012"/></svg></div>'
+           + P(100,69,'MHI Hydrolution 9 kW',F(33,700,'#ffffff')+'letter-spacing:.2px;text-shadow:0 2px 6px rgba(0,0,0,.6)')
+           + P(103,98,'Obieg grzewczy CO &nbsp;•&nbsp; Ciepła woda użytkowa CWU &nbsp;•&nbsp; Cyrkulacja',F(16,400,'#cfd6de')+'text-shadow:0 1px 4px rgba(0,0,0,.7)');
+          ]]]
+      style:
+        left: 1.495%
+        top: 5.313%
+        width: 33.493%
+        height: 6.589%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_priorytet_pracy
+      custom_fields:
+        c: |-
+          [[[
+          const OX=15,OY=118;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const val=(()=>{if(st('sensor.hydrolution_odszranianie')==='Aktywne')return'Odszranianie';const p=st('sensor.hydrolution_priorytet_pracy');return p==='Wylaczona'?'Postój':(p||'–')})(); const vc=(()=>{const p=st('sensor.hydrolution_priorytet_pracy');return st('sensor.hydrolution_odszranianie')==='Aktywne'?'#81d4fa':p==='Ogrzewanie'?'#7ee04a':p==='CWU'?'#29b6f6':'#b0bac5'})();
+          return '<div class="g" style=""></div>' + P(31,148,I('mdi:power',32,'#7ee04a')) + P(71,134,'Tryb pracy',F(13.5,400,'#d9e0e7')) + P(71,157,val,F(20,600,vc));
+          ]]]
+      style:
+        left: 0.897%
+        top: 12.540%
+        width: 10.287%
+        height: 6.482%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_moc_grzewcza
+      custom_fields:
+        c: |-
+          [[[
+          const OX=193,OY=118;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const val=f('sensor.hp_moc_grzewcza',2)+' kW'; const vc='#ffffff';
+          return '<div class="g" style=""></div>' + P(209,148,I('mdi:flash',32,'#ffc21a')) + P(249,134,'Moc grzewcza',F(13.5,400,'#d9e0e7')) + P(249,157,val,F(20,600,vc));
+          ]]]
+      style:
+        left: 11.543%
+        top: 12.540%
+        width: 8.852%
+        height: 6.482%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_cop_chwilowy
+      custom_fields:
+        c: |-
+          [[[
+          const OX=347,OY=118;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const val=f('sensor.hp_cop_chwilowy',2); const vc='#ffffff';
+          return '<div class="g" style=""></div>' + P(363,148,I('mdi:leaf',32,'#7ee04a')) + P(403,134,'COP (chwilowy)',F(13.5,400,'#d9e0e7')) + P(403,157,val,F(20,600,vc));
+          ]]]
+      style:
+        left: 20.754%
+        top: 12.540%
+        width: 9.450%
+        height: 6.482%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_cieplo_dzis
+      custom_fields:
+        c: |-
+          [[[
+          const OX=511,OY=118;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const val=f('sensor.hp_cieplo_dzis',1)+' kWh'; const vc='#ffffff';
+          return '<div class="g" style=""></div>' + P(527,148,I('mdi:chart-bar',32,'#ffa31a')) + P(567,134,'Energia dziś',F(13.5,400,'#d9e0e7')) + P(567,157,val,F(20,600,vc));
+          ]]]
+      style:
+        left: 30.562%
+        top: 12.540%
+        width: 9.151%
+        height: 6.482%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_cieplo_cwu_dzis
+      custom_fields:
+        c: |-
+          [[[
+          const OX=670,OY=118;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const val=f('sensor.hp_cieplo_cwu_dzis',1)+' kWh'; const vc='#ffffff';
+          return '<div class="g" style=""></div>' + P(686,148,I('mdi:water-outline',32,'#29b6f6')) + P(726,134,'CWU dziś',F(13.5,400,'#d9e0e7')) + P(726,157,val,F(20,600,vc));
+          ]]]
+      style:
+        left: 40.072%
+        top: 12.540%
+        width: 8.732%
+        height: 6.482%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_temperatura_zewnetrzna_bt1
+      custom_fields:
+        c: |-
+          [[[
+          const OX=143,OY=220;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style=""></div>' + P(156,252,I('mdi:thermometer',36,'#29b6f6'))
+           + P(196,236,f('sensor.hydrolution_temperatura_zewnetrzna_bt1')+' °C',F(22,600,'#fff'))
+           + P(196,255,'Temperatura',F(13,400,'#dfe5ec')) + P(196,270,'zewnętrzna (BT1)',F(13,400,'#dfe5ec'));
+          ]]]
+      style:
+        left: 8.553%
+        top: 23.379%
+        width: 9.629%
+        height: 6.695%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_cwu_gora_bt7
+      custom_fields:
+        c: |-
+          [[[
+          const OX=829,OY=137;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return '<div class="g" style="background:linear-gradient(180deg,rgba(150,28,20,.92),rgba(95,16,12,.92));border:1px solid rgba(255,96,72,.75);box-shadow:0 0 calc(var(--u)*10) rgba(255,60,40,.35);border-radius:'+u(6)+'"></div>'
+           + C(878,151,f('sensor.hydrolution_cwu_gora_bt7')+' °C',F(17,600,'#fff')) + C(878,167,'CWU góra (BT7)',F(11.5,400,'#e9eef3'));
+          ]]]
+      style:
+        left: 49.581%
+        top: 14.559%
+        width: 5.861%
+        height: 4.251%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_cwu_srodek_bt6
+      custom_fields:
+        c: |-
+          [[[
+          const OX=829,OY=229;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return '<div class="g" style="background:linear-gradient(180deg,rgba(16,52,100,.92),rgba(9,32,66,.92));border:1px solid rgba(80,170,255,.75);box-shadow:0 0 calc(var(--u)*10) rgba(40,140,255,.35);border-radius:'+u(6)+'"></div>'
+           + C(880,243,f('sensor.hydrolution_cwu_srodek_bt6')+' °C',F(17,600,'#fff')) + C(880,259,'CWU środek (BT6)',F(11.5,400,'#e9eef3'));
+          ]]]
+      style:
+        left: 49.581%
+        top: 24.336%
+        width: 6.100%
+        height: 4.251%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_zasilanie_z_pompy_bt12
+      custom_fields:
+        c: |-
+          [[[
+          const OX=585,OY=317;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return '<div class="g" style="background:linear-gradient(180deg,rgba(150,28,20,.92),rgba(95,16,12,.92));border:1px solid rgba(255,96,72,.75);box-shadow:0 0 calc(var(--u)*10) rgba(255,60,40,.35);border-radius:'+u(6)+'"></div>'
+           + C(634,331,f('sensor.hydrolution_zasilanie_z_pompy_bt12')+' °C',F(17,600,'#fff')) + C(634,347,'Zasilanie (BT12)',F(11.5,400,'#e9eef3'));
+          ]]]
+      style:
+        left: 34.988%
+        top: 33.688%
+        width: 5.861%
+        height: 4.251%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_powrot_do_pompy_bt3
+      custom_fields:
+        c: |-
+          [[[
+          const OX=548,OY=456;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return '<div class="g" style="background:linear-gradient(180deg,rgba(16,52,100,.92),rgba(9,32,66,.92));border:1px solid rgba(80,170,255,.75);box-shadow:0 0 calc(var(--u)*10) rgba(40,140,255,.35);border-radius:'+u(6)+'"></div>'
+           + C(604,470,f('sensor.hydrolution_powrot_do_pompy_bt3')+' °C',F(17,600,'#fff')) + C(604,486,'Powrót (BT3)',F(11.5,400,'#e9eef3'));
+          ]]]
+      style:
+        left: 32.775%
+        top: 48.459%
+        width: 6.699%
+        height: 4.251%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_zasilanie_zewn_bt25
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1066,OY=379;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return '<div class="g" style="background:linear-gradient(180deg,rgba(150,28,20,.92),rgba(95,16,12,.92));border:1px solid rgba(255,96,72,.75);box-shadow:0 0 calc(var(--u)*10) rgba(255,60,40,.35);border-radius:'+u(6)+'"></div>'
+           + C(1126,393,f('sensor.hydrolution_zasilanie_zewn_bt25')+' °C',F(17,600,'#fff')) + C(1126,409,'Zasilanie CO (BT25)',F(11.5,400,'#e9eef3'));
+          ]]]
+      style:
+        left: 63.756%
+        top: 40.276%
+        width: 7.177%
+        height: 4.251%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_powrot_zewn_bt71
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1058,OY=451;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return '<div class="g" style="background:linear-gradient(180deg,rgba(16,52,100,.92),rgba(9,32,66,.92));border:1px solid rgba(80,170,255,.75);box-shadow:0 0 calc(var(--u)*10) rgba(40,140,255,.35);border-radius:'+u(6)+'"></div>'
+           + C(1111,465,f('sensor.hydrolution_powrot_zewn_bt71')+' °C',F(17,600,'#fff')) + C(1111,481,'Powrót CO (BT71)',F(11.5,400,'#e9eef3'));
+          ]]]
+      style:
+        left: 63.278%
+        top: 47.928%
+        width: 6.340%
+        height: 4.251%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_priorytet_pracy
+      custom_fields:
+        c: |-
+          [[[
+          const OX=677,OY=398;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          const p=st('sensor.hydrolution_priorytet_pracy'); const co=p==='Ogrzewanie', cw=p==='CWU';
+          return '<div class="g" style=""></div>' + C(727,410,'Zawór 3-drogowy',F(13.5,400,'#eef2f6'))
+           + C(727,428,'<span style="'+(co?'color:#7ee04a;font-weight:700':'')+'">CO</span> / <span style="'+(cw?'color:#29b6f6;font-weight:700':'')+'">CWU</span>',F(13.5,400,'#eef2f6'));
+          ]]]
+      style:
+        left: 40.490%
+        top: 42.295%
+        width: 5.981%
+        height: 4.463%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=437,OY=318;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return C(470,339,f('sensor.hydrolution_zasilanie_z_pompy_bt12')+'°C',F(12,500,'#e8f4ff')+'text-shadow:0 0 4px rgba(120,190,255,.6)');
+          ]]]
+      style:
+        left: 26.136%
+        top: 33.794%
+        width: 3.947%
+        height: 4.463%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: binary_sensor.hydrolution_sprezarka_pracuje
+      custom_fields:
+        c: |-
+          [[[
+          const OX=458,OY=372;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const on=st('binary_sensor.hydrolution_sprezarka_pracuje')==='on';
+          return C(471,385,I('mdi:power',24,on?'#57e04a':'#7d8894'),on?'filter:drop-shadow(0 0 4px #57e04a)':'');
+          ]]]
+      style:
+        left: 27.392%
+        top: 39.532%
+        width: 1.555%
+        height: 2.763%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1003,OY=126;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return P(1007,151,I('mdi:water-outline',24,'#29b6f6'))
+           + P(1034,141,'CWU',F(17,700,'#fff')+'text-shadow:0 1px 4px rgba(0,0,0,.8)')
+           + P(1035,159,'300 l',F(14,500,'#fff')+'text-shadow:0 1px 4px rgba(0,0,0,.8)');
+          ]]]
+      style:
+        left: 59.988%
+        top: 13.390%
+        width: 5.383%
+        height: 5.101%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: select.hydrolution_tryb_cwu
+      custom_fields:
+        c: |-
+          [[[
+          const OX=993,OY=183;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          const t=n('sensor.hydrolution_cwu_gora_bt7'); const m=st('select.hydrolution_tryb_cwu');
+          const tg=n(m==='Luksus'?'number.hydrolution_cwu_temp_stop_luksus':m==='Ekonomiczny'?'number.hydrolution_cwu_temp_stop_ekonomiczny':'number.hydrolution_cwu_temp_stop_normalny');
+          const fr=(t!==null&&tg)?Math.max(0,Math.min(1,t/tg)):0;
+          const r=40, c=2*Math.PI*r, a=c*fr;
+          return '<svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%">'
+           + '<circle cx="50" cy="50" r="49" fill="rgba(18,22,28,.92)"/>'
+           + '<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#1e88e5" stroke-width="9"/>'
+           + '<circle cx="50" cy="50" r="'+r+'" fill="none" stroke="#ff9100" stroke-width="9" stroke-dasharray="'+a+' '+c+'" transform="rotate(-90 50 50)" style="filter:drop-shadow(0 0 3px rgba(255,145,0,.7))"/>'
+           + '</svg>'
+           + C(1043,229,f('sensor.hydrolution_cwu_gora_bt7')+' °C',F(16.5,700,'#fff')) + C(1043,247,'('+(tg===null?'–':tg.toFixed(1))+' °C)',F(11,400,'#d5dce4'));
+          ]]]
+      style:
+        left: 59.390%
+        top: 19.447%
+        width: 5.981%
+        height: 10.627%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_cyrkulacja_cwu_czas_pracy
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1163,OY=83;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style="bottom:'+u(9)+'"></div>'
+           + '<div style="position:absolute;left:'+u(45)+';bottom:'+u(1)+';width:0;height:0;border-left:'+u(8)+' solid transparent;border-right:'+u(8)+' solid transparent;border-top:'+u(9)+' solid rgba(30,35,44,.9)"></div>'
+           + C(1233,96,'Cyrkulacja CWU',F(15.5,600,'#fff'))
+           + P(1179,118,I('mdi:record-circle-outline',17,'#7ee04a')) + P(1201,118,'Włączona',F(14,500,'#7ee04a'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(48)+';border-top:1px solid rgba(255,255,255,.12)"></div>'
+           + P(1181,144,'Praca: &nbsp;'+f('number.hydrolution_cyrkulacja_cwu_czas_pracy',0)+' min',F(13.5,400,'#e3e8ee'))
+           + P(1181,163,'Postój: &nbsp;'+f('number.hydrolution_cyrkulacja_cwu_czas_postoju',0)+' min',F(13.5,400,'#e3e8ee'))
+           + P(1181,182,'Przepływ: &nbsp;'+f('sensor.hydrolution_przeplyw_bf1',1)+' l/min',F(13.5,400,'#e3e8ee'));
+          ]]]
+      style:
+        left: 69.557%
+        top: 8.820%
+        width: 8.433%
+        height: 12.965%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const u=v=>'calc(var(--u)*'+v+')';
+          return '<div style="position:absolute;inset:0;border-radius:'+u(4)+';background:linear-gradient(180deg,rgba(229,57,53,0) 0%,rgba(229,57,53,.38) 30%,rgba(30,136,229,.42) 100%);filter:blur(1px)"></div>';
+          ]]]
+      style:
+        left: 54.187%
+        top: 45.484%
+        width: 8.373%
+        height: 9.777%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_zasilanie_zewn_bt25
+      custom_fields:
+        c: |-
+          [[[
+          const OX=925,OY=383;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return C(981,397,'Bufor CO',F(16,600,'#fff')+'text-shadow:0 1px 4px rgba(0,0,0,.8)')
+           + C(981,416,'200 l',F(15,500,'#fff')+'text-shadow:0 1px 4px rgba(0,0,0,.8)')
+           + C(981,465,f('sensor.hydrolution_zasilanie_zewn_bt25')+' °C',F(23,700,'#fff')+'text-shadow:0 2px 6px rgba(0,0,0,.8)');
+          ]]]
+      style:
+        left: 55.323%
+        top: 40.701%
+        width: 6.699%
+        height: 11.158%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1320,OY=348;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          return '<div class="g" style=""></div>' + C(1424,360,'Rozdzielacz',F(16.5,700,'#fff')) + C(1424,380,'Ogrzewanie podłogowe',F(14,400,'#e3e8ee'));
+          ]]]
+      style:
+        left: 78.947%
+        top: 36.982%
+        width: 12.440%
+        height: 4.676%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_pompa_ladujaca_predkosc
+      custom_fields:
+        c: |-
+          [[[
+          const OX=841,OY=475;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const on=(n('sensor.hydrolution_pompa_ladujaca_predkosc')||0)>0;
+          return '<div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#1d2229 55%,#0f1216 100%);border:2px solid '+(on?'#43d343':'#59626d')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(67,211,67,.7)':'none')+'"></div>'
+           + C(858,491,I('mdi:play',22,on?'#43d343':'#7d8894'));
+          ]]]
+      style:
+        left: 50.299%
+        top: 50.478%
+        width: 1.914%
+        height: 3.401%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_priorytet_pracy
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1171,OY=477;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const on=st('sensor.hydrolution_priorytet_pracy')!=='Wylaczona'&&st('sensor.hydrolution_priorytet_pracy')!==undefined;
+          return '<div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#1d2229 55%,#0f1216 100%);border:2px solid '+(on?'#43d343':'#59626d')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(67,211,67,.7)':'none')+'"></div>'
+           + C(1188,493,I('mdi:play',22,on?'#43d343':'#7d8894'));
+          ]]]
+      style:
+        left: 70.036%
+        top: 50.691%
+        width: 1.914%
+        height: 3.401%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_cyrkulacja_cwu_czas_pracy
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1181,OY=220;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const on=(n('number.hydrolution_cyrkulacja_cwu_czas_pracy')||0)>0;
+          return '<div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#1d2229 55%,#0f1216 100%);border:2px solid '+(on?'#43d343':'#59626d')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(67,211,67,.7)':'none')+'"></div>'
+           + C(1198,236,I('mdi:play',22,on?'#43d343':'#7d8894'));
+          ]]]
+      style:
+        left: 70.634%
+        top: 23.379%
+        width: 1.914%
+        height: 3.401%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=614,OY=355;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(622,363,I('mdi:menu-right',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 36.722%
+        top: 37.726%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=864,OY=188;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(872,196,I('mdi:menu-right',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 51.675%
+        top: 19.979%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=876,OY=274;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(884,282,I('mdi:menu-left',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 52.392%
+        top: 29.118%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=785,OY=268;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(793,276,I('mdi:menu-up',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 46.950%
+        top: 28.480%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=645,OY=420;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(653,428,I('mdi:menu-up',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 38.577%
+        top: 44.633%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=824,OY=374;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(832,382,I('mdi:menu-down',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 49.282%
+        top: 39.745%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1112,OY=417;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(1120,425,I('mdi:menu-right',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 66.507%
+        top: 44.315%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1112,OY=487;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(1120,495,I('mdi:menu-left',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 66.507%
+        top: 51.753%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1150,OY=269;const u=v=>'calc(var(--u)*'+v+')';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return C(1158,277,I('mdi:menu-right',18,'#ffffff'),'opacity:.9;filter:drop-shadow(0 0 2px rgba(0,0,0,.8))');
+          ]]]
+      style:
+        left: 68.780%
+        top: 28.587%
+        width: 0.957%
+        height: 1.700%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1322,OY=55;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style=""></div>' + P(1338,74,I('mdi:clock-outline',22,'#fff')) + P(1373,73,'Tryb systemu',F(17,600,'#fff'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(37)+';border-top:1px solid rgba(255,255,255,.1)"></div>';
+          ]]]
+      style:
+        left: 79.067%
+        top: 5.845%
+        width: 20.215%
+        height: 12.540%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: script.turn_on
+        target:
+          entity_id: script.hp_tryb_auto
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1335,OY=98;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const a=st('sensor.hp_tryb_systemu')==='Auto';
+          return '<div class="g" style="border-radius:'+u(7)+';'+(a?'background:linear-gradient(180deg,#2b8cf2,#1260bf);border:1px solid #6ec1ff;box-shadow:0 0 '+u(12)+' rgba(33,150,243,.65)':'background:rgba(48,54,64,.8)')+'"></div>'
+           + C(1375,117,I('mdi:alpha-a-circle-outline',24,'#fff')) + C(1375,143,'Auto',F(15,a?600:400,'#fff'));
+          ]]]
+      style:
+        left: 79.844%
+        top: 10.414%
+        width: 4.844%
+        height: 6.589%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: script.turn_on
+        target:
+          entity_id: script.hp_tryb_co
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1420,OY=98;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const a=st('sensor.hp_tryb_systemu')==='CO';
+          return '<div class="g" style="border-radius:'+u(7)+';'+(a?'background:linear-gradient(180deg,#2b8cf2,#1260bf);border:1px solid #6ec1ff;box-shadow:0 0 '+u(12)+' rgba(33,150,243,.65)':'background:rgba(48,54,64,.8)')+'"></div>'
+           + C(1457,117,I('mdi:thermometer-lines',24,'#fff')) + C(1457,143,'CO',F(15,a?600:400,'#fff'));
+          ]]]
+      style:
+        left: 84.928%
+        top: 10.414%
+        width: 4.426%
+        height: 6.589%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: script.turn_on
+        target:
+          entity_id: script.hp_tryb_cwu
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1498,OY=98;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const a=st('sensor.hp_tryb_systemu')==='CWU';
+          return '<div class="g" style="border-radius:'+u(7)+';'+(a?'background:linear-gradient(180deg,#2b8cf2,#1260bf);border:1px solid #6ec1ff;box-shadow:0 0 '+u(12)+' rgba(33,150,243,.65)':'background:rgba(48,54,64,.8)')+'"></div>'
+           + C(1535,117,I('mdi:water-outline',24,'#fff')) + C(1535,143,'CWU',F(15,a?600:400,'#fff'));
+          ]]]
+      style:
+        left: 89.593%
+        top: 10.414%
+        width: 4.426%
+        height: 6.589%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: script.turn_on
+        target:
+          entity_id: script.hp_tryb_urlop
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1576,OY=98;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const a=st('sensor.hp_tryb_systemu')==='Urlop';
+          return '<div class="g" style="border-radius:'+u(7)+';'+(a?'background:linear-gradient(180deg,#2b8cf2,#1260bf);border:1px solid #6ec1ff;box-shadow:0 0 '+u(12)+' rgba(33,150,243,.65)':'background:rgba(48,54,64,.8)')+'"></div>'
+           + C(1614,117,I('mdi:briefcase-outline',24,'#fff')) + C(1614,143,'Urlop',F(15,a?600:400,'#fff'));
+          ]]]
+      style:
+        left: 94.258%
+        top: 10.414%
+        width: 4.545%
+        height: 6.589%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1325,OY=182;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style=""></div>'
+           + P(1343,198,I('mdi:layers-outline',21,'#29b6f6')) + P(1381,198,'Priorytet pracy',F(15,400,'#e9eef3')) + R(1630,198,(()=>{const p=st('sensor.hydrolution_priorytet_pracy');return p==='Ogrzewanie'?'CO':p==='Wylaczona'?'Postój':(p||'–')})(),F(14.5,400,'#e9eef3')) + P(1633,198,I('mdi:chevron-right',18,'#cfd6de'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(32)+';border-top:1px solid rgba(255,255,255,.08)"></div>'
+           + P(1343,230,I('mdi:water-outline',21,'#29b6f6')) + P(1381,230,'Tryb CWU',F(15,400,'#e9eef3')) + R(1630,230,st('select.hydrolution_tryb_cwu')||'–',F(14.5,400,'#e9eef3')) + P(1633,230,I('mdi:chevron-right',18,'#cfd6de'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(64)+';border-top:1px solid rgba(255,255,255,.08)"></div>'
+           + P(1343,262,I('mdi:flash',21,'#ffc21a')) + P(1381,262,'Grzałka elektryczna',F(15,400,'#e9eef3')) + R(1630,262,(()=>{const p=n('sensor.hydrolution_grzalka_moc')||0;if(p>0)return'Pracuje '+p.toFixed(1)+' kW';return st('switch.hydrolution_grzalka_dozwolona')==='on'?'Dozwolona':'Wyłączona'})(),F(14.5,400,'#e9eef3')) + P(1633,262,I('mdi:chevron-right',18,'#cfd6de'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(96)+';border-top:1px solid rgba(255,255,255,.08)"></div>'
+           + P(1343,294,I('mdi:shield-check-outline',21,'#7ee04a')) + P(1381,294,'Antylegionella',F(15,400,'#e9eef3')) + R(1630,294,(()=>{if(st('switch.hydrolution_antylegionella_okresowe_podgrzewanie')!=='on')return'Wyłączona';const d=n('sensor.hp_antylegionella_za_dni');return d===null?'Włączona':(d===0?'Dziś':'Za '+d.toFixed(0)+' dni')})(),F(14.5,400,'#e9eef3')) + P(1633,294,I('mdi:chevron-right',18,'#cfd6de'));
+          ]]]
+      style:
+        left: 79.246%
+        top: 19.341%
+        width: 20.036%
+        height: 14.134%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_priorytet_pracy
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 79.246%
+        top: 19.447%
+        width: 20.036%
+        height: 3.401%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: select.hydrolution_tryb_cwu
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 79.246%
+        top: 22.848%
+        width: 20.036%
+        height: 3.401%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: switch.hydrolution_grzalka_dozwolona
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 79.246%
+        top: 26.249%
+        width: 20.036%
+        height: 3.401%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: switch.hydrolution_antylegionella_okresowe_podgrzewanie
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 79.246%
+        top: 29.649%
+        width: 20.036%
+        height: 3.401%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=8,OY=563;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');
+          const T=[-30,-20,-10,0,10,20,30];
+          const pk=['number.hydrolution_wlasna_krzywa_p1_najzimniej','number.hydrolution_wlasna_krzywa_p2','number.hydrolution_wlasna_krzywa_p3','number.hydrolution_wlasna_krzywa_p4','number.hydrolution_wlasna_krzywa_p5','number.hydrolution_wlasna_krzywa_p6','number.hydrolution_wlasna_krzywa_p7_najcieplej'];
+          const off=n('number.hydrolution_przesuniecie_krzywej_grzewczej')||0;
+          const pv=pk.map(e=>n(e));
+          const ok=pv.every(v=>v!==null);
+          const ys=ok?pv.map(v=>v+off):[];
+          const all=ys.concat([n('sensor.hydrolution_zadane_zasilanie_s1')].filter(v=>v!==null));
+          let lo=20, hi=60; if(all.length){lo=Math.min(20,Math.floor((Math.min(...all)-2)/10)*10);hi=Math.max(60,Math.ceil((Math.max(...all)+2)/10)*10);}
+          const X0=52,X1=482,Y0=55,Y1=141;
+          const sx=t=>X0+(t+30)/60*(X1-X0), sy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
+          let g='';
+          for(let t=-30;t<=30;t+=5) g+='<line x1="'+sx(t)+'" y1="'+Y0+'" x2="'+sx(t)+'" y2="'+Y1+'" stroke="rgba(255,255,255,.08)"/>';
+          for(let v=lo;v<=hi;v+=10){g+='<line x1="'+X0+'" y1="'+sy(v)+'" x2="'+X1+'" y2="'+sy(v)+'" stroke="rgba(255,255,255,.08)"/>'+'<text x="'+(X0-6)+'" y="'+(sy(v)+4)+'" text-anchor="end">'+v+' °C</text>';}
+          for(let t=-30;t<=30;t+=10) g+='<text x="'+sx(t)+'" y="'+(Y1+16)+'" text-anchor="middle">'+t+' °C</text>';
+          let line='';
+          if(ok){line='<polyline points="'+T.map((t,i)=>sx(t)+','+sy(ys[i])).join(' ')+'" fill="none" stroke="#29b6f6" stroke-width="2.6" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px rgba(41,182,246,.8))"/>'
+           + T.map((t,i)=>'<circle cx="'+sx(t)+'" cy="'+sy(ys[i])+'" r="2.6" fill="#29b6f6"/>').join('');}
+          const ox=n('sensor.hydrolution_temperatura_zewnetrzna_bt1'), oy=n('sensor.hydrolution_zadane_zasilanie_s1');
+          let dot='';
+          if(ox!==null&&oy!==null){const cx=sx(Math.max(-30,Math.min(30,ox)));dot='<circle cx="'+cx+'" cy="'+sy(oy)+'" r="6.5" fill="#ffb300" stroke="#ffe082" stroke-width="1.5" style="filter:drop-shadow(0 0 4px rgba(255,179,0,.9))"/>';}
+          const leg='<line x1="160" y1="44" x2="186" y2="44" stroke="#29b6f6" stroke-width="2.6"/><circle cx="173" cy="44" r="3.5" fill="#29b6f6"/><text x="192" y="48" font-size="12.5" fill="#e3e8ee">Krzywa (P1–P7'+(off?(off>0?' +':' ')+off:'')+')</text>'
+           + '<line x1="318" y1="44" x2="344" y2="44" stroke="#ffb300" stroke-width="2.6"/><circle cx="331" cy="44" r="3.5" fill="#ffb300"/><text x="350" y="48" font-size="12.5" fill="#e3e8ee">Zadane teraz (S1)</text>';
+          const svg='<svg viewBox="0 0 505 362" style="position:absolute;inset:0;width:100%;height:100%;font-family:inherit"><g font-size="12" fill="#dfe5ec">'+g+'</g>'+leg+line+dot+'</svg>';
+          return '<div class="g" style=""></div>' + P(28,578,'Krzywa grzewcza (CO)',F(17.5,600,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(31)+';border-top:1px solid rgba(255,255,255,.1)"></div>'
+           + svg;
+          ]]]
+      style:
+        left: 0.478%
+        top: 59.830%
+        width: 30.203%
+        height: 38.470%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=18,OY=740;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)+'"></div>'
+           + C(81,753,'Numer krzywej',F(14,400,'#e3e8ee'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(26)+';height:'+u(26)+';border-radius:'+u(13)+';background:rgba(62,70,82,.75);border:1px solid rgba(255,255,255,.08)"></div>'
+           + P(32,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(81,779,f('number.hydrolution_krzywa_grzewcza_numer',0),F(16.5,600,'#fff')) + R(131,779,I('mdi:chevron-right',18,'#dfe5ec'));
+          ]]]
+      style:
+        left: 1.077%
+        top: 78.640%
+        width: 7.596%
+        height: 6.164%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: number.set_value
+        data:
+          entity_id: number.hydrolution_krzywa_grzewcza_numer
+          value: '[[[ const s=states[''number.hydrolution_krzywa_grzewcza_numer'']; const v=Number(s.state)-1; return Math.min(Number(s.attributes.max),Math.max(Number(s.attributes.min),v)); ]]]'
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 1.435%
+        top: 81.296%
+        width: 2.153%
+        height: 2.976%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: number.set_value
+        data:
+          entity_id: number.hydrolution_krzywa_grzewcza_numer
+          value: '[[[ const s=states[''number.hydrolution_krzywa_grzewcza_numer'']; const v=Number(s.state)+1; return Math.min(Number(s.attributes.max),Math.max(Number(s.attributes.min),v)); ]]]'
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 6.160%
+        top: 81.296%
+        width: 2.153%
+        height: 2.976%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=152,OY=740;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)+'"></div>'
+           + C(209,753,'Przesunięcie',F(14,400,'#e3e8ee'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(26)+';height:'+u(26)+';border-radius:'+u(13)+';background:rgba(62,70,82,.75);border:1px solid rgba(255,255,255,.08)"></div>'
+           + P(166,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(209,779,f('number.hydrolution_przesuniecie_krzywej_grzewczej',0)+' °C',F(16.5,600,'#fff')) + R(253,779,I('mdi:chevron-right',18,'#dfe5ec'));
+          ]]]
+      style:
+        left: 9.091%
+        top: 78.640%
+        width: 6.878%
+        height: 6.164%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: number.set_value
+        data:
+          entity_id: number.hydrolution_przesuniecie_krzywej_grzewczej
+          value: '[[[ const s=states[''number.hydrolution_przesuniecie_krzywej_grzewczej'']; const v=Number(s.state)-1; return Math.min(Number(s.attributes.max),Math.max(Number(s.attributes.min),v)); ]]]'
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 9.450%
+        top: 81.296%
+        width: 2.153%
+        height: 2.976%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: number.set_value
+        data:
+          entity_id: number.hydrolution_przesuniecie_krzywej_grzewczej
+          value: '[[[ const s=states[''number.hydrolution_przesuniecie_krzywej_grzewczej'']; const v=Number(s.state)+1; return Math.min(Number(s.attributes.max),Math.max(Number(s.attributes.min),v)); ]]]'
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 13.457%
+        top: 81.296%
+        width: 2.153%
+        height: 2.976%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=273,OY=740;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)+'"></div>'
+           + C(330,753,'Min. zasilania',F(14,400,'#e3e8ee'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(26)+';height:'+u(26)+';border-radius:'+u(13)+';background:rgba(62,70,82,.75);border:1px solid rgba(255,255,255,.08)"></div>'
+           + P(287,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(330,779,f('number.hydrolution_min_temperatura_zasilania',0)+' °C',F(16.5,600,'#fff')) + R(374,779,I('mdi:chevron-right',18,'#dfe5ec'));
+          ]]]
+      style:
+        left: 16.328%
+        top: 78.640%
+        width: 6.878%
+        height: 6.164%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: number.set_value
+        data:
+          entity_id: number.hydrolution_min_temperatura_zasilania
+          value: '[[[ const s=states[''number.hydrolution_min_temperatura_zasilania'']; const v=Number(s.state)-1; return Math.min(Number(s.attributes.max),Math.max(Number(s.attributes.min),v)); ]]]'
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 16.687%
+        top: 81.296%
+        width: 2.153%
+        height: 2.976%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: number.set_value
+        data:
+          entity_id: number.hydrolution_min_temperatura_zasilania
+          value: '[[[ const s=states[''number.hydrolution_min_temperatura_zasilania'']; const v=Number(s.state)+1; return Math.min(Number(s.attributes.max),Math.max(Number(s.attributes.min),v)); ]]]'
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 20.694%
+        top: 81.296%
+        width: 2.153%
+        height: 2.976%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=395,OY=740;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)+'"></div>'
+           + C(449,753,'Max. zasilania',F(14,400,'#e3e8ee'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(26)+';height:'+u(26)+';border-radius:'+u(13)+';background:rgba(62,70,82,.75);border:1px solid rgba(255,255,255,.08)"></div>'
+           + P(409,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(449,779,f('number.hydrolution_max_temperatura_zasilania',0)+' °C',F(16.5,600,'#fff')) + R(490,779,I('mdi:chevron-right',18,'#dfe5ec'));
+          ]]]
+      style:
+        left: 23.624%
+        top: 78.640%
+        width: 6.519%
+        height: 6.164%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: number.set_value
+        data:
+          entity_id: number.hydrolution_max_temperatura_zasilania
+          value: '[[[ const s=states[''number.hydrolution_max_temperatura_zasilania'']; const v=Number(s.state)-1; return Math.min(Number(s.attributes.max),Math.max(Number(s.attributes.min),v)); ]]]'
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 23.983%
+        top: 81.296%
+        width: 2.153%
+        height: 2.976%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: call-service
+        service: number.set_value
+        data:
+          entity_id: number.hydrolution_max_temperatura_zasilania
+          value: '[[[ const s=states[''number.hydrolution_max_temperatura_zasilania'']; const v=Number(s.state)+1; return Math.min(Number(s.attributes.max),Math.max(Number(s.attributes.min),v)); ]]]'
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 27.632%
+        top: 81.296%
+        width: 2.153%
+        height: 2.976%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=18,OY=805;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const C=(x,y,h,c)=>B(x,y,h,c,'translate(-50%,-50%)');
+          const T=['-30°C','-20°C','-10°C','0°C','10°C','20°C','30°C'];
+          const pk=['number.hydrolution_wlasna_krzywa_p1_najzimniej','number.hydrolution_wlasna_krzywa_p2','number.hydrolution_wlasna_krzywa_p3','number.hydrolution_wlasna_krzywa_p4','number.hydrolution_wlasna_krzywa_p5','number.hydrolution_wlasna_krzywa_p6','number.hydrolution_wlasna_krzywa_p7_najcieplej'];
+          let h='<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)+'"></div>'
+           + P(28,819,'Własna krzywa – punkty (P1 – P7)',F(14.5,400,'#eef2f6'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>';
+          for(let i=0;i<7;i++){const cx=30+33+i*66;
+           h+=C(cx,850,'P'+(i+1),F(15,600,'#fff'))+C(cx,872,T[i],F(14,400,'#e3e8ee'))
+            +'<div style="position:absolute;left:'+u(cx-OX-27)+';top:'+u(885-OY)+';width:'+u(54)+';height:'+u(22)+';border-radius:'+u(6)+';background:rgba(70,78,90,.7);border:1px solid rgba(255,255,255,.08)"></div>'
+            +C(cx,896,f(pk[i],0)+' °C',F(14.5,500,'#fff'));
+           if(i>0) h+='<div style="position:absolute;left:'+u(cx-OX-33)+';top:'+u(838-OY)+';height:'+u(74)+';border-left:1px solid rgba(255,255,255,.07)"></div>';}
+          return h;
+          ]]]
+      style:
+        left: 1.077%
+        top: 85.547%
+        width: 29.007%
+        height: 12.009%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_wlasna_krzywa_p1_najzimniej
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 1.794%
+        top: 89.054%
+        width: 3.947%
+        height: 8.077%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_wlasna_krzywa_p2
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 5.742%
+        top: 89.054%
+        width: 3.947%
+        height: 8.077%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_wlasna_krzywa_p3
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 9.689%
+        top: 89.054%
+        width: 3.947%
+        height: 8.077%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_wlasna_krzywa_p4
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 13.636%
+        top: 89.054%
+        width: 3.947%
+        height: 8.077%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_wlasna_krzywa_p5
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 17.584%
+        top: 89.054%
+        width: 3.947%
+        height: 8.077%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_wlasna_krzywa_p6
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 21.531%
+        top: 89.054%
+        width: 3.947%
+        height: 8.077%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_wlasna_krzywa_p7_najcieplej
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 25.478%
+        top: 89.054%
+        width: 3.947%
+        height: 8.077%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=520,OY=563;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');
+          return '<div class="g" style=""></div>' + P(537,579,'Temperatury – trendy (24 h)',F(17.5,600,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(31)+';border-top:1px solid rgba(255,255,255,.1)"></div>';
+          ]]]
+      style:
+        left: 31.100%
+        top: 59.830%
+        width: 29.605%
+        height: 18.491%
+        transform: none
+    - type: custom:apexcharts-card
+      graph_span: 24h
+      update_interval: 5min
+      header:
+        show: false
+      yaxis:
+      - min: 10
+        max: 60
+        decimals: 0
+        apex_config:
+          tickAmount: 5
+          labels:
+            formatter: EVAL:function(v){return Math.round(v)+' °C'}
+      apex_config:
+        chart:
+          height: 100%
+          foreColor: '#c8d0da'
+          fontFamily: '''Segoe UI'', Roboto, ''Noto Sans'', ''Open Sans'', sans-serif'
+          background: transparent
+          toolbar:
+            show: false
+          zoom:
+            enabled: false
+        grid:
+          borderColor: rgba(255,255,255,0.08)
+          padding:
+            top: -8
+            right: 4
+            bottom: -4
+            left: 0
+        legend:
+          show: true
+          position: right
+          fontSize: 12px
+          labels:
+            colors: '#dfe5ec'
+          markers:
+            width: 16
+            height: 3
+            radius: 2
+          itemMargin:
+            vertical: 2
+        xaxis:
+          labels:
+            datetimeUTC: false
+            format: HH:mm
+            style:
+              fontSize: 11px
+          axisBorder:
+            show: false
+          axisTicks:
+            show: false
+        tooltip:
+          theme: dark
+          x:
+            format: HH:mm
+        stroke:
+          width: 2.2
+          curve: smooth
+        markers:
+          size: 0
+      series:
+      - entity: sensor.hydrolution_cwu_gora_bt7
+        name: CWU góra (BT7)
+        color: '#ff4d3a'
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.hydrolution_zasilanie_z_pompy_bt12
+        name: Zasilanie (BT12)
+        color: '#ffab1a'
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.hydrolution_powrot_do_pompy_bt3
+        name: Powrót (BT3)
+        color: '#29b6f6'
+        group_by:
+          func: avg
+          duration: 10min
+      - entity: sensor.hydrolution_zasilanie_zewn_bt25
+        name: Bufor CO (BT25)
+        color: '#9c6cff'
+        group_by:
+          func: avg
+          duration: 10min
+      card_mod:
+        style: |
+          ha-card { background: none !important; box-shadow: none !important; border: none !important; height: 100%; }
+          #graph-wrapper, #graph { height: 100%; }
+      style:
+        left: 31.459%
+        top: 63.443%
+        width: 28.947%
+        height: 14.665%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_cieplo_miesiac
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1024,OY=563;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');
+          const co=n('sensor.hp_cieplo_co_dzis')||0, cw=n('sensor.hp_cieplo_cwu_dzis')||0, s=co+cw;
+          const pc=s>0?co/s:0;
+          const r=57, c=2*Math.PI*r;
+          const pct=v=>s>0?Math.round(v/s*100):0;
+          const svg='<svg viewBox="0 0 343 174" style="position:absolute;inset:0;width:100%;height:100%;font-family:inherit">'
+           + '<circle cx="86" cy="93" r="'+r+'" fill="none" stroke="'+(s>0?'#ffa31a':'#3a414c')+'" stroke-width="14"/>'
+           + (s>0?'<circle cx="86" cy="93" r="'+r+'" fill="none" stroke="#1fa5f5" stroke-width="14" stroke-dasharray="'+(c*pc)+' '+c+'" transform="rotate(-90 86 93)"/>':'')
+           + '<circle cx="86" cy="93" r="49" fill="rgba(14,17,22,.9)"/>'
+           + '<text x="86" y="96" text-anchor="middle" font-size="19" font-weight="700" fill="#fff">'+f('sensor.hp_cieplo_dzis',1)+' kWh</text>'
+           + '<text x="86" y="118" text-anchor="middle" font-size="15" fill="#e3e8ee">dziś</text>'
+           + '<rect x="166" y="52" width="13" height="13" rx="2" fill="#1fa5f5"/><text x="193" y="64" font-size="14.5" fill="#eef2f6">CO: '+co.toFixed(1)+' kWh ('+pct(co)+'%)</text>'
+           + '<rect x="166" y="86" width="13" height="13" rx="2" fill="#ffa31a"/><text x="193" y="98" font-size="14.5" fill="#eef2f6">CWU: '+cw.toFixed(1)+' kWh ('+pct(cw)+'%)</text>'
+           + '<line x1="166" y1="112" x2="330" y2="112" stroke="rgba(255,255,255,.12)"/>'
+           + '<text x="168" y="137" font-size="14.5" fill="#e3e8ee">Miesiąc: <tspan font-weight="600" fill="#fff" dx="6">'+f('sensor.hp_cieplo_miesiac',1)+' kWh</tspan></text>'
+           + '</svg>';
+          return '<div class="g" style=""></div>' + P(1042,579,'Zużycie energii',F(17.5,600,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(31)+';border-top:1px solid rgba(255,255,255,.1)"></div>' + svg;
+          ]]]
+      style:
+        left: 61.244%
+        top: 59.830%
+        width: 20.514%
+        height: 18.491%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_czas_pracy_dzis
+      custom_fields:
+        c: |-
+          [[[
+          const OX=522,OY=745;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';const dur=h=>{if(h===null)return'–';let m=Math.round(h*60);return m>=60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min'};
+          return '<div class="g" style=""></div>' + P(538,768,I('mdi:clock-outline',28,'#ffffff')) + P(584,757,'Czas pracy (dziś)',F(13.5,400,'#dfe5ec')) + P(584,776,dur(n('sensor.hp_czas_pracy_dzis')),F(18,600,'#fff'));
+          ]]]
+      style:
+        left: 31.220%
+        top: 79.171%
+        width: 10.347%
+        height: 4.995%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_starty_dzis
+      custom_fields:
+        c: |-
+          [[[
+          const OX=702,OY=745;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style=""></div>' + P(718,768,I('mdi:alarm',28,'#ffffff')) + P(764,757,'Starty sprężarki',F(13.5,400,'#dfe5ec')) + P(764,776,f('sensor.hp_starty_dzis',0),F(18,600,'#fff'));
+          ]]]
+      style:
+        left: 41.986%
+        top: 79.171%
+        width: 9.450%
+        height: 4.995%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_czas_pracy_co_dzis
+      custom_fields:
+        c: |-
+          [[[
+          const OX=868,OY=745;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';const dur=h=>{if(h===null)return'–';let m=Math.round(h*60);return m>=60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min'};
+          return '<div class="g" style=""></div>' + P(884,768,I('mdi:water-outline',28,'#29b6f6')) + P(930,757,'Czas pracy CO',F(13.5,400,'#dfe5ec')) + P(930,776,dur(n('sensor.hp_czas_pracy_co_dzis')),F(18,600,'#fff'));
+          ]]]
+      style:
+        left: 51.914%
+        top: 79.171%
+        width: 10.347%
+        height: 4.995%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hp_czas_pracy_cwu_dzis
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1049,OY=745;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';const dur=h=>{if(h===null)return'–';let m=Math.round(h*60);return m>=60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min'};
+          return '<div class="g" style=""></div>' + P(1065,768,I('mdi:water-boiler',28,'#29b6f6')) + P(1111,757,'Czas pracy CWU',F(13.5,400,'#dfe5ec')) + P(1111,776,dur(n('sensor.hp_czas_pracy_cwu_dzis')),F(18,600,'#fff'));
+          ]]]
+      style:
+        left: 62.739%
+        top: 79.171%
+        width: 9.749%
+        height: 4.995%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: sensor.hydrolution_odszranianie
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1220,OY=745;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style=""></div>' + P(1236,768,I('mdi:snowflake-melt',28,'#81d4fa')) + P(1282,757,'Odszranianie',F(13.5,400,'#dfe5ec')) + P(1282,776,st('sensor.hydrolution_odszranianie')||'–',F(18,600,'#fff'));
+          ]]]
+      style:
+        left: 72.967%
+        top: 79.171%
+        width: 8.792%
+        height: 4.995%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=522,OY=802;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';const hh=e=>{const v=n(e);return v===null?'--:--':String(((Math.round(v)%24)+24)%24).padStart(2,'0')+':00'};
+          const inner='<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>'
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(71)+';border-top:1px solid rgba(255,255,255,.08)"></div>';
+          return '<div class="g" style=""></div>' + P(537,816,'Harmonogramy',F(17.5,600,'#fff')) + inner
+           + P(538,852,I('mdi:weather-night',28,'#29b6f6')) + P(579,845,'Obniżenie nocne (CO)',F(14.5,400,'#eef2f6')) + P(580,862,hh('number.hydrolution_harmonogram_nocny_start_godz')+' &nbsp;–&nbsp; '+hh('number.hydrolution_harmonogram_nocny_koniec_godz'),F(14.5,400,'#eef2f6'))
+           + P(538,895,I('mdi:water-outline',28,'#29b6f6')) + P(579,887,'Poranne podgrzanie CWU',F(14.5,400,'#eef2f6'))
+           + P(580,905,hh('number.hydrolution_harmonogram_cwu_godzina_podgrzania')+' &nbsp;–&nbsp; '+(n('number.hydrolution_harmonogram_cwu_godzina_podgrzania')===null?'--:--':String((Math.round(n('number.hydrolution_harmonogram_cwu_godzina_podgrzania'))+1)%24).padStart(2,'0')+':00'),F(14.5,400,'#eef2f6'));
+          ]]]
+      style:
+        left: 31.220%
+        top: 85.228%
+        width: 19.617%
+        height: 12.540%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      entity: switch.hydrolution_harmonogram_nocny_aktywny
+      tap_action:
+        action: toggle
+      custom_fields:
+        c: |-
+          [[[
+          const u=v=>'calc(var(--u)*'+v+')';
+          const on=entity&&entity.state==='on';
+          return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
+           + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
+          ]]]
+      style:
+        left: 47.667%
+        top: 89.586%
+        width: 2.273%
+        height: 2.125%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      entity: switch.hydrolution_harmonogram_cwu_aktywny
+      tap_action:
+        action: toggle
+      custom_fields:
+        c: |-
+          [[[
+          const u=v=>'calc(var(--u)*'+v+')';
+          const on=entity&&entity.state==='on';
+          return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
+           + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
+          ]]]
+      style:
+        left: 47.667%
+        top: 94.155%
+        width: 2.273%
+        height: 2.125%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=861,OY=802;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const inner='<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>'
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(71)+';border-top:1px solid rgba(255,255,255,.08)"></div>';
+          return '<div class="g" style=""></div>' + P(876,816,'Cyrkulacja CWU',F(17.5,600,'#fff')) + inner
+           + P(884,852,I('mdi:autorenew',28,'#57e04a')) + P(928,843,'Czas pracy',F(13.5,400,'#dfe5ec')) + P(928,862,f('number.hydrolution_cyrkulacja_cwu_czas_pracy',0)+' min',F(16.5,600,'#fff'))
+           + P(884,895,I('mdi:timer-outline',28,'#ffb300')) + P(928,886,'Czas postoju',F(13.5,400,'#dfe5ec')) + P(928,905,f('number.hydrolution_cyrkulacja_cwu_czas_postoju',0)+' min',F(16.5,600,'#fff'));
+          ]]]
+      style:
+        left: 51.495%
+        top: 85.228%
+        width: 14.055%
+        height: 12.540%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_cyrkulacja_cwu_czas_pracy
+      custom_fields:
+        c: |-
+          [[[
+          const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';
+          const on=(n('number.hydrolution_cyrkulacja_cwu_czas_pracy')||0)>0;
+          return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
+           + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
+          ]]]
+      style:
+        left: 62.081%
+        top: 89.586%
+        width: 2.273%
+        height: 2.125%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1106,OY=802;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          const L=st('sensor.hp_antylegionella_ostatnio'); let d='–';
+          if(L&&L!=='unknown'&&L!=='unavailable'){const dt=new Date(L); if(!isNaN(dt)) d=dt.toLocaleDateString('pl-PL',{day:'numeric',month:'short',year:'numeric'});}
+          const inner='<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>';
+          const ln=y=>'<div style="position:absolute;left:'+u(48)+';right:'+u(14)+';top:'+u(y-OY)+';border-top:1px solid rgba(255,255,255,.08)"></div>';
+          return '<div class="g" style=""></div>' + P(1119,817,I('mdi:shield-check-outline',22,'#7ee04a')) + P(1146,817,'Antylegionella',F(17.5,600,'#fff')) + inner
+           + P(1122,857,I('mdi:thermometer-high',30,'#eef2f6'))
+           + P(1165,845,'Temperatura',F(14,400,'#eef2f6')) + R(1355,845,f('number.hydrolution_antylegionella_temperatura_koncowa',1)+' °C',F(14.5,500,'#fff')) + ln(858)
+           + P(1165,870,'Interwał',F(14,400,'#eef2f6')) + R(1355,870,f('number.hydrolution_antylegionella_co_ile_dni',0)+' dni',F(14.5,500,'#fff')) + ln(883)
+           + P(1124,896,I('mdi:clock-outline',24,'#eef2f6')) + P(1165,896,'Ostatnie',F(14,400,'#eef2f6')) + R(1355,896,d,F(14.5,500,'#fff'));
+          ]]]
+      style:
+        left: 66.148%
+        top: 85.228%
+        width: 15.610%
+        height: 12.540%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      entity: switch.hydrolution_antylegionella_okresowe_podgrzewanie
+      tap_action:
+        action: toggle
+      custom_fields:
+        c: |-
+          [[[
+          const u=v=>'calc(var(--u)*'+v+')';
+          const on=entity&&entity.state==='on';
+          return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
+           + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
+          ]]]
+      style:
+        left: 78.589%
+        top: 85.866%
+        width: 2.273%
+        height: 2.125%
+        transform: none
+    - type: custom:button-card
+      template: hp
+      custom_fields:
+        c: |-
+          [[[
+          const OX=1378,OY=563;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
+          return '<div class="g" style=""></div>' + P(1392,579,'Parametry pracy <span style="'+F(14.5,400,'#e3e8ee')+'">(aktualne)</span>',F(17,600,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(31)+';border-top:1px solid rgba(255,255,255,.1)"></div>'
+           + P(1392,611,I('mdi:thermometer',21,'#ff5a4a')) + P(1427,611,'BT1 – zewnętrzna',F(14.5,400,'#eef2f6')) + R(1647,611,f('sensor.hydrolution_temperatura_zewnetrzna_bt1')+' °C',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(61)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,638,I('mdi:thermometer',21,'#64b5f6')) + P(1427,638,'BT12 – zasilanie',F(14.5,400,'#eef2f6')) + R(1647,638,f('sensor.hydrolution_zasilanie_z_pompy_bt12')+' °C',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(88)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,666,I('mdi:thermometer',21,'#4fc3f7')) + P(1427,666,'BT3 – powrót',F(14.5,400,'#eef2f6')) + R(1647,666,f('sensor.hydrolution_powrot_do_pompy_bt3')+' °C',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(116)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,693,I('mdi:thermometer',21,'#ffb300')) + P(1427,693,'BT7 – CWU góra',F(14.5,400,'#eef2f6')) + R(1647,693,f('sensor.hydrolution_cwu_gora_bt7')+' °C',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(143)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,721,I('mdi:thermometer',21,'#81d4fa')) + P(1427,721,'BT6 – CWU środek',F(14.5,400,'#eef2f6')) + R(1647,721,f('sensor.hydrolution_cwu_srodek_bt6')+' °C',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(171)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,748,I('mdi:storage-tank-outline',21,'#eef2f6')) + P(1427,748,'Bufor CO (BT25)',F(14.5,400,'#eef2f6')) + R(1647,748,f('sensor.hydrolution_zasilanie_zewn_bt25')+' °C',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(198)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(206)+';border-top:1px solid rgba(255,255,255,.16)"></div>'
+           + P(1392,783,I('mdi:flash',21,'#ffc21a')) + P(1427,783,'Moc szacowana',F(14.5,400,'#eef2f6')) + R(1647,783,f('sensor.hp_moc_grzewcza',2)+' kW',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(233)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,811,I('mdi:fan',21,'#eef2f6')) + P(1427,811,'Sprężarka',F(14.5,400,'#eef2f6')) + R(1647,811,st('binary_sensor.hydrolution_sprezarka_pracuje')==='on'?'Wł.':'Wył.',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(261)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,840,I('mdi:fan',21,'#eef2f6')) + P(1427,840,'Wentylator (stopień)',F(14.5,400,'#eef2f6')) + R(1647,840,f('sensor.hydrolution_wentylator_stopien',0),F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(290)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,868,I('mdi:pulse',21,'#eef2f6')) + P(1427,868,'Częstotliwość sprężarki',F(14.5,400,'#eef2f6')) + R(1647,868,f('sensor.hydrolution_sprezarka_czestotliwosc',0)+' Hz',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(318)+';border-top:1px solid rgba(255,255,255,.06)"></div>'
+           + P(1392,897,I('mdi:waves-arrow-right',21,'#29b6f6')) + P(1427,897,'Przepływ (BF1)',F(14.5,400,'#eef2f6')) + R(1647,897,f('sensor.hydrolution_przeplyw_bf1',1)+' l/min',F(15,500,'#fff'))
+           + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(347)+';border-top:1px solid rgba(255,255,255,.06)"></div>';
+          ]]]
+      style:
+        left: 82.416%
+        top: 59.830%
+        width: 17.225%
+        height: 38.045%
+        transform: none

@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+body{margin:0;background:#111;font-family:__FONT__}
+#card{position:relative;width:1672px;container-type:inline-size;overflow:hidden;border-radius:12px}
+#card img{display:block;width:100%}
+.el{position:absolute}
+</style></head>
+<body><div id="card"><img src="tlo.png"></div>
+<script>
+const ICONS=__ICONS__;
+customElements.define('ha-icon',class extends HTMLElement{connectedCallback(){const k=this.getAttribute('icon');const p=ICONS[k]||'';
+this.innerHTML='<svg viewBox="0 0 24 24" style="width:100%;height:100%;display:block"><path fill="currentColor" d="'+p+'"/></svg>';}});
+const ITEMS=__ITEMS__; const EXTRA=__EXTRAJ__; const MOCK=__MOCK__;
+const states={};for(const k in MOCK)states[k]={state:MOCK[k],attributes:{min:-100,max:100}};
+const card=document.getElementById('card');
+for(const it of ITEMS){
+  const d=document.createElement('div');d.className='el';
+  for(const k of ['left','top','width','height'])d.style[k]=it.style[k];
+  card.appendChild(d);
+  if(it.apex){d.innerHTML='<svg viewBox="0 0 484 138" style="width:100%;height:100%"><g fill="#c8d0da" font-size="11"><text x="0" y="14">60 °C</text><text x="0" y="122">10 °C</text><text x="40" y="136">00:00</text><text x="300" y="136">16:00</text></g><polyline points="40,40 340,36" stroke="#ff4d3a" stroke-width="2.2" fill="none"/><polyline points="40,62 340,60" stroke="#ffab1a" stroke-width="2.2" fill="none"/><polyline points="40,80 340,80" stroke="#29b6f6" stroke-width="2.2" fill="none"/><polyline points="40,88 340,87" stroke="#9c6cff" stroke-width="2.2" fill="none"/><g fill="#dfe5ec" font-size="12"><text x="372" y="40">CWU góra (BT7)</text><text x="372" y="58">Zasilanie (BT12)</text><text x="372" y="76">Powrót (BT3)</text><text x="372" y="94">Bufor CO (BT25)</text></g></svg>';continue;}
+  const sr=d.attachShadow({mode:'open'});
+  const entity=it.entity?states[it.entity]:undefined;
+  let html='';try{html=(new Function('states','entity','hass','variables',it.body))(states,entity,{},{});}catch(e){html='<b style="color:red">'+e+'</b>';console.log('ERR',e,it.body.slice(0,200));}
+  sr.innerHTML='<style>:host{display:block;color:#eef2f6;line-height:1.15}'+EXTRA+'</style><div style="position:relative;width:100%;height:100%">'+html+'</div>';
+}
+</script></body></html>
