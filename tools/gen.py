@@ -349,7 +349,7 @@ return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)
  + '<div style="position:absolute;left:'+u(10)+';right:'+u(10)+';top:'+u(26)+';height:'+u(26)+';border-radius:'+u(13)+';background:rgba(62,70,82,.75);border:1px solid rgba(255,255,255,.08)"></div>'
  + P(%d,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(%d,779,%s,F(16.5,600,'#fff')) + R(%d,779,I('mdi:chevron-right',18,'#dfe5ec'));
 """ % (x + w / 2, label, x + 14, x + w / 2, fmt, x + w - 14))
-    el(x + 42, 762, w - 84, 34, "return '';", template='hp_hit', tap=more(ent), jstap={'a': 'num', 'k': ent, 'l': label})
+    el(x + 42, 762, w - 84, 34, "return '';", template='hp_hit', tap=more(ent), jstap={'a': 'num', 'k': ent, 'l': label, 'r': [x, 740, w, 58]})
     for side, dx in (('-', 6), ('+', w - 42)):
         el(x + dx, 765, 36, 28, "return '';", template='hp_hit',
            tap={'action': 'call-service', 'service': 'number.set_value',
@@ -379,7 +379,8 @@ el(18, 805, 485, 113, body)
 for j in range(7):
     i = 6 - j
     el(30 + j * 66, 838, 66, 76, "return '';", template='hp_hit', tap=more('p%d' % (i + 1)),
-       jstap={'a': 'num', 'k': 'p%d' % (i + 1), 'l': 'Własna krzywa P%d (%s °C)' % (i + 1, ['-30', '-20', '-10', '0', '10', '20', '30'][i])})
+       jstap={'a': 'num', 'k': 'p%d' % (i + 1), 'l': 'Własna krzywa P%d (%s °C)' % (i + 1, ['-30', '-20', '-10', '0', '10', '20', '30'][i]),
+              'r': [30 + j * 66, 838, 66, 76], 's': 'P%d' % (i + 1)})
 
 # ====================== TRENDY (apexcharts) ======================
 el(520, 563, 495, 174, """
@@ -483,13 +484,13 @@ return %s + P(876,816,'Cyrkulacja CWU',F(17.5,600,'#fff')) + inner
 el(1038, 843, 38, 20, TOG.replace("entity&&entity.state==='on'", "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)"), template='hp_hit', tap=more('hwc_run'), jstap={'a': 'hwc'})
 
 # edytowalne wartosci w panelach (klik w wiersz = edytor ▲ ▼ / wpisanie / zapisz)
-def numhit(x, y, w, h, ent, label):
-    el(x, y, w, h, "return '';", template='hp_hit', tap=more(ent), jstap={'a': 'num', 'k': ent, 'l': label})
-numhit(574, 852, 52, 20, 'n_start', 'Obniżenie nocne – start (godz.)')
-numhit(632, 852, 52, 20, 'n_end', 'Obniżenie nocne – koniec (godz.)')
-numhit(574, 895, 52, 20, 'hw_hour', 'Podgrzanie CWU – godzina')
-numhit(878, 834, 152, 36, 'hwc_run', 'Cyrkulacja CWU – czas pracy')
-numhit(878, 877, 152, 36, 'hwc_still', 'Cyrkulacja CWU – czas postoju')
+def numhit(x, y, w, h, ent, label, r, short=None):
+    el(x, y, w, h, "return '';", template='hp_hit', tap=more(ent), jstap={'a': 'num', 'k': ent, 'l': label, 'r': r, 's': short or label})
+numhit(574, 852, 52, 20, 'n_start', 'Obniżenie nocne – start (godz.)', [556, 836, 70, 76], 'Start (godz.)')
+numhit(632, 852, 52, 20, 'n_end', 'Obniżenie nocne – koniec (godz.)', [632, 836, 70, 76], 'Koniec (godz.)')
+numhit(574, 895, 52, 20, 'hw_hour', 'Podgrzanie CWU – godzina', [556, 860, 70, 76], 'Godzina')
+numhit(878, 834, 152, 36, 'hwc_run', 'Cyrkulacja CWU – czas pracy', [870, 830, 130, 60], 'Czas pracy (min)')
+numhit(878, 877, 152, 36, 'hwc_still', 'Cyrkulacja CWU – czas postoju', [870, 872, 130, 60], 'Czas postoju (min)')
 # ====================== ANTYLEGIONELLA ======================
 el(1106, 802, 261, 118, """
 const L=st(@leg_last); let d='–';
@@ -503,8 +504,8 @@ return %s + P(1119,817,I('mdi:shield-check-outline',22,'#7ee04a')) + P(1146,817,
  + P(1124,896,I('mdi:clock-outline',24,'#eef2f6')) + P(1165,896,'Ostatnie',F(14,400,'#eef2f6')) + R(1355,896,d,F(14.5,500,'#fff'));
 """ % glass())
 toggle(1314, 808, 'leg')
-numhit(1118, 836, 240, 24, 'leg_temp', 'Antylegionella – temperatura końcowa')
-numhit(1118, 861, 240, 24, 'leg_int', 'Antylegionella – co ile dni')
+numhit(1118, 836, 240, 24, 'leg_temp', 'Antylegionella – temperatura końcowa', [1180, 830, 150, 60], 'Temperatura (°C)')
+numhit(1118, 861, 240, 24, 'leg_int', 'Antylegionella – co ile dni', [1180, 858, 150, 60], 'Co ile dni')
 
 # ====================== PARAMETRY PRACY ======================
 PAR = [('mdi:thermometer', '#ff5a4a', 'BT1 – zewnętrzna', "f(@bt1)+' °C'"),

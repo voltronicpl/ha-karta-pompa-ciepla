@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.9
+ * ha-karta-pompa-ciepla  v1.10
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,7 +9,7 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.9';
+const VERSION = 'v1.10';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -73,6 +73,18 @@ const EXTRA = ":host { --u: calc(100cqw / 1672); }\n.fl { fill: none; stroke-lin
 const FONT = "'Segoe UI', Roboto, 'Noto Sans', 'Open Sans', sans-serif";
 const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '@keyframes hpok{0%,40%{box-shadow:0 0 0 2px #43d343,0 0 16px rgba(67,211,67,.85)}100%{box-shadow:0 0 0 2px transparent,0 0 0 transparent}}' +
+  '.ed2{--u:calc(100cqw / 1672);position:absolute;z-index:20;box-sizing:border-box;padding:calc(var(--u)*3);border-radius:calc(var(--u)*8);' +
+  'background:linear-gradient(180deg,rgba(40,46,56,.98),rgba(20,24,31,.98));border:1px solid rgba(110,193,255,.75);box-shadow:0 0 calc(var(--u)*10) rgba(33,150,243,.5);' +
+  'display:flex;flex-direction:column;gap:calc(var(--u)*2);color:#eef2f6;animation:hppop .12s ease-out}' +
+  '.ed2 .lb{font-size:calc(var(--u)*10.5);text-align:center;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}' +
+  '.ed2 .rw{display:flex;gap:calc(var(--u)*2);align-items:stretch}' +
+  '.ed2 button{font:inherit;color:#fff;cursor:pointer;border:1px solid rgba(255,255,255,.18);background:rgba(62,70,82,.92);border-radius:calc(var(--u)*5);padding:0;line-height:1}' +
+  '.ed2 button:hover{border-color:rgba(110,193,255,.8)}.ed2 .a{flex:1;height:calc(var(--u)*17);font-size:calc(var(--u)*11)}.ed2 .a:active{background:#1260bf}' +
+  '.ed2 input{flex:1;width:100%;min-width:0;box-sizing:border-box;height:calc(var(--u)*20);text-align:center;font-weight:700;font-size:calc(var(--u)*15);font-family:inherit;color:#fff;' +
+  'background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.55);border-radius:calc(var(--u)*5);padding:0;-moz-appearance:textfield}' +
+  '.ed2 input::-webkit-inner-spin-button,.ed2 input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.ed2 input.bad{border-color:#ff5a4a}' +
+  '.ed2 .sv{height:calc(var(--u)*16);font-size:calc(var(--u)*10.5);font-weight:600;background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff}' +
+  '.ed2.wd .a{flex:0 0 calc(var(--u)*26);height:calc(var(--u)*22)}.ed2.wd input{height:calc(var(--u)*22)}' +
   '.pp{position:absolute;z-index:20;min-width:210px;max-width:290px;box-sizing:border-box;padding:10px 12px 12px;border-radius:12px;' +
   'background:linear-gradient(180deg,rgba(40,46,56,.97),rgba(20,24,31,.97));border:1px solid rgba(110,193,255,.45);' +
   'box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 18px rgba(33,150,243,.25);color:#eef2f6;font-size:14px}' +
@@ -391,7 +403,7 @@ return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)
  + P(32,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(81,779,f(E.curve,0),F(16.5,600,'#fff')) + R(131,779,I('mdi:chevron-right',18,'#dfe5ec'));
 
 }},
-{style:{"left": "3.589%", "top": "80.978%", "width": "2.572%", "height": "3.613%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "curve", "l": "Numer krzywej"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "3.589%", "top": "80.978%", "width": "2.572%", "height": "3.613%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "curve", "l": "Numer krzywej", "r": [18, 740, 127, 58]},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -414,7 +426,7 @@ return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)
  + P(166,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(209,779,f(E.offset,0)+' °C',F(16.5,600,'#fff')) + R(253,779,I('mdi:chevron-right',18,'#dfe5ec'));
 
 }},
-{style:{"left": "11.603%", "top": "80.978%", "width": "1.854%", "height": "3.613%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "offset", "l": "Przesuni\u0119cie"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "11.603%", "top": "80.978%", "width": "1.854%", "height": "3.613%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "offset", "l": "Przesuni\u0119cie", "r": [152, 740, 115, 58]},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -437,7 +449,7 @@ return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)
  + P(287,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(330,779,f(E.minsup,0)+' °C',F(16.5,600,'#fff')) + R(374,779,I('mdi:chevron-right',18,'#dfe5ec'));
 
 }},
-{style:{"left": "18.840%", "top": "80.978%", "width": "1.854%", "height": "3.613%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "minsup", "l": "Min. zasilania"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "18.840%", "top": "80.978%", "width": "1.854%", "height": "3.613%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "minsup", "l": "Min. zasilania", "r": [273, 740, 115, 58]},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -460,7 +472,7 @@ return '<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)
  + P(409,779,I('mdi:chevron-left',18,'#dfe5ec')) + C(449,779,f(E.maxsup,0)+' °C',F(16.5,600,'#fff')) + R(490,779,I('mdi:chevron-right',18,'#dfe5ec'));
 
 }},
-{style:{"left": "26.136%", "top": "80.978%", "width": "1.495%", "height": "3.613%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "maxsup", "l": "Max. zasilania"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "26.136%", "top": "80.978%", "width": "1.495%", "height": "3.613%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "maxsup", "l": "Max. zasilania", "r": [395, 740, 109, 58]},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -490,37 +502,37 @@ for(let j=0;j<7;j++){const i=6-j;const cx=30+33+j*66;
 return h;
 
 }},
-{style:{"left": "1.794%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p7", "l": "W\u0142asna krzywa P7 (30 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "1.794%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p7", "l": "W\u0142asna krzywa P7 (30 \u00b0C)", "r": [30, 838, 66, 76], "s": "P7"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "5.742%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p6", "l": "W\u0142asna krzywa P6 (20 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "5.742%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p6", "l": "W\u0142asna krzywa P6 (20 \u00b0C)", "r": [96, 838, 66, 76], "s": "P6"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "9.689%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p5", "l": "W\u0142asna krzywa P5 (10 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "9.689%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p5", "l": "W\u0142asna krzywa P5 (10 \u00b0C)", "r": [162, 838, 66, 76], "s": "P5"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "13.636%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p4", "l": "W\u0142asna krzywa P4 (0 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "13.636%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p4", "l": "W\u0142asna krzywa P4 (0 \u00b0C)", "r": [228, 838, 66, 76], "s": "P4"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "17.584%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p3", "l": "W\u0142asna krzywa P3 (-10 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "17.584%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p3", "l": "W\u0142asna krzywa P3 (-10 \u00b0C)", "r": [294, 838, 66, 76], "s": "P3"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "21.531%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p2", "l": "W\u0142asna krzywa P2 (-20 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "21.531%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p2", "l": "W\u0142asna krzywa P2 (-20 \u00b0C)", "r": [360, 838, 66, 76], "s": "P2"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "25.478%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p1", "l": "W\u0142asna krzywa P1 (-30 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "25.478%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p1", "l": "W\u0142asna krzywa P1 (-30 \u00b0C)", "r": [426, 838, 66, 76], "s": "P1"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -635,27 +647,27 @@ return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(
  + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
 
 }},
-{style:{"left": "34.330%", "top": "90.542%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "n_start", "l": "Obni\u017cenie nocne \u2013 start (godz.)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "34.330%", "top": "90.542%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "n_start", "l": "Obni\u017cenie nocne \u2013 start (godz.)", "r": [556, 836, 70, 76], "s": "Start (godz.)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "37.799%", "top": "90.542%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "n_end", "l": "Obni\u017cenie nocne \u2013 koniec (godz.)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "37.799%", "top": "90.542%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "n_end", "l": "Obni\u017cenie nocne \u2013 koniec (godz.)", "r": [632, 836, 70, 76], "s": "Koniec (godz.)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "34.330%", "top": "95.112%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hw_hour", "l": "Podgrzanie CWU \u2013 godzina"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "34.330%", "top": "95.112%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hw_hour", "l": "Podgrzanie CWU \u2013 godzina", "r": [556, 860, 70, 76], "s": "Godzina"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "52.512%", "top": "88.629%", "width": "9.091%", "height": "3.826%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hwc_run", "l": "Cyrkulacja CWU \u2013 czas pracy"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "52.512%", "top": "88.629%", "width": "9.091%", "height": "3.826%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hwc_run", "l": "Cyrkulacja CWU \u2013 czas pracy", "r": [870, 830, 130, 60], "s": "Czas pracy (min)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "52.512%", "top": "93.199%", "width": "9.091%", "height": "3.826%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hwc_still", "l": "Cyrkulacja CWU \u2013 czas postoju"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "52.512%", "top": "93.199%", "width": "9.091%", "height": "3.826%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hwc_still", "l": "Cyrkulacja CWU \u2013 czas postoju", "r": [870, 872, 130, 60], "s": "Czas postoju (min)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -680,12 +692,12 @@ return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(
  + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
 
 }},
-{style:{"left": "66.866%", "top": "88.842%", "width": "14.354%", "height": "2.550%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "leg_temp", "l": "Antylegionella \u2013 temperatura ko\u0144cowa"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "66.866%", "top": "88.842%", "width": "14.354%", "height": "2.550%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "leg_temp", "l": "Antylegionella \u2013 temperatura ko\u0144cowa", "r": [1180, 830, 150, 60], "s": "Temperatura (\u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "66.866%", "top": "91.498%", "width": "14.354%", "height": "2.550%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "leg_int", "l": "Antylegionella \u2013 co ile dni"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "66.866%", "top": "91.498%", "width": "14.354%", "height": "2.550%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "leg_int", "l": "Antylegionella \u2013 co ile dni", "r": [1180, 858, 150, 60], "s": "Co ile dni"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -830,59 +842,62 @@ class HaKartaPompaCiepla extends HTMLElement {
     return p;
   }
   _num(t, node) {
+    // kompaktowy edytor: nakladka dokladnie na kaflu (male ▲ ▼, pole do wpisania, maly "Zapisz" pod spodem)
     const hass = this._hass, id = this._E[t.k], s = hass.states[id];
     if (!s) { this._more(id); return; }
     const a = s.attributes, mn = Number(a.min), mx = Number(a.max), stp = Number(a.step) || 1;
-    const unit = a.unit_of_measurement || '';
     const dec = (String(stp).split('.')[1] || '').length;
     const clamp = (v) => Math.min(mx, Math.max(mn, Math.round(v / stp) * stp));
-    const p = this._popup(node, t.l || a.friendly_name || id, (b, pp) => {
-      pp.classList.add('ed');
-      b.innerHTML = '<button class="st up" title="Więcej">▲</button><div class="nr"><input type="number" inputmode="decimal"><span class="un"></span></div>' +
-        '<button class="st dn" title="Mniej">▼</button><div class="rg"></div>' +
-        '<div class="ac"><button class="cn">Anuluj</button><button class="ok">✓ Zapisz</button></div>';
-      const inp = b.querySelector('input');
-      inp.min = mn; inp.max = mx; inp.step = stp; inp.value = Number(s.state).toFixed(dec);
-      b.querySelector('.un').textContent = unit;
-      b.querySelector('.rg').textContent = 'Zakres: ' + mn + ' … ' + mx + (unit ? ' ' + unit : '');
-      const bump = (d) => {
-        const v = parseFloat(String(inp.value).replace(',', '.'));
-        inp.value = clamp((isNaN(v) ? Number(s.state) : v) + d * stp).toFixed(dec);
-        inp.classList.remove('bad');
-      };
-      let tm = null, iv = null;
-      const stop = () => { clearTimeout(tm); clearInterval(iv); };
-      b.querySelectorAll('.st').forEach((x) => {
-        const d = x.classList.contains('up') ? 1 : -1;
-        x.addEventListener('pointerdown', () => { bump(d); tm = setTimeout(() => { iv = setInterval(() => bump(d), 110); }, 450); });
-        ['pointerup', 'pointerleave', 'pointercancel'].forEach((e) => x.addEventListener(e, stop));
-      });
-      const save = () => {
-        const v = parseFloat(String(inp.value).replace(',', '.'));
-        if (isNaN(v)) { inp.classList.add('bad'); return; }
-        const val = clamp(v);
-        this._close();
-        if (Number(hass.states[id].state) === val) return;
-        hass.callService('number', 'set_value', { entity_id: id, value: val });
-        this._waitFor(id, (st) => st[id] && Math.abs(Number(st[id].state) - val) < stp / 2, node);
-      };
-      inp.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter') save();
-        else if (ev.key === 'ArrowUp') { ev.preventDefault(); bump(1); }
-        else if (ev.key === 'ArrowDown') { ev.preventDefault(); bump(-1); }
-      });
-      b.querySelector('.ok').addEventListener('click', save);
-      b.querySelector('.cn').addEventListener('click', () => this._close());
-      setTimeout(() => { inp.focus(); inp.select(); }, 30);
+    this._close();
+    const WW = 1672, HH = 941;
+    let [rx, ry, rw, rh] = t.r || [0, 0, 70, 76];
+    rx = Math.max(2, Math.min(WW - rw - 2, rx)); ry = Math.max(2, Math.min(HH - rh - 2, ry));
+    const wide = rw >= 100;
+    const p = document.createElement('div');
+    p.className = 'ed2' + (wide ? ' wd' : '');
+    p.style.left = (rx / WW * 100) + '%'; p.style.top = (ry / HH * 100) + '%';
+    p.style.width = (rw / WW * 100) + '%'; p.style.height = (rh / HH * 100) + '%';
+    const lab = t.s || t.l || a.friendly_name || id;
+    p.innerHTML = '<div class="lb"></div>' + (wide
+      ? '<div class="rw"><button class="a dn">▼</button><input type="number" inputmode="decimal"><button class="a up">▲</button></div>'
+      : '<div class="rw"><button class="a up">▲</button><button class="a dn">▼</button></div><input type="number" inputmode="decimal">') +
+      '<button class="sv">Zapisz</button>';
+    p.querySelector('.lb').textContent = lab;
+    p.title = (t.l || lab) + ' (' + mn + ' … ' + mx + ')';
+    p.addEventListener('click', (ev) => ev.stopPropagation());
+    p.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') this._close(); });
+    const inp = p.querySelector('input');
+    inp.min = mn; inp.max = mx; inp.step = stp; inp.value = Number(s.state).toFixed(dec);
+    const bump = (d) => {
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      inp.value = clamp((isNaN(v) ? Number(s.state) : v) + d * stp).toFixed(dec);
+      inp.classList.remove('bad');
+    };
+    let tm = null, iv = null;
+    const stop = () => { clearTimeout(tm); clearInterval(iv); };
+    p.querySelectorAll('.a').forEach((x) => {
+      const d = x.classList.contains('up') ? 1 : -1;
+      x.addEventListener('pointerdown', () => { bump(d); tm = setTimeout(() => { iv = setInterval(() => bump(d), 110); }, 450); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach((e) => x.addEventListener(e, stop));
     });
-    // edytor wyrasta z kafla: srodek nad kaflem, animacja od rozmiaru kafla
-    const cr = this._c.getBoundingClientRect(), nr = node.getBoundingClientRect(), pr = { width: p.offsetWidth, height: p.offsetHeight };
-    let x = nr.left - cr.left + nr.width / 2 - pr.width / 2;
-    let y = nr.top - cr.top + nr.height / 2 - pr.height / 2;
-    x = Math.max(4, Math.min(cr.width - pr.width - 4, x));
-    y = Math.max(4, Math.min(cr.height - pr.height - 4, y));
-    p.style.left = x + 'px'; p.style.top = y + 'px';
-    p.style.transformOrigin = (nr.left - cr.left + nr.width / 2 - x) + 'px ' + (nr.top - cr.top + nr.height / 2 - y) + 'px';
+    const save = () => {
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      if (isNaN(v)) { inp.classList.add('bad'); return; }
+      const val = clamp(v);
+      this._close();
+      if (Number(hass.states[id].state) === val) return;
+      hass.callService('number', 'set_value', { entity_id: id, value: val });
+      this._waitFor(id, (st) => st[id] && Math.abs(Number(st[id].state) - val) < stp / 2, node);
+    };
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') save();
+      else if (ev.key === 'ArrowUp') { ev.preventDefault(); bump(1); }
+      else if (ev.key === 'ArrowDown') { ev.preventDefault(); bump(-1); }
+    });
+    p.querySelector('.sv').addEventListener('click', save);
+    this._c.appendChild(p);
+    this._pop = p;
+    setTimeout(() => { inp.focus(); inp.select(); }, 30);
   }
   _sel(t, node) {
     const hass = this._hass, id = this._E[t.k], s = hass.states[id];

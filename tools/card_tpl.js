@@ -17,6 +17,18 @@ const EXTRA = __EXTRA__;
 const FONT = __FONT__;
 const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '@keyframes hpok{0%,40%{box-shadow:0 0 0 2px #43d343,0 0 16px rgba(67,211,67,.85)}100%{box-shadow:0 0 0 2px transparent,0 0 0 transparent}}' +
+  '.ed2{--u:calc(100cqw / 1672);position:absolute;z-index:20;box-sizing:border-box;padding:calc(var(--u)*3);border-radius:calc(var(--u)*8);' +
+  'background:linear-gradient(180deg,rgba(40,46,56,.98),rgba(20,24,31,.98));border:1px solid rgba(110,193,255,.75);box-shadow:0 0 calc(var(--u)*10) rgba(33,150,243,.5);' +
+  'display:flex;flex-direction:column;gap:calc(var(--u)*2);color:#eef2f6;animation:hppop .12s ease-out}' +
+  '.ed2 .lb{font-size:calc(var(--u)*10.5);text-align:center;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}' +
+  '.ed2 .rw{display:flex;gap:calc(var(--u)*2);align-items:stretch}' +
+  '.ed2 button{font:inherit;color:#fff;cursor:pointer;border:1px solid rgba(255,255,255,.18);background:rgba(62,70,82,.92);border-radius:calc(var(--u)*5);padding:0;line-height:1}' +
+  '.ed2 button:hover{border-color:rgba(110,193,255,.8)}.ed2 .a{flex:1;height:calc(var(--u)*17);font-size:calc(var(--u)*11)}.ed2 .a:active{background:#1260bf}' +
+  '.ed2 input{flex:1;width:100%;min-width:0;box-sizing:border-box;height:calc(var(--u)*20);text-align:center;font-weight:700;font-size:calc(var(--u)*15);font-family:inherit;color:#fff;' +
+  'background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.55);border-radius:calc(var(--u)*5);padding:0;-moz-appearance:textfield}' +
+  '.ed2 input::-webkit-inner-spin-button,.ed2 input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.ed2 input.bad{border-color:#ff5a4a}' +
+  '.ed2 .sv{height:calc(var(--u)*16);font-size:calc(var(--u)*10.5);font-weight:600;background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff}' +
+  '.ed2.wd .a{flex:0 0 calc(var(--u)*26);height:calc(var(--u)*22)}.ed2.wd input{height:calc(var(--u)*22)}' +
   '.pp{position:absolute;z-index:20;min-width:210px;max-width:290px;box-sizing:border-box;padding:10px 12px 12px;border-radius:12px;' +
   'background:linear-gradient(180deg,rgba(40,46,56,.97),rgba(20,24,31,.97));border:1px solid rgba(110,193,255,.45);' +
   'box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 18px rgba(33,150,243,.25);color:#eef2f6;font-size:14px}' +
@@ -153,59 +165,62 @@ class HaKartaPompaCiepla extends HTMLElement {
     return p;
   }
   _num(t, node) {
+    // kompaktowy edytor: nakladka dokladnie na kaflu (male ▲ ▼, pole do wpisania, maly "Zapisz" pod spodem)
     const hass = this._hass, id = this._E[t.k], s = hass.states[id];
     if (!s) { this._more(id); return; }
     const a = s.attributes, mn = Number(a.min), mx = Number(a.max), stp = Number(a.step) || 1;
-    const unit = a.unit_of_measurement || '';
     const dec = (String(stp).split('.')[1] || '').length;
     const clamp = (v) => Math.min(mx, Math.max(mn, Math.round(v / stp) * stp));
-    const p = this._popup(node, t.l || a.friendly_name || id, (b, pp) => {
-      pp.classList.add('ed');
-      b.innerHTML = '<button class="st up" title="Więcej">▲</button><div class="nr"><input type="number" inputmode="decimal"><span class="un"></span></div>' +
-        '<button class="st dn" title="Mniej">▼</button><div class="rg"></div>' +
-        '<div class="ac"><button class="cn">Anuluj</button><button class="ok">✓ Zapisz</button></div>';
-      const inp = b.querySelector('input');
-      inp.min = mn; inp.max = mx; inp.step = stp; inp.value = Number(s.state).toFixed(dec);
-      b.querySelector('.un').textContent = unit;
-      b.querySelector('.rg').textContent = 'Zakres: ' + mn + ' … ' + mx + (unit ? ' ' + unit : '');
-      const bump = (d) => {
-        const v = parseFloat(String(inp.value).replace(',', '.'));
-        inp.value = clamp((isNaN(v) ? Number(s.state) : v) + d * stp).toFixed(dec);
-        inp.classList.remove('bad');
-      };
-      let tm = null, iv = null;
-      const stop = () => { clearTimeout(tm); clearInterval(iv); };
-      b.querySelectorAll('.st').forEach((x) => {
-        const d = x.classList.contains('up') ? 1 : -1;
-        x.addEventListener('pointerdown', () => { bump(d); tm = setTimeout(() => { iv = setInterval(() => bump(d), 110); }, 450); });
-        ['pointerup', 'pointerleave', 'pointercancel'].forEach((e) => x.addEventListener(e, stop));
-      });
-      const save = () => {
-        const v = parseFloat(String(inp.value).replace(',', '.'));
-        if (isNaN(v)) { inp.classList.add('bad'); return; }
-        const val = clamp(v);
-        this._close();
-        if (Number(hass.states[id].state) === val) return;
-        hass.callService('number', 'set_value', { entity_id: id, value: val });
-        this._waitFor(id, (st) => st[id] && Math.abs(Number(st[id].state) - val) < stp / 2, node);
-      };
-      inp.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter') save();
-        else if (ev.key === 'ArrowUp') { ev.preventDefault(); bump(1); }
-        else if (ev.key === 'ArrowDown') { ev.preventDefault(); bump(-1); }
-      });
-      b.querySelector('.ok').addEventListener('click', save);
-      b.querySelector('.cn').addEventListener('click', () => this._close());
-      setTimeout(() => { inp.focus(); inp.select(); }, 30);
+    this._close();
+    const WW = 1672, HH = 941;
+    let [rx, ry, rw, rh] = t.r || [0, 0, 70, 76];
+    rx = Math.max(2, Math.min(WW - rw - 2, rx)); ry = Math.max(2, Math.min(HH - rh - 2, ry));
+    const wide = rw >= 100;
+    const p = document.createElement('div');
+    p.className = 'ed2' + (wide ? ' wd' : '');
+    p.style.left = (rx / WW * 100) + '%'; p.style.top = (ry / HH * 100) + '%';
+    p.style.width = (rw / WW * 100) + '%'; p.style.height = (rh / HH * 100) + '%';
+    const lab = t.s || t.l || a.friendly_name || id;
+    p.innerHTML = '<div class="lb"></div>' + (wide
+      ? '<div class="rw"><button class="a dn">▼</button><input type="number" inputmode="decimal"><button class="a up">▲</button></div>'
+      : '<div class="rw"><button class="a up">▲</button><button class="a dn">▼</button></div><input type="number" inputmode="decimal">') +
+      '<button class="sv">Zapisz</button>';
+    p.querySelector('.lb').textContent = lab;
+    p.title = (t.l || lab) + ' (' + mn + ' … ' + mx + ')';
+    p.addEventListener('click', (ev) => ev.stopPropagation());
+    p.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') this._close(); });
+    const inp = p.querySelector('input');
+    inp.min = mn; inp.max = mx; inp.step = stp; inp.value = Number(s.state).toFixed(dec);
+    const bump = (d) => {
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      inp.value = clamp((isNaN(v) ? Number(s.state) : v) + d * stp).toFixed(dec);
+      inp.classList.remove('bad');
+    };
+    let tm = null, iv = null;
+    const stop = () => { clearTimeout(tm); clearInterval(iv); };
+    p.querySelectorAll('.a').forEach((x) => {
+      const d = x.classList.contains('up') ? 1 : -1;
+      x.addEventListener('pointerdown', () => { bump(d); tm = setTimeout(() => { iv = setInterval(() => bump(d), 110); }, 450); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach((e) => x.addEventListener(e, stop));
     });
-    // edytor wyrasta z kafla: srodek nad kaflem, animacja od rozmiaru kafla
-    const cr = this._c.getBoundingClientRect(), nr = node.getBoundingClientRect(), pr = { width: p.offsetWidth, height: p.offsetHeight };
-    let x = nr.left - cr.left + nr.width / 2 - pr.width / 2;
-    let y = nr.top - cr.top + nr.height / 2 - pr.height / 2;
-    x = Math.max(4, Math.min(cr.width - pr.width - 4, x));
-    y = Math.max(4, Math.min(cr.height - pr.height - 4, y));
-    p.style.left = x + 'px'; p.style.top = y + 'px';
-    p.style.transformOrigin = (nr.left - cr.left + nr.width / 2 - x) + 'px ' + (nr.top - cr.top + nr.height / 2 - y) + 'px';
+    const save = () => {
+      const v = parseFloat(String(inp.value).replace(',', '.'));
+      if (isNaN(v)) { inp.classList.add('bad'); return; }
+      const val = clamp(v);
+      this._close();
+      if (Number(hass.states[id].state) === val) return;
+      hass.callService('number', 'set_value', { entity_id: id, value: val });
+      this._waitFor(id, (st) => st[id] && Math.abs(Number(st[id].state) - val) < stp / 2, node);
+    };
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') save();
+      else if (ev.key === 'ArrowUp') { ev.preventDefault(); bump(1); }
+      else if (ev.key === 'ArrowDown') { ev.preventDefault(); bump(-1); }
+    });
+    p.querySelector('.sv').addEventListener('click', save);
+    this._c.appendChild(p);
+    this._pop = p;
+    setTimeout(() => { inp.focus(); inp.select(); }, 30);
   }
   _sel(t, node) {
     const hass = this._hass, id = this._E[t.k], s = hass.states[id];
