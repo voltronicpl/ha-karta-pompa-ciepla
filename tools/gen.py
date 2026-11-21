@@ -605,3 +605,60 @@ html = (html.replace('__ITEMS__', json.dumps(items)).replace('__MOCK__', json.du
         .replace('__EXTRAJ__', json.dumps(EXTRA)).replace('__FONT__', FONT))
 open(PREVIEW, 'w').write(html)
 print('elements', len(ELEMENTS))
+
+# ====================== KARTA JS (HACS) ======================
+if len(sys.argv) > 3:
+    import base64
+    JSOUT, VERSION = sys.argv[3], sys.argv[4]
+    REV = {v: k for k, v in E.items()}
+    TREND_BODY = r"""
+const OX=526,OY=597;
+const S=[['bt7','CWU góra (BT7)','#ff4d3a'],['bt12','Zasilanie (BT12)','#ffab1a'],['bt3','Powrót (BT3)','#29b6f6'],['bt25','Bufor CO (BT25)','#9c6cff']];
+const X0=40,X1=346,Y0=10,Y1=114,lo=10,hi=60,now=Date.now(),t0=now-864e5;
+const sx=t=>X0+(t-t0)/864e5*(X1-X0), sy=v=>Y1-(Math.max(lo,Math.min(hi,v))-lo)/(hi-lo)*(Y1-Y0);
+let g='';
+for(let v=lo;v<=hi;v+=10) g+='<line x1="'+X0+'" y1="'+sy(v)+'" x2="'+X1+'" y2="'+sy(v)+'" stroke="rgba(255,255,255,.08)"/><text x="'+(X0-5)+'" y="'+(sy(v)+4)+'" text-anchor="end">'+v+' °C</text>';
+const d0=new Date(t0); d0.setMinutes(0,0,0); let t=d0.getTime();
+while(t<=now){const d=new Date(t); if(t>=t0&&d.getHours()%4===0){g+='<line x1="'+sx(t)+'" y1="'+Y0+'" x2="'+sx(t)+'" y2="'+Y1+'" stroke="rgba(255,255,255,.06)"/><text x="'+sx(t)+'" y="'+(Y1+15)+'" text-anchor="middle">'+String(d.getHours()).padStart(2,'0')+':00</text>';} t+=36e5;}
+let ln='', lg='';
+S.forEach((s,i)=>{const pts=(H[s[0]]||[]).filter(p=>p[0]>=t0);
+ const cur=states[E[s[0]]]; const v=cur?parseFloat(cur.state):NaN;
+ const all=pts.concat(isNaN(v)?[]:[[now,v]]);
+ if(all.length>1) ln+='<polyline points="'+all.map(p=>sx(p[0]).toFixed(1)+','+sy(p[1]).toFixed(1)).join(' ')+'" fill="none" stroke="'+s[2]+'" stroke-width="2.2" stroke-linejoin="round" style="filter:drop-shadow(0 0 2px '+s[2]+'88)"/>';
+ lg+='<line x1="356" y1="'+(30+i*20)+'" x2="370" y2="'+(30+i*20)+'" stroke="'+s[2]+'" stroke-width="3" stroke-linecap="round"/><text x="375" y="'+(34+i*20)+'" font-size="11.5" fill="#dfe5ec">'+s[1]+'</text>';});
+return '<svg viewBox="0 0 484 138" style="position:absolute;inset:0;width:100%;height:100%;font-family:inherit"><g font-size="11" fill="#c8d0da">'+g+'</g>'+ln+lg+'</svg>';
+"""
+    out = []
+    for e in ELEMENTS:
+        style = {k: v for k, v in e['style'].items()}
+        if e['type'] != 'custom:button-card':
+            body, keys, ent, tap, hist = TREND_BODY, ['bt7', 'bt12', 'bt3', 'bt25'], None, None, True
+        else:
+            body = e['custom_fields']['c'].strip()[3:-3]
+            keys = []
+            def sub(m):
+                k = REV[m.group(1)]
+                if k not in keys: keys.append(k)
+                return 'E.' + k
+            body = re.sub(r"'((?:sensor|binary_sensor|number|switch|select)\.[a-z0-9_]+)'", sub, body)
+            ent = REV.get(e.get('entity')) if e.get('entity') else None
+            if ent and ent not in keys: keys.append(ent)
+            t = e.get('tap_action')
+            tap = None
+            hist = False
+            if t:
+                if t['action'] == 'more-info': tap = {'a': 'more', 'k': REV[t['entity']]}
+                elif t['action'] == 'toggle': tap = {'a': 'toggle', 'k': ent}
+                elif t.get('service') == 'script.turn_on': tap = {'a': 'script', 's': t['target']['entity_id'].split('.', 1)[1]}
+                elif t.get('service') == 'number.set_value':
+                    tap = {'a': 'num', 'k': REV[t['data']['entity_id']], 'd': -1 if ')-1' in t['data']['value'] else 1}
+                else: raise SystemExit('tap? %r' % t)
+        out.append('{style:%s,keys:%s,ent:%s,tap:%s,hist:%s,fn:(states,entity,E,H)=>{%s\n}}' % (
+            json.dumps(style), json.dumps(keys), json.dumps(ent), json.dumps(tap), 'true' if hist else 'false', body))
+    bg = base64.b64encode(open('tlo.jpg', 'rb').read()).decode()
+    src = open('card_tpl.js').read()
+    for a, b in [('__VERSION__', VERSION), ('__ENTITIES__', json.dumps(E, indent=1)), ('__TREND__', json.dumps(['bt7', 'bt12', 'bt3', 'bt25'])),
+                 ('__EXTRA__', json.dumps(EXTRA)), ('__FONT__', json.dumps(FONT)), ('__ELEMENTS__', ',\n'.join(out)), ('__BG__', bg)]:
+        src = src.replace(a, b)
+    open(JSOUT, 'w').write(src)
+    print('js', len(src))

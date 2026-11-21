@@ -15,11 +15,30 @@ Podgląd jest wygenerowany z przykładowymi wartościami. Wykres trendów to w H
 | `packages/hydrolution_karta.yaml` | pakiet HA: moc grzewcza, moc elektryczna (szacunek), COP, energia dziś/miesiąc, czasy pracy dziś, starty dziś, tryb systemu, antylegionella, skrypty przycisków trybu |
 | `www/hydrolution/tlo.png` | tło 1672×941 |
 | `docs/wzor.png` | wzór, z którego robiona była karta |
-| `tools/` | generator YAML-a i podglądu (`python3 gen.py karta.yaml preview.html`, potem `node shot.js`) |
+| `dist/ha-karta-pompa-ciepla.js` + `hacs.json` | karta JS dla HACS (`type: custom:ha-karta-pompa-ciepla`) |
+| `tools/` | generator: `python3 gen.py karta.yaml preview.html dist.js v1.x`, podgląd `node shot.js` / `node jsshot.js` |
 
 Kod ESP (v5.3) nie jest w tym repo.
 
-## Instalacja
+## Instalacja przez HACS (karta JS, zalecane)
+
+Karta `custom:ha-karta-pompa-ciepla` to jeden plik JS. Nie potrzebuje button-card, apexcharts-card ani card-mod, a tło ma wbudowane.
+
+1. HACS → ⋮ → **Custom repositories** → `https://github.com/voltronicpl/ha-karta-pompa-ciepla`, typ **Dashboard** → Dodaj → Pobierz. Przeładuj przeglądarkę.
+2. Wgraj pakiet `packages/hydrolution_karta.yaml` tak jak w kroku 3 instalacji ręcznej niżej. Bez niego nie będzie COP, energii, czasów pracy ani przycisków trybu.
+3. Dodaj kartę. Najlepiej w widoku typu **Panel**, wtedy zajmuje całą szerokość:
+   ```yaml
+   type: custom:ha-karta-pompa-ciepla
+   # opcjonalnie:
+   # image: /local/hydrolution/tlo.png     # własne tło 1672x941 zamiast wbudowanego
+   # entities:                             # gdy masz inne ID encji
+   #   bt1: sensor.moja_temperatura_zewnetrzna
+   ```
+   Klucze encji (`bt1`, `bt12`, `prio`, `pwr`…) są wypisane na początku pliku `dist/ha-karta-pompa-ciepla.js` (`DEFAULT_E`).
+
+Wykres trendów 24 h karta rysuje sama z historii HA i odświeża go co 5 minut.
+
+## Instalacja ręczna (YAML, button-card)
 
 1. **HACS → Frontend**: zainstaluj `button-card`, `apexcharts-card`, `card-mod` i przeładuj przeglądarkę.
    - HACS: https://hacs.xyz/docs/use/
