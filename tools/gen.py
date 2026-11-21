@@ -71,6 +71,8 @@ E = dict(
 
 # cyrkulacja CWU "wlaczona" = nie jest w stanie praca 1 min / postoj 60 min (brak rejestru wl/wyl w SMO40)
 HWC = "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)"
+# podlogowka krazy, gdy bufor (BT25) cieplejszy od powrotu (BT71) albo trwa ogrzewanie CO (niezaleznie od priorytetu pracy)
+DIST = "((n(@bt25)!==null&&n(@bt71)!==null&&n(@bt25)-n(@bt71)>0.4)||st(@prio)==='Ogrzewanie')"
 
 FONT = "'Segoe UI', Roboto, 'Noto Sans', 'Open Sans', sans-serif"
 
@@ -273,7 +275,7 @@ return '<div style="position:absolute;inset:0;border-radius:50%%;background:radi
 """ % (cond, cx + 1, cy), template='hp_hit', tap=more(ent), jstap=jstap)
 
 pump(857, 491, "(n(@gp12)||0)>0", 'gp12')
-pump(1187, 493, "st(@prio)!=='Wylaczona'&&st(@prio)!==undefined", 'prio')
+pump(1187, 493, DIST, 'prio')
 pump(1197, 236, "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)", 'hwc_run', jstap={'a': 'hwc'})
 
 # strzalki przeplywu: zastapione animowanymi paskami (FLOW na dole pliku)
@@ -575,7 +577,7 @@ const p=st(@prio), fl=n(@flow)||0, gp=n(@gp12)||0, cp=st(@cpr)==='on';
 const run=fl>0.2||gp>0||cp||p==='Ogrzewanie'||p==='CWU';
 const mode=!run?null:(p==='CWU'?'cwu':'co');
 const hwc=%s;
-const dist=p!=='Wylaczona'&&p!==undefined;
+const dist=%s;
 const on={sup:!!mode,ret:!!mode,co:mode==='co',cwu:mode==='cwu',cwur:mode==='cwu',dsup:dist,dret:dist,hwc:hwc};
 const sp=fl>0.2?Math.max(0.5,Math.min(2.6,3.2-fl*0.3)):1.6;
 const T=Date.now()/1000;
@@ -587,10 +589,28 @@ for(const k in D){ if(!on[k]) continue;
   +'<path class="fl" d="'+D[k]+'" stroke="'+(hot?'#ffd2c4':'#d4f0ff')+'" stroke-width="4.2" style="--d:'+d.toFixed(2)+'s;animation-delay:-'+(T%%d).toFixed(2)+'s;filter:drop-shadow(0 0 3px '+g+')"/>';}
 for(const k in D) s+='<path d="'+D[k]+'" fill="none" stroke="transparent" stroke-width="16" pointer-events="stroke" style="cursor:pointer" data-k="'+K[k]+'"/>';
 return '<svg viewBox="%d %d %d %d" style="position:absolute;inset:0;width:100%%;height:100%%;overflow:visible;pointer-events:none">'+s+'</svg>';
-""" % (pj, meta, kmap, HWC, FX, FY, FW, FH), at=0)
+""" % (pj, meta, kmap, HWC, DIST, FX, FY, FW, FH), at=0)
+
+# ====================== WENTYLATOR jednostki zewnetrznej ======================
+# Srodek kratki na tle: ok. (163,404), promien ok. 72. Kreci sie, gdy sprezarka pracuje / jest czestotliwosc / stopien wentylatora.
+BL = ''.join('<path transform="rotate(%.2f) scale(.9)" d="M0,-19 C14,-31 27,-52 19,-71 L3,-71 C9,-52 0,-34 -7,-19 Z" fill="url(#fb)" stroke="rgba(255,255,255,.16)" stroke-width=".6"/>' % (i * 360 / 7) for i in range(7))
+el(88, 329, 150, 150, """
+const on=st(@cpr)==='on'||(n(@freq)||0)>0||(n(@fan)||0)>0;
+if(!on) return '';
+const hz=n(@freq)||0, fs=n(@fan)||0;
+const d=Math.max(0.28,Math.min(1.8,hz>0?1.9-hz/45:(fs>0?1.6-fs*0.25:1.2)));
+return '<svg viewBox="-75 -75 150 150" style="position:absolute;inset:0;width:100%%;height:100%%;overflow:visible;pointer-events:none">'
+ + '<defs><linearGradient id="fb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4a5159"/><stop offset="1" stop-color="#1b1f24"/></linearGradient>'
+ + '<radialGradient id="fg" r="1"><stop offset=".25" stop-color="rgba(255,255,255,0)"/><stop offset="1" stop-color="rgba(255,255,255,.10)"/></radialGradient></defs>'
+ + '<circle r="72" fill="rgba(14,16,19,.55)"/>'
+ + '<g class="fan" style="--d:'+d.toFixed(2)+'s">%s</g>'
+ + '<circle r="72" fill="url(#fg)"/></svg>';
+""" % BL, template='hp_hit', tap=more('freq'), at=1)
 
 # ====================== ZLOZENIE ======================
 EXTRA = """:host { --u: calc(100cqw / 1672); }
+.fan { animation: hpfan var(--d, .6s) linear infinite; }
+@keyframes hpfan { to { transform: rotate(360deg); } }
 .fl { fill: none; stroke-linecap: round; stroke-dasharray: 7 13; animation: hpfl var(--d, 1.6s) linear infinite; }
 @keyframes hpfl { to { stroke-dashoffset: -20; } }
 .g { position: absolute; inset: 0; box-sizing: border-box;
