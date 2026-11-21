@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.4
+ * ha-karta-pompa-ciepla  v1.5
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,7 +9,7 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.4';
+const VERSION = 'v1.5';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -791,6 +791,40 @@ class HaPompaCieplaPanel extends HTMLElement {
   }
 }
 if (!customElements.get('ha-pompa-ciepla-panel')) customElements.define('ha-pompa-ciepla-panel', HaPompaCieplaPanel);
+// Auto-zakladka: przy pierwszym zaladowaniu HA (konto admina) zaklada dashboard "Pompa ciepla"
+// widoczny w lewym menu. Jednorazowo (flaga w localStorage). Jesli dashboard juz jest, nic nie robi.
+// Wylaczenie: localStorage.setItem('hkpc_auto_dashboard', 'off') w konsoli przegladarki.
+(() => {
+  const FLAG = 'hkpc_auto_dashboard';
+  const URL_PATH = 'pompa-ciepla';
+  let flag = null;
+  try { flag = localStorage.getItem(FLAG); } catch (e) { return; }
+  if (flag) return;
+  const setFlag = (v) => { try { localStorage.setItem(FLAG, v); } catch (e) { /* brak */ } };
+  let tries = 0;
+  const run = async () => {
+    const ha = document.querySelector('home-assistant');
+    const hass = ha && ha.hass;
+    if (!hass || !hass.user || !hass.callWS) { if (++tries < 30) setTimeout(run, 2000); return; }
+    if (!hass.user.is_admin) return;
+    try {
+      const list = await hass.callWS({ type: 'lovelace/dashboards/list' });
+      if ((list || []).some((d) => d.url_path === URL_PATH) || (hass.panels && hass.panels[URL_PATH])) { setFlag('exists'); return; }
+      await hass.callWS({ type: 'lovelace/dashboards/create', url_path: URL_PATH, title: 'Pompa ciepła',
+        icon: 'mdi:heat-pump', show_in_sidebar: true, require_admin: false, mode: 'storage' });
+      await hass.callWS({ type: 'lovelace/config/save', url_path: URL_PATH, config: {
+        title: 'Pompa ciepła',
+        views: [{ title: 'Pompa ciepła', path: 'pompa-ciepla', icon: 'mdi:heat-pump', type: 'panel', cards: [{ type: 'custom:ha-karta-pompa-ciepla' }] }],
+      } });
+      setFlag('created');
+      console.info('ha-karta-pompa-ciepla: utworzono dashboard /' + URL_PATH + ' w lewym menu');
+    } catch (e) {
+      console.info('ha-karta-pompa-ciepla: auto-dashboard pominiety', e && (e.message || e.code || e));
+    }
+  };
+  setTimeout(run, 1500);
+})();
+
 window.customCards = window.customCards || [];
 if (!window.customCards.find((c) => c.type === 'ha-karta-pompa-ciepla')) {
   window.customCards.push({ type: 'ha-karta-pompa-ciepla', name: 'Karta pompy ciepła (MHI Hydrolution)', description: 'Panel pompy ciepła na tle instalacji, encje ESPHome hydrolution v5.3', preview: false });

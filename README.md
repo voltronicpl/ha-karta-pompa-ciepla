@@ -41,6 +41,14 @@ Wykres trendów 24 h karta rysuje sama z historii HA i odświeża go co 5 minut.
 
 ## Osobna zakładka w lewym menu HA
 
+**Automatycznie (od v1.5):** po instalacji z HACS i przeładowaniu przeglądarki, przy pierwszym wejściu do HA na koncie **admina**, karta sama zakłada dashboard „Pompa ciepła” (`/pompa-ciepla`, ikona `mdi:heat-pump`) i pokazuje go w lewym menu. Nie trzeba ruszać `configuration.yaml`.
+- Robi to tylko raz w danej przeglądarce. Jeśli dashboard `pompa-ciepla` już istnieje, nic nie zmienia.
+- Na koncie bez uprawnień admina nic nie robi.
+- Jak usuniesz ten dashboard, sam nie wróci. Gdybyś chciał, żeby karta założyła go jeszcze raz, w konsoli przeglądarki (F12) wpisz `localStorage.removeItem('hkpc_auto_dashboard')` i odśwież stronę.
+- Żeby wyłączyć to w ogóle, przed instalacją wpisz w konsoli `localStorage.setItem('hkpc_auto_dashboard','off')`.
+
+Jeśli wolisz zrobić to ręcznie:
+
 **Sposób A, dashboard (najprościej):**
 1. **Ustawienia → Dashboardy → Dodaj dashboard → Nowy dashboard od zera.** Tytuł „Pompa ciepła”, ikona `mdi:heat-pump`, włącz **Pokaż w pasku bocznym**.
 2. Otwórz go i wejdź w **Edytuj → ⋮ → Edytor kodu (raw)**. Wklej `dashboard/pompa_ciepla_js.yaml` (widok typu Panel z kartą na całą szerokość).
