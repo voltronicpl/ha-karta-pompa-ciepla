@@ -17,7 +17,7 @@ const EXTRA = __EXTRA__;
 const FONT = __FONT__;
 const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '@keyframes hpok{0%,40%{box-shadow:0 0 0 2px #43d343,0 0 16px rgba(67,211,67,.85)}100%{box-shadow:0 0 0 2px transparent,0 0 0 transparent}}' +
-  '#sch{container-type:inline-size;box-sizing:border-box;padding:2cqw 2cqw 2.4cqw;color:#eef2f6;font-family:' + FONT + ';font-size:clamp(11px,1.05cqw,15px);background:#0e1013}' +
+  '#sch{box-sizing:border-box;padding:12px;color:#eef2f6;font-family:' + FONT + ';font-size:13px;background:#0e1013}' +
   '#sch .sh{border-radius:12px;padding:1.4em 1.6em;background:linear-gradient(180deg,rgba(42,48,58,.85),rgba(20,24,31,.9));border:1px solid rgba(255,255,255,.13);box-shadow:0 6px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07)}' +
   '#sch .sht{display:flex;align-items:center;gap:.8em;font-size:1.45em;font-weight:600;margin-bottom:.9em}#sch .sht small{font-size:.65em;font-weight:400;opacity:.7}' +
   '#sch button,#sch select,#sch input{font:inherit;color:#fff;box-sizing:border-box}' +
@@ -34,7 +34,7 @@ const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '#sch .pr input,#sch .pr select{height:2.1em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);padding:0 .5em}#sch .pr input{width:5em;text-align:center}' +
   '#sch .hr{position:relative;display:flex;margin-left:3.2em;margin-right:2.6em;height:1.4em;font-size:.85em;opacity:.75}#sch .hr span{position:absolute;transform:translateX(-50%)}' +
   '#sch .dr{display:flex;align-items:center;gap:.5em;margin:.35em 0}#sch .dn{flex:0 0 2.7em;font-weight:600}#sch .dn.td{color:#7ec8ff}' +
-  '#sch .tl{position:relative;flex:1;height:2.5em;border-radius:7px;background:rgba(10,12,16,.65);border:1px solid rgba(255,255,255,.1);cursor:crosshair;touch-action:none;' +
+  '#sch .tl{position:relative;flex:1;height:2.5em;border-radius:7px;background:rgba(10,12,16,.65);border:1px solid rgba(255,255,255,.1);cursor:crosshair;touch-action:pan-y;' +
   'background-image:repeating-linear-gradient(90deg,transparent 0,transparent calc(12.5% - 1px),rgba(255,255,255,.08) calc(12.5% - 1px),rgba(255,255,255,.08) 12.5%)}' +
   '#sch .bk{position:absolute;top:2px;bottom:2px;border-radius:5px;background:linear-gradient(180deg,var(--c),var(--c2));border:1px solid rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8em;overflow:hidden;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.6)}' +
   '#sch .bk.sel{outline:2px solid #fff;z-index:2}#sch .bk.tmp{opacity:.6}' +
@@ -42,7 +42,7 @@ const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '#sch .cp{flex:0 0 auto;padding:.3em .55em}' +
   '#sch .ed{display:flex;flex-wrap:wrap;align-items:center;gap:.6em;margin:.9em 0 0;padding:.7em 1em;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(110,193,255,.4)}#sch .ed input{height:2.1em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);padding:0 .5em}' +
   '#sch .ft{display:flex;flex-wrap:wrap;align-items:center;gap:.7em;margin-top:1em}#sch .ft .hint{flex:1 1 20em;opacity:.65;font-size:.9em}#sch .ft .sv{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}#sch .ft button[disabled]{opacity:.4;cursor:default}' +
-  '.ed2{--u:calc(100cqw / 1672);position:absolute;z-index:20;box-sizing:border-box;padding:calc(var(--u)*3);border-radius:calc(var(--u)*8);' +
+  '.ed2{position:absolute;z-index:20;box-sizing:border-box;padding:calc(var(--u)*3);border-radius:calc(var(--u)*8);' +
   'background:linear-gradient(180deg,rgba(40,46,56,.98),rgba(20,24,31,.98));border:1px solid rgba(110,193,255,.75);box-shadow:0 0 calc(var(--u)*10) rgba(33,150,243,.5);' +
   'display:flex;flex-direction:column;gap:calc(var(--u)*2);color:#eef2f6;animation:hppop .12s ease-out}' +
   '.ed2 .lb{font-size:calc(var(--u)*10.5);text-align:center;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}' +
@@ -104,10 +104,11 @@ class HaKartaPompaCiepla extends HTMLElement {
     const img = this._config.image || BG;
     root.innerHTML = '<style>:host{display:block}' +
       'ha-card{overflow:hidden;border-radius:var(--ha-card-border-radius,12px);background:#111}' +
-      '#c{position:relative;container-type:inline-size;width:100%;line-height:1.15;color:#eef2f6;font-family:' + FONT + '}' +
+      '#mw{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}#c{position:relative;width:100%;line-height:1.15;color:#eef2f6;font-family:' + FONT + '}' +
+      '@media (max-width:700px){#c{min-width:860px}}' +
       '#c>img{display:block;width:100%;height:auto;user-select:none;pointer-events:none}' +
-      '.el{position:absolute;--u:calc(100cqw / 1672)}.el.t{cursor:pointer}' + EXTRA.replace(':host', '.el') + POP_CSS +
-      '</style><ha-card><div id="c"><img alt="" src="' + img + '"></div><div id="sch"></div></ha-card>';
+      '.el{position:absolute}.el.t{cursor:pointer}' + EXTRA.replace(':host { --u: calc(100cqw / 1672); }', '').replace(':host', '.el') + POP_CSS +
+      '</style><ha-card><div id="mw"><div id="c"><img alt="" src="' + img + '"></div></div><div id="sch"></div></ha-card>';
     const c = root.getElementById('c');
     this._nodes = ELS.map((el) => {
       const d = document.createElement('div');
@@ -125,6 +126,16 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._c = c;
     this._sch = this._sch || { lane: 'noc', data: {}, draft: {}, dirty: {}, sel: null, loaded: false, sig: '' };
     this._schEl = root.getElementById('sch');
+    this._fit = () => {
+      const w = c.getBoundingClientRect().width;
+      if (w) c.style.setProperty('--u', (w / 1672) + 'px');
+      const sw = this._schEl.getBoundingClientRect().width;
+      if (sw) { this._schEl.style.fontSize = Math.max(11, Math.min(15, sw * 0.0105)) + 'px'; this._schEl.style.padding = Math.max(8, Math.min(30, sw * 0.02)) + 'px'; }
+    };
+    this._fit();
+    try { if (window.ResizeObserver) { this._ro = new ResizeObserver(() => this._fit()); this._ro.observe(c); this._ro.observe(this._schEl); } } catch (e) { /* brak */ }
+    window.addEventListener('resize', this._fit);
+    setTimeout(this._fit, 50); setTimeout(this._fit, 600);
     this._schBind();
     this._pend = [];
     this._built = true;
