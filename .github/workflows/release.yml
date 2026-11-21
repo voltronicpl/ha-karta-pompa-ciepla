@@ -1,5 +1,6 @@
 # Automatyczny release: commit na main o nazwie vX.Y -> tag + release vX.Y (HACS pokazuje numer wersji).
 # Reczne uruchomienie (Actions -> release -> Run workflow) dla starszego commita: podaj wersje i SHA.
+# Reczny release starej wersji NIE jest oznaczany jako "Latest", zeby HACS nie cofnal sie do starej wersji.
 name: release
 
 on:
@@ -30,9 +31,9 @@ jobs:
           IN_SHA: ${{ inputs.sha }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
-            TAG="$IN_TAG"; SHA="$IN_SHA"
+            TAG="$IN_TAG"; SHA="$IN_SHA"; LATEST="--latest=false"
           else
-            TAG="$(printf '%s\n' "$MSG" | head -n1 | tr -d '[:space:]')"; SHA="$GITHUB_SHA"
+            TAG="$(printf '%s\n' "$MSG" | head -n1 | tr -d '[:space:]')"; SHA="$GITHUB_SHA"; LATEST="--latest"
           fi
           if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+(\.[0-9]+)+$'; then
             echo "Commit '$TAG' to nie numer wersji, pomijam."; exit 0
@@ -40,4 +41,4 @@ jobs:
           if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
             echo "Release $TAG juz istnieje, pomijam."; exit 0
           fi
-          gh release create "$TAG" -R "$REPO" --target "$SHA" --title "$TAG" --generate-notes
+          gh release create "$TAG" -R "$REPO" --target "$SHA" --title "$TAG" --generate-notes $LATEST
