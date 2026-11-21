@@ -322,7 +322,7 @@ const ys=ok?pv.map(v=>v+off):[];
 const all=ys.concat([n(@s1)].filter(v=>v!==null));
 let lo=20, hi=60; if(all.length){lo=Math.min(20,Math.floor((Math.min(...all)-2)/10)*10);hi=Math.max(60,Math.ceil((Math.max(...all)+2)/10)*10);}
 const X0=52,X1=482,Y0=55,Y1=141;
-const sx=t=>X0+(t+30)/60*(X1-X0), sy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
+const sx=t=>X0+(30-t)/60*(X1-X0), sy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
 let g='';
 for(let t=-30;t<=30;t+=5) g+='<line x1="'+sx(t)+'" y1="'+Y0+'" x2="'+sx(t)+'" y2="'+Y1+'" stroke="rgba(255,255,255,.08)"/>';
 for(let v=lo;v<=hi;v+=10){g+='<line x1="'+X0+'" y1="'+sy(v)+'" x2="'+X1+'" y2="'+sy(v)+'" stroke="rgba(255,255,255,.08)"/>'+'<text x="'+(X0-6)+'" y="'+(sy(v)+4)+'" text-anchor="end">'+v+' °C</text>';}
@@ -368,16 +368,17 @@ const pk=[@p1,@p2,@p3,@p4,@p5,@p6,@p7];
 let h='<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)+'"></div>'
  + P(28,819,'Własna krzywa – punkty (P1 – P7)',F(14.5,400,'#eef2f6'))
  + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>';
-for(let i=0;i<7;i++){const cx=30+33+i*66;
+for(let j=0;j<7;j++){const i=6-j;const cx=30+33+j*66;
  h+=C(cx,850,'P'+(i+1),F(15,600,'#fff'))+C(cx,872,T[i],F(14,400,'#e3e8ee'))
   +'<div style="position:absolute;left:'+u(cx-OX-27)+';top:'+u(885-OY)+';width:'+u(54)+';height:'+u(22)+';border-radius:'+u(6)+';background:rgba(70,78,90,.7);border:1px solid rgba(255,255,255,.08)"></div>'
   +C(cx,896,f(pk[i],0)+' °C',F(14.5,500,'#fff'));
- if(i>0) h+='<div style="position:absolute;left:'+u(cx-OX-33)+';top:'+u(838-OY)+';height:'+u(74)+';border-left:1px solid rgba(255,255,255,.07)"></div>';}
+ if(j>0) h+='<div style="position:absolute;left:'+u(cx-OX-33)+';top:'+u(838-OY)+';height:'+u(74)+';border-left:1px solid rgba(255,255,255,.07)"></div>';}
 return h;
 """
 el(18, 805, 485, 113, body)
-for i in range(7):
-    el(30 + i * 66, 838, 66, 76, "return '';", template='hp_hit', tap=more('p%d' % (i + 1)),
+for j in range(7):
+    i = 6 - j
+    el(30 + j * 66, 838, 66, 76, "return '';", template='hp_hit', tap=more('p%d' % (i + 1)),
        jstap={'a': 'num', 'k': 'p%d' % (i + 1), 'l': 'Własna krzywa P%d (%s °C)' % (i + 1, ['-30', '-20', '-10', '0', '10', '20', '30'][i])})
 
 # ====================== TRENDY (apexcharts) ======================
@@ -481,6 +482,14 @@ return %s + P(876,816,'Cyrkulacja CWU',F(17.5,600,'#fff')) + inner
 # brak rejestru "cyrkulacja wl/wyl" -> wskaznik: wl. gdy czas pracy > 0, klik = ustawienia czasu pracy
 el(1038, 843, 38, 20, TOG.replace("entity&&entity.state==='on'", "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)"), template='hp_hit', tap=more('hwc_run'), jstap={'a': 'hwc'})
 
+# edytowalne wartosci w panelach (klik w wiersz = edytor ▲ ▼ / wpisanie / zapisz)
+def numhit(x, y, w, h, ent, label):
+    el(x, y, w, h, "return '';", template='hp_hit', tap=more(ent), jstap={'a': 'num', 'k': ent, 'l': label})
+numhit(574, 852, 52, 20, 'n_start', 'Obniżenie nocne – start (godz.)')
+numhit(632, 852, 52, 20, 'n_end', 'Obniżenie nocne – koniec (godz.)')
+numhit(574, 895, 52, 20, 'hw_hour', 'Podgrzanie CWU – godzina')
+numhit(878, 834, 152, 36, 'hwc_run', 'Cyrkulacja CWU – czas pracy')
+numhit(878, 877, 152, 36, 'hwc_still', 'Cyrkulacja CWU – czas postoju')
 # ====================== ANTYLEGIONELLA ======================
 el(1106, 802, 261, 118, """
 const L=st(@leg_last); let d='–';
@@ -494,6 +503,8 @@ return %s + P(1119,817,I('mdi:shield-check-outline',22,'#7ee04a')) + P(1146,817,
  + P(1124,896,I('mdi:clock-outline',24,'#eef2f6')) + P(1165,896,'Ostatnie',F(14,400,'#eef2f6')) + R(1355,896,d,F(14.5,500,'#fff'));
 """ % glass())
 toggle(1314, 808, 'leg')
+numhit(1118, 836, 240, 24, 'leg_temp', 'Antylegionella – temperatura końcowa')
+numhit(1118, 861, 240, 24, 'leg_int', 'Antylegionella – co ile dni')
 
 # ====================== PARAMETRY PRACY ======================
 PAR = [('mdi:thermometer', '#ff5a4a', 'BT1 – zewnętrzna', "f(@bt1)+' °C'"),

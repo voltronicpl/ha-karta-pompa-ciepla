@@ -24,13 +24,15 @@ const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '.pp button:hover{border-color:rgba(110,193,255,.7)}' +
   '.pt{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;margin-bottom:10px}.pt span{flex:1}' +
   '.pt .x{border:none;background:none;font-size:15px;opacity:.75;padding:2px 4px}' +
-  '.nr{display:flex;align-items:center;gap:6px}.nr .st{width:38px;height:38px;font-size:15px}' +
-  '.nr input{flex:1;min-width:0;width:70px;height:38px;box-sizing:border-box;text-align:center;font:600 20px inherit;font-family:inherit;color:#fff;' +
+  '.pp.ed{width:176px;min-width:176px;animation:hppop .16s ease-out}@keyframes hppop{from{transform:scale(.35);opacity:.2}to{transform:none;opacity:1}}' +
+  '.pp.ed .st{display:block;width:100%;height:46px;font-size:22px;margin:0}.pp.ed .st:active{background:linear-gradient(180deg,#2b8cf2,#1260bf)}' +
+  '.nr{display:flex;align-items:center;justify-content:center;gap:6px;margin:8px 0}' +
+  '.nr input{flex:1;min-width:0;width:80px;height:50px;box-sizing:border-box;text-align:center;font:700 26px inherit;font-family:inherit;color:#fff;' +
   'background:rgba(10,12,16,.75);border:1px solid rgba(110,193,255,.5);border-radius:8px;-moz-appearance:textfield}' +
   '.nr input::-webkit-inner-spin-button,.nr input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}' +
   '.nr input.bad{border-color:#ff5a4a}.un{opacity:.8;min-width:22px}' +
   '.rg{font-size:12px;opacity:.65;margin:6px 2px 0}' +
-  '.ac{display:flex;justify-content:space-between;gap:8px;margin-top:10px}.ac button{padding:7px 12px}' +
+  '.ac{display:flex;justify-content:space-between;gap:8px;margin-top:10px}.ac button{padding:9px 12px;flex:1}.pp.ed .rg{text-align:center}' +
   '.ac .ok{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
   '.ls{display:flex;flex-direction:column;gap:6px}.ls .op{text-align:left;padding:9px 12px}' +
   '.ls .op.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
@@ -140,7 +142,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._c.appendChild(p);
     build(p.querySelector('.pb'), p);
     // pozycja: pod elementem, w granicach karty
-    const cr = this._c.getBoundingClientRect(), nr = node.getBoundingClientRect(), pr = p.getBoundingClientRect();
+    const cr = this._c.getBoundingClientRect(), nr = node.getBoundingClientRect(), pr = { width: p.offsetWidth, height: p.offsetHeight };
     let x = nr.left - cr.left + nr.width / 2 - pr.width / 2;
     let y = nr.bottom - cr.top + 6;
     if (y + pr.height > cr.height - 4) y = nr.top - cr.top - pr.height - 6;
@@ -157,17 +159,27 @@ class HaKartaPompaCiepla extends HTMLElement {
     const unit = a.unit_of_measurement || '';
     const dec = (String(stp).split('.')[1] || '').length;
     const clamp = (v) => Math.min(mx, Math.max(mn, Math.round(v / stp) * stp));
-    this._popup(node, t.l || a.friendly_name || id, (b) => {
-      b.innerHTML = '<div class="nr"><button class="st" data-d="-1">▼</button><input type="number"><span class="un"></span><button class="st" data-d="1">▲</button></div>'
-        + '<div class="rg"></div><div class="ac"><button class="mi">Więcej…</button><button class="ok">✓ Zapisz</button></div>';
+    const p = this._popup(node, t.l || a.friendly_name || id, (b, pp) => {
+      pp.classList.add('ed');
+      b.innerHTML = '<button class="st up" title="Więcej">▲</button><div class="nr"><input type="number" inputmode="decimal"><span class="un"></span></div>' +
+        '<button class="st dn" title="Mniej">▼</button><div class="rg"></div>' +
+        '<div class="ac"><button class="cn">Anuluj</button><button class="ok">✓ Zapisz</button></div>';
       const inp = b.querySelector('input');
       inp.min = mn; inp.max = mx; inp.step = stp; inp.value = Number(s.state).toFixed(dec);
       b.querySelector('.un').textContent = unit;
-      b.querySelector('.rg').textContent = 'Zakres: ' + mn + ' … ' + mx + ' ' + unit;
-      b.querySelectorAll('.st').forEach((x) => x.addEventListener('click', () => {
+      b.querySelector('.rg').textContent = 'Zakres: ' + mn + ' … ' + mx + (unit ? ' ' + unit : '');
+      const bump = (d) => {
         const v = parseFloat(String(inp.value).replace(',', '.'));
-        inp.value = clamp((isNaN(v) ? Number(s.state) : v) + Number(x.dataset.d) * stp).toFixed(dec);
-      }));
+        inp.value = clamp((isNaN(v) ? Number(s.state) : v) + d * stp).toFixed(dec);
+        inp.classList.remove('bad');
+      };
+      let tm = null, iv = null;
+      const stop = () => { clearTimeout(tm); clearInterval(iv); };
+      b.querySelectorAll('.st').forEach((x) => {
+        const d = x.classList.contains('up') ? 1 : -1;
+        x.addEventListener('pointerdown', () => { bump(d); tm = setTimeout(() => { iv = setInterval(() => bump(d), 110); }, 450); });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach((e) => x.addEventListener(e, stop));
+      });
       const save = () => {
         const v = parseFloat(String(inp.value).replace(',', '.'));
         if (isNaN(v)) { inp.classList.add('bad'); return; }
@@ -177,11 +189,23 @@ class HaKartaPompaCiepla extends HTMLElement {
         hass.callService('number', 'set_value', { entity_id: id, value: val });
         this._waitFor(id, (st) => st[id] && Math.abs(Number(st[id].state) - val) < stp / 2, node);
       };
-      inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') save(); });
+      inp.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') save();
+        else if (ev.key === 'ArrowUp') { ev.preventDefault(); bump(1); }
+        else if (ev.key === 'ArrowDown') { ev.preventDefault(); bump(-1); }
+      });
       b.querySelector('.ok').addEventListener('click', save);
-      b.querySelector('.mi').addEventListener('click', () => { this._close(); this._more(id); });
+      b.querySelector('.cn').addEventListener('click', () => this._close());
       setTimeout(() => { inp.focus(); inp.select(); }, 30);
     });
+    // edytor wyrasta z kafla: srodek nad kaflem, animacja od rozmiaru kafla
+    const cr = this._c.getBoundingClientRect(), nr = node.getBoundingClientRect(), pr = { width: p.offsetWidth, height: p.offsetHeight };
+    let x = nr.left - cr.left + nr.width / 2 - pr.width / 2;
+    let y = nr.top - cr.top + nr.height / 2 - pr.height / 2;
+    x = Math.max(4, Math.min(cr.width - pr.width - 4, x));
+    y = Math.max(4, Math.min(cr.height - pr.height - 4, y));
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.transformOrigin = (nr.left - cr.left + nr.width / 2 - x) + 'px ' + (nr.top - cr.top + nr.height / 2 - y) + 'px';
   }
   _sel(t, node) {
     const hass = this._hass, id = this._E[t.k], s = hass.states[id];

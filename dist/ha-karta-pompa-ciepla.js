@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.8
+ * ha-karta-pompa-ciepla  v1.9
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,7 +9,7 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.8';
+const VERSION = 'v1.9';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -80,13 +80,15 @@ const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '.pp button:hover{border-color:rgba(110,193,255,.7)}' +
   '.pt{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;margin-bottom:10px}.pt span{flex:1}' +
   '.pt .x{border:none;background:none;font-size:15px;opacity:.75;padding:2px 4px}' +
-  '.nr{display:flex;align-items:center;gap:6px}.nr .st{width:38px;height:38px;font-size:15px}' +
-  '.nr input{flex:1;min-width:0;width:70px;height:38px;box-sizing:border-box;text-align:center;font:600 20px inherit;font-family:inherit;color:#fff;' +
+  '.pp.ed{width:176px;min-width:176px;animation:hppop .16s ease-out}@keyframes hppop{from{transform:scale(.35);opacity:.2}to{transform:none;opacity:1}}' +
+  '.pp.ed .st{display:block;width:100%;height:46px;font-size:22px;margin:0}.pp.ed .st:active{background:linear-gradient(180deg,#2b8cf2,#1260bf)}' +
+  '.nr{display:flex;align-items:center;justify-content:center;gap:6px;margin:8px 0}' +
+  '.nr input{flex:1;min-width:0;width:80px;height:50px;box-sizing:border-box;text-align:center;font:700 26px inherit;font-family:inherit;color:#fff;' +
   'background:rgba(10,12,16,.75);border:1px solid rgba(110,193,255,.5);border-radius:8px;-moz-appearance:textfield}' +
   '.nr input::-webkit-inner-spin-button,.nr input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}' +
   '.nr input.bad{border-color:#ff5a4a}.un{opacity:.8;min-width:22px}' +
   '.rg{font-size:12px;opacity:.65;margin:6px 2px 0}' +
-  '.ac{display:flex;justify-content:space-between;gap:8px;margin-top:10px}.ac button{padding:7px 12px}' +
+  '.ac{display:flex;justify-content:space-between;gap:8px;margin-top:10px}.ac button{padding:9px 12px;flex:1}.pp.ed .rg{text-align:center}' +
   '.ac .ok{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
   '.ls{display:flex;flex-direction:column;gap:6px}.ls .op{text-align:left;padding:9px 12px}' +
   '.ls .op.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
@@ -362,7 +364,7 @@ const ys=ok?pv.map(v=>v+off):[];
 const all=ys.concat([n(E.s1)].filter(v=>v!==null));
 let lo=20, hi=60; if(all.length){lo=Math.min(20,Math.floor((Math.min(...all)-2)/10)*10);hi=Math.max(60,Math.ceil((Math.max(...all)+2)/10)*10);}
 const X0=52,X1=482,Y0=55,Y1=141;
-const sx=t=>X0+(t+30)/60*(X1-X0), sy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
+const sx=t=>X0+(30-t)/60*(X1-X0), sy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
 let g='';
 for(let t=-30;t<=30;t+=5) g+='<line x1="'+sx(t)+'" y1="'+Y0+'" x2="'+sx(t)+'" y2="'+Y1+'" stroke="rgba(255,255,255,.08)"/>';
 for(let v=lo;v<=hi;v+=10){g+='<line x1="'+X0+'" y1="'+sy(v)+'" x2="'+X1+'" y2="'+sy(v)+'" stroke="rgba(255,255,255,.08)"/>'+'<text x="'+(X0-6)+'" y="'+(sy(v)+4)+'" text-anchor="end">'+v+' °C</text>';}
@@ -480,25 +482,25 @@ const pk=[E.p1,E.p2,E.p3,E.p4,E.p5,E.p6,E.p7];
 let h='<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)+'"></div>'
  + P(28,819,'Własna krzywa – punkty (P1 – P7)',F(14.5,400,'#eef2f6'))
  + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>';
-for(let i=0;i<7;i++){const cx=30+33+i*66;
+for(let j=0;j<7;j++){const i=6-j;const cx=30+33+j*66;
  h+=C(cx,850,'P'+(i+1),F(15,600,'#fff'))+C(cx,872,T[i],F(14,400,'#e3e8ee'))
   +'<div style="position:absolute;left:'+u(cx-OX-27)+';top:'+u(885-OY)+';width:'+u(54)+';height:'+u(22)+';border-radius:'+u(6)+';background:rgba(70,78,90,.7);border:1px solid rgba(255,255,255,.08)"></div>'
   +C(cx,896,f(pk[i],0)+' °C',F(14.5,500,'#fff'));
- if(i>0) h+='<div style="position:absolute;left:'+u(cx-OX-33)+';top:'+u(838-OY)+';height:'+u(74)+';border-left:1px solid rgba(255,255,255,.07)"></div>';}
+ if(j>0) h+='<div style="position:absolute;left:'+u(cx-OX-33)+';top:'+u(838-OY)+';height:'+u(74)+';border-left:1px solid rgba(255,255,255,.07)"></div>';}
 return h;
 
 }},
-{style:{"left": "1.794%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p1", "l": "W\u0142asna krzywa P1 (-30 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "1.794%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p7", "l": "W\u0142asna krzywa P7 (30 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "5.742%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p2", "l": "W\u0142asna krzywa P2 (-20 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "5.742%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p6", "l": "W\u0142asna krzywa P6 (20 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "9.689%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p3", "l": "W\u0142asna krzywa P3 (-10 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "9.689%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p5", "l": "W\u0142asna krzywa P5 (10 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -508,17 +510,17 @@ return '';
 return '';
 
 }},
-{style:{"left": "17.584%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p5", "l": "W\u0142asna krzywa P5 (10 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "17.584%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p3", "l": "W\u0142asna krzywa P3 (-10 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "21.531%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p6", "l": "W\u0142asna krzywa P6 (20 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "21.531%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p2", "l": "W\u0142asna krzywa P2 (-20 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
 }},
-{style:{"left": "25.478%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p7", "l": "W\u0142asna krzywa P7 (30 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
+{style:{"left": "25.478%", "top": "89.054%", "width": "3.947%", "height": "8.077%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "p1", "l": "W\u0142asna krzywa P1 (-30 \u00b0C)"},hist:false,fn:(states,entity,E,H)=>{
 
 return '';
 
@@ -633,6 +635,31 @@ return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(
  + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
 
 }},
+{style:{"left": "34.330%", "top": "90.542%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "n_start", "l": "Obni\u017cenie nocne \u2013 start (godz.)"},hist:false,fn:(states,entity,E,H)=>{
+
+return '';
+
+}},
+{style:{"left": "37.799%", "top": "90.542%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "n_end", "l": "Obni\u017cenie nocne \u2013 koniec (godz.)"},hist:false,fn:(states,entity,E,H)=>{
+
+return '';
+
+}},
+{style:{"left": "34.330%", "top": "95.112%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hw_hour", "l": "Podgrzanie CWU \u2013 godzina"},hist:false,fn:(states,entity,E,H)=>{
+
+return '';
+
+}},
+{style:{"left": "52.512%", "top": "88.629%", "width": "9.091%", "height": "3.826%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hwc_run", "l": "Cyrkulacja CWU \u2013 czas pracy"},hist:false,fn:(states,entity,E,H)=>{
+
+return '';
+
+}},
+{style:{"left": "52.512%", "top": "93.199%", "width": "9.091%", "height": "3.826%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hwc_still", "l": "Cyrkulacja CWU \u2013 czas postoju"},hist:false,fn:(states,entity,E,H)=>{
+
+return '';
+
+}},
 {style:{"left": "66.148%", "top": "85.228%", "width": "15.610%", "height": "12.540%", "transform": "none"},keys:["leg_last", "leg_temp", "leg_int"],ent:null,tap:null,hist:false,fn:(states,entity,E,H)=>{
 const OX=1106,OY=802;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const f=(e,d=1)=>{const v=n(e);return v===null?'–':v.toFixed(d)};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';
 const L=st(E.leg_last); let d='–';
@@ -651,6 +678,16 @@ const u=v=>'calc(var(--u)*'+v+')';
 const on=entity&&entity.state==='on';
 return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
  + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
+
+}},
+{style:{"left": "66.866%", "top": "88.842%", "width": "14.354%", "height": "2.550%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "leg_temp", "l": "Antylegionella \u2013 temperatura ko\u0144cowa"},hist:false,fn:(states,entity,E,H)=>{
+
+return '';
+
+}},
+{style:{"left": "66.866%", "top": "91.498%", "width": "14.354%", "height": "2.550%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "leg_int", "l": "Antylegionella \u2013 co ile dni"},hist:false,fn:(states,entity,E,H)=>{
+
+return '';
 
 }},
 {style:{"left": "82.416%", "top": "59.830%", "width": "17.225%", "height": "38.045%", "transform": "none"},keys:["bt1", "bt12", "bt3", "bt7", "bt6", "bt25", "pwr", "cpr", "fan", "freq", "flow"],ent:null,tap:null,hist:false,fn:(states,entity,E,H)=>{
@@ -782,7 +819,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._c.appendChild(p);
     build(p.querySelector('.pb'), p);
     // pozycja: pod elementem, w granicach karty
-    const cr = this._c.getBoundingClientRect(), nr = node.getBoundingClientRect(), pr = p.getBoundingClientRect();
+    const cr = this._c.getBoundingClientRect(), nr = node.getBoundingClientRect(), pr = { width: p.offsetWidth, height: p.offsetHeight };
     let x = nr.left - cr.left + nr.width / 2 - pr.width / 2;
     let y = nr.bottom - cr.top + 6;
     if (y + pr.height > cr.height - 4) y = nr.top - cr.top - pr.height - 6;
@@ -799,17 +836,27 @@ class HaKartaPompaCiepla extends HTMLElement {
     const unit = a.unit_of_measurement || '';
     const dec = (String(stp).split('.')[1] || '').length;
     const clamp = (v) => Math.min(mx, Math.max(mn, Math.round(v / stp) * stp));
-    this._popup(node, t.l || a.friendly_name || id, (b) => {
-      b.innerHTML = '<div class="nr"><button class="st" data-d="-1">▼</button><input type="number"><span class="un"></span><button class="st" data-d="1">▲</button></div>'
-        + '<div class="rg"></div><div class="ac"><button class="mi">Więcej…</button><button class="ok">✓ Zapisz</button></div>';
+    const p = this._popup(node, t.l || a.friendly_name || id, (b, pp) => {
+      pp.classList.add('ed');
+      b.innerHTML = '<button class="st up" title="Więcej">▲</button><div class="nr"><input type="number" inputmode="decimal"><span class="un"></span></div>' +
+        '<button class="st dn" title="Mniej">▼</button><div class="rg"></div>' +
+        '<div class="ac"><button class="cn">Anuluj</button><button class="ok">✓ Zapisz</button></div>';
       const inp = b.querySelector('input');
       inp.min = mn; inp.max = mx; inp.step = stp; inp.value = Number(s.state).toFixed(dec);
       b.querySelector('.un').textContent = unit;
-      b.querySelector('.rg').textContent = 'Zakres: ' + mn + ' … ' + mx + ' ' + unit;
-      b.querySelectorAll('.st').forEach((x) => x.addEventListener('click', () => {
+      b.querySelector('.rg').textContent = 'Zakres: ' + mn + ' … ' + mx + (unit ? ' ' + unit : '');
+      const bump = (d) => {
         const v = parseFloat(String(inp.value).replace(',', '.'));
-        inp.value = clamp((isNaN(v) ? Number(s.state) : v) + Number(x.dataset.d) * stp).toFixed(dec);
-      }));
+        inp.value = clamp((isNaN(v) ? Number(s.state) : v) + d * stp).toFixed(dec);
+        inp.classList.remove('bad');
+      };
+      let tm = null, iv = null;
+      const stop = () => { clearTimeout(tm); clearInterval(iv); };
+      b.querySelectorAll('.st').forEach((x) => {
+        const d = x.classList.contains('up') ? 1 : -1;
+        x.addEventListener('pointerdown', () => { bump(d); tm = setTimeout(() => { iv = setInterval(() => bump(d), 110); }, 450); });
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach((e) => x.addEventListener(e, stop));
+      });
       const save = () => {
         const v = parseFloat(String(inp.value).replace(',', '.'));
         if (isNaN(v)) { inp.classList.add('bad'); return; }
@@ -819,11 +866,23 @@ class HaKartaPompaCiepla extends HTMLElement {
         hass.callService('number', 'set_value', { entity_id: id, value: val });
         this._waitFor(id, (st) => st[id] && Math.abs(Number(st[id].state) - val) < stp / 2, node);
       };
-      inp.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') save(); });
+      inp.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') save();
+        else if (ev.key === 'ArrowUp') { ev.preventDefault(); bump(1); }
+        else if (ev.key === 'ArrowDown') { ev.preventDefault(); bump(-1); }
+      });
       b.querySelector('.ok').addEventListener('click', save);
-      b.querySelector('.mi').addEventListener('click', () => { this._close(); this._more(id); });
+      b.querySelector('.cn').addEventListener('click', () => this._close());
       setTimeout(() => { inp.focus(); inp.select(); }, 30);
     });
+    // edytor wyrasta z kafla: srodek nad kaflem, animacja od rozmiaru kafla
+    const cr = this._c.getBoundingClientRect(), nr = node.getBoundingClientRect(), pr = { width: p.offsetWidth, height: p.offsetHeight };
+    let x = nr.left - cr.left + nr.width / 2 - pr.width / 2;
+    let y = nr.top - cr.top + nr.height / 2 - pr.height / 2;
+    x = Math.max(4, Math.min(cr.width - pr.width - 4, x));
+    y = Math.max(4, Math.min(cr.height - pr.height - 4, y));
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    p.style.transformOrigin = (nr.left - cr.left + nr.width / 2 - x) + 'px ' + (nr.top - cr.top + nr.height / 2 - y) + 'px';
   }
   _sel(t, node) {
     const hass = this._hass, id = this._E[t.k], s = hass.states[id];

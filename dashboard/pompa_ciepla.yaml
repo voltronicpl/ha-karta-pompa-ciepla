@@ -759,7 +759,7 @@ views:
           const all=ys.concat([n('sensor.hydrolution_zadane_zasilanie_s1')].filter(v=>v!==null));
           let lo=20, hi=60; if(all.length){lo=Math.min(20,Math.floor((Math.min(...all)-2)/10)*10);hi=Math.max(60,Math.ceil((Math.max(...all)+2)/10)*10);}
           const X0=52,X1=482,Y0=55,Y1=141;
-          const sx=t=>X0+(t+30)/60*(X1-X0), sy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
+          const sx=t=>X0+(30-t)/60*(X1-X0), sy=v=>Y1-(v-lo)/(hi-lo)*(Y1-Y0);
           let g='';
           for(let t=-30;t<=30;t+=5) g+='<line x1="'+sx(t)+'" y1="'+Y0+'" x2="'+sx(t)+'" y2="'+Y1+'" stroke="rgba(255,255,255,.08)"/>';
           for(let v=lo;v<=hi;v+=10){g+='<line x1="'+X0+'" y1="'+sy(v)+'" x2="'+X1+'" y2="'+sy(v)+'" stroke="rgba(255,255,255,.08)"/>'+'<text x="'+(X0-6)+'" y="'+(sy(v)+4)+'" text-anchor="end">'+v+' °C</text>';}
@@ -1090,11 +1090,11 @@ views:
           let h='<div class="g" style="background:rgba(30,35,43,.85);border-radius:'+u(8)+'"></div>'
            + P(28,819,'Własna krzywa – punkty (P1 – P7)',F(14.5,400,'#eef2f6'))
            + '<div style="position:absolute;left:'+u(12)+';right:'+u(12)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>';
-          for(let i=0;i<7;i++){const cx=30+33+i*66;
+          for(let j=0;j<7;j++){const i=6-j;const cx=30+33+j*66;
            h+=C(cx,850,'P'+(i+1),F(15,600,'#fff'))+C(cx,872,T[i],F(14,400,'#e3e8ee'))
             +'<div style="position:absolute;left:'+u(cx-OX-27)+';top:'+u(885-OY)+';width:'+u(54)+';height:'+u(22)+';border-radius:'+u(6)+';background:rgba(70,78,90,.7);border:1px solid rgba(255,255,255,.08)"></div>'
             +C(cx,896,f(pk[i],0)+' °C',F(14.5,500,'#fff'));
-           if(i>0) h+='<div style="position:absolute;left:'+u(cx-OX-33)+';top:'+u(838-OY)+';height:'+u(74)+';border-left:1px solid rgba(255,255,255,.07)"></div>';}
+           if(j>0) h+='<div style="position:absolute;left:'+u(cx-OX-33)+';top:'+u(838-OY)+';height:'+u(74)+';border-left:1px solid rgba(255,255,255,.07)"></div>';}
           return h;
           ]]]
       style:
@@ -1107,7 +1107,7 @@ views:
       template: hp_hit
       tap_action:
         action: more-info
-        entity: number.hydrolution_wlasna_krzywa_p1_najzimniej
+        entity: number.hydrolution_wlasna_krzywa_p7_najcieplej
       custom_fields:
         c: |-
           [[[
@@ -1124,7 +1124,7 @@ views:
       template: hp_hit
       tap_action:
         action: more-info
-        entity: number.hydrolution_wlasna_krzywa_p2
+        entity: number.hydrolution_wlasna_krzywa_p6
       custom_fields:
         c: |-
           [[[
@@ -1141,7 +1141,7 @@ views:
       template: hp_hit
       tap_action:
         action: more-info
-        entity: number.hydrolution_wlasna_krzywa_p3
+        entity: number.hydrolution_wlasna_krzywa_p5
       custom_fields:
         c: |-
           [[[
@@ -1175,7 +1175,7 @@ views:
       template: hp_hit
       tap_action:
         action: more-info
-        entity: number.hydrolution_wlasna_krzywa_p5
+        entity: number.hydrolution_wlasna_krzywa_p3
       custom_fields:
         c: |-
           [[[
@@ -1192,7 +1192,7 @@ views:
       template: hp_hit
       tap_action:
         action: more-info
-        entity: number.hydrolution_wlasna_krzywa_p6
+        entity: number.hydrolution_wlasna_krzywa_p2
       custom_fields:
         c: |-
           [[[
@@ -1209,7 +1209,7 @@ views:
       template: hp_hit
       tap_action:
         action: more-info
-        entity: number.hydrolution_wlasna_krzywa_p7_najcieplej
+        entity: number.hydrolution_wlasna_krzywa_p1_najzimniej
       custom_fields:
         c: |-
           [[[
@@ -1546,6 +1546,91 @@ views:
         height: 2.125%
         transform: none
     - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_harmonogram_nocny_start_godz
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 34.330%
+        top: 90.542%
+        width: 3.110%
+        height: 2.125%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_harmonogram_nocny_koniec_godz
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 37.799%
+        top: 90.542%
+        width: 3.110%
+        height: 2.125%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_harmonogram_cwu_godzina_podgrzania
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 34.330%
+        top: 95.112%
+        width: 3.110%
+        height: 2.125%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_cyrkulacja_cwu_czas_pracy
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 52.512%
+        top: 88.629%
+        width: 9.091%
+        height: 3.826%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_cyrkulacja_cwu_czas_postoju
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 52.512%
+        top: 93.199%
+        width: 9.091%
+        height: 3.826%
+        transform: none
+    - type: custom:button-card
       template: hp
       custom_fields:
         c: |-
@@ -1585,6 +1670,40 @@ views:
         top: 85.866%
         width: 2.273%
         height: 2.125%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_antylegionella_temperatura_koncowa
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 66.866%
+        top: 88.842%
+        width: 14.354%
+        height: 2.550%
+        transform: none
+    - type: custom:button-card
+      template: hp_hit
+      tap_action:
+        action: more-info
+        entity: number.hydrolution_antylegionella_co_ile_dni
+      custom_fields:
+        c: |-
+          [[[
+
+          return '';
+          ]]]
+      style:
+        left: 66.866%
+        top: 91.498%
+        width: 14.354%
+        height: 2.550%
         transform: none
     - type: custom:button-card
       template: hp
