@@ -44,6 +44,11 @@ E = dict(
     n_start='number.hydrolution_harmonogram_nocny_start_godz',
     n_end='number.hydrolution_harmonogram_nocny_koniec_godz',
     hw_hour='number.hydrolution_harmonogram_cwu_godzina_podgrzania',
+    pl_noc='schedule.hp_plan_obnizenie_co', pl_noc_en='input_boolean.hp_plan_noc',
+    pl_cwu='schedule.hp_plan_tryb_cwu', pl_cwu_en='input_boolean.hp_plan_cwu',
+    pl_cyrk='schedule.hp_plan_cyrkulacja_cwu', pl_cyrk_en='input_boolean.hp_plan_cyrk',
+    pl_grz='schedule.hp_plan_grzalka', pl_grz_en='input_boolean.hp_plan_grz',
+    pl_boost='schedule.hp_plan_podgrzanie_cwu', pl_boost_en='input_boolean.hp_plan_boost',
     sch_n='switch.hydrolution_harmonogram_nocny_aktywny',
     sch_hw='switch.hydrolution_harmonogram_cwu_aktywny',
     stop_lux='number.hydrolution_cwu_temp_stop_luksus',
@@ -451,15 +456,17 @@ tile(868, 173, 'mdi:water-outline', '#29b6f6', 'Czas pracy CO', "dur(n(@t_co))",
 tile(1049, 163, 'mdi:water-boiler', '#29b6f6', 'Czas pracy CWU', "dur(n(@t_cwu))", 't_cwu')
 tile(1220, 147, 'mdi:snowflake-melt', '#81d4fa', 'Odszranianie', "st(@defrost)||'–'", 'defrost')
 
-# ====================== HARMONOGRAMY ======================
-el(522, 802, 328, 118, """
-const inner='<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>'
- + '<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(71)+';border-top:1px solid rgba(255,255,255,.08)"></div>';
-return %s + P(537,816,'Harmonogramy',F(17.5,600,'#fff')) + inner
- + P(538,852,I('mdi:weather-night',28,'#29b6f6')) + P(579,845,'Obniżenie nocne (CO)',F(14.5,400,'#eef2f6')) + P(580,862,hh(@n_start)+' &nbsp;–&nbsp; '+hh(@n_end),F(14.5,400,'#eef2f6'))
- + P(538,895,I('mdi:water-outline',28,'#29b6f6')) + P(579,887,'Poranne podgrzanie CWU',F(14.5,400,'#eef2f6'))
- + P(580,905,hh(@hw_hour)+' &nbsp;–&nbsp; '+(n(@hw_hour)===null?'--:--':String((Math.round(n(@hw_hour))+1)%%24).padStart(2,'0')+':00'),F(14.5,400,'#eef2f6'));
-""" % glass())
+# ====================== HARMONOGRAM (podsumowanie) ======================
+# Od v1.11 harmonogramem rzadzi Home Assistant (blok "Harmonogram" pod mapa). Tu tylko podsumowanie.
+ROWS_PL = [('Obniżenie CO', 'pl_noc'), ('Tryb CWU', 'pl_cwu'), ('Cyrkulacja CWU', 'pl_cyrk'), ('Grzałka', 'pl_grz'), ('Podgrzanie CWU', 'pl_boost')]
+body = "const row=(y,n,en,sc)=>{const on=st(en)==='on', w=st(sc)==='on'; const c=!on?'#7d8894':(w?'#ffb300':'#43d343'); const t=!on?'wył.':(w?'w oknie':'poza oknem');\n"
+body += " return P(540,y,'<span style=\"display:block;width:'+u(9)+';height:'+u(9)+';border-radius:50%;background:'+c+'\"></span>') + P(558,y,n,F(14,400,'#eef2f6')) + R(840,y,t,F(14,500,c));};\n"
+body += "return %s + P(537,816,'Harmonogram',F(17.5,600,'#fff')) + R(840,817,'szczegóły niżej ↓',F(12,400,'#9fb0c0'))\n" % glass()
+body += " + '<div style=\"position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(29)+';border-top:1px solid rgba(255,255,255,.1)\"></div>'"
+for i, (n, k) in enumerate(ROWS_PL):
+    body += "\n + row(%d,'%s',@%s_en,@%s)" % (848 + i * 15, n, k, k)
+body += ";"
+el(522, 802, 328, 118, body, template='hp_hit', jstap={'a': 'schscroll'})
 
 TOG = """
 const on=entity&&entity.state==='on';
@@ -468,9 +475,6 @@ return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(
 """
 def toggle(x, y, ent, tap=None):
     el(x, y, 38, 20, TOG, entity=ent, template='hp_hit', tap=tap or {'action': 'toggle'})
-
-toggle(797, 843, 'sch_n')
-toggle(797, 886, 'sch_hw')
 
 # ====================== CYRKULACJA CWU ======================
 el(861, 802, 235, 118, """
@@ -486,9 +490,6 @@ el(1038, 843, 38, 20, TOG.replace("entity&&entity.state==='on'", "!((n(@hwc_run)
 # edytowalne wartosci w panelach (klik w wiersz = edytor ▲ ▼ / wpisanie / zapisz)
 def numhit(x, y, w, h, ent, label, r, short=None):
     el(x, y, w, h, "return '';", template='hp_hit', tap=more(ent), jstap={'a': 'num', 'k': ent, 'l': label, 'r': r, 's': short or label})
-numhit(574, 852, 52, 20, 'n_start', 'Obniżenie nocne – start (godz.)', [556, 836, 70, 76], 'Start (godz.)')
-numhit(632, 852, 52, 20, 'n_end', 'Obniżenie nocne – koniec (godz.)', [632, 836, 70, 76], 'Koniec (godz.)')
-numhit(574, 895, 52, 20, 'hw_hour', 'Podgrzanie CWU – godzina', [556, 860, 70, 76], 'Godzina')
 numhit(878, 834, 152, 36, 'hwc_run', 'Cyrkulacja CWU – czas pracy', [870, 830, 130, 60], 'Czas pracy (min)')
 numhit(878, 877, 152, 36, 'hwc_still', 'Cyrkulacja CWU – czas postoju', [870, 872, 130, 60], 'Czas postoju (min)')
 # ====================== ANTYLEGIONELLA ======================

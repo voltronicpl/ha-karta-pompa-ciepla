@@ -107,3 +107,14 @@ Panel ma pasek z tytułem i przyciskiem menu. Karta jest dopasowana do ekranu (s
 - **Antylegionella – ostatnie** zapisuje HA w chwili, gdy BT7 dojdzie do temp. końcowej −1 °C. Do pierwszego przegrzania pokazuje „–”.
 - **Krzywa grzewcza**: punkty P1–P7 są rysowane dla −30, −20, −10, 0, 10, 20, 30 °C, czyli tak jak w menu własnej krzywej NIBE. Przesunięcie krzywej jest doliczone. Pomarańczowa kropka to aktualne BT1 i zadane S1.
 - Ostatni kafel w rzędzie (pusty na wzorze) pokazuje odszranianie.
+
+## Harmonogram tygodniowy (od v1.11)
+
+Pod mapą karta ma blok **„Harmonogram”**: plan Pn–Nd z osią 0–24 h dla pięciu funkcji (obniżenie CO, tryb CWU wg godzin, cyrkulacja CWU, grzałka, jednorazowe podgrzanie CWU). Okna przeciągasz myszą po osi (krok 15 min), klikasz, żeby edytować godziny, ⧉ kopiuje dzień na wszystkie dni, a **Zapisz harmonogram** wysyła plan do HA. Całością rządzi Home Assistant, ESP niczego nie planuje.
+
+Wymagania:
+1. Pakiet `packages/hydrolution_karta.yaml` (pomocnicze przełączniki, wartości i automatyzacje) i `packages: !include_dir_named packages` w `configuration.yaml`, potem przeładowanie konfiguracji.
+2. Harmonogramy `schedule.hp_plan_*`: konto administratora klika w bloku **Utwórz harmonogramy**. Edycja okien też wymaga administratora.
+3. Każdą funkcję włączasz jej przełącznikiem w bloku (domyślnie wyłączone, nic nie rusza ustawień pompy).
+
+Poza oknem cyrkulacja ma pracę 1 min / postój 60 min, bo sterownik SMO40 nie ma pełnego wyłączenia.

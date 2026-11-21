@@ -195,3 +195,198 @@ script:
     sequence:
       - action: switch.turn_on
         target: {entity_id: switch.hydrolution_tryb_urlopowy}
+
+# =====================================================================
+# HARMONOGRAM TYGODNIOWY (blok "Harmonogram" pod mapa karty, od v1.11)
+# Okna czasu trzymaja harmonogramy `schedule.hp_plan_*` (karta tworzy je przyciskiem
+# "Utworz harmonogramy" albo recznie: Ustawienia -> Urzadzenia i uslugi -> Pomocnicy).
+# Kazda funkcja dziala dopiero po wlaczeniu jej przelacznika input_boolean.hp_plan_*.
+# Wartosci ponizej bez `initial`, zeby HA zapamietywal je po restarcie
+# (karta ustawia domyslne przy pierwszym tworzeniu: -2 / 0 / Luksus / Normalny / 60 / 0).
+# =====================================================================
+input_boolean:
+  hp_plan_noc:
+    name: "HP plan: obnizenie CO aktywne"
+    icon: mdi:weather-night
+  hp_plan_cwu:
+    name: "HP plan: tryb CWU wg godzin aktywny"
+    icon: mdi:water-boiler
+  hp_plan_cyrk:
+    name: "HP plan: cyrkulacja CWU aktywna"
+    icon: mdi:autorenew
+  hp_plan_grz:
+    name: "HP plan: grzalka wg godzin aktywna"
+    icon: mdi:flash
+  hp_plan_boost:
+    name: "HP plan: podgrzanie CWU aktywne"
+    icon: mdi:water-thermometer
+
+input_number:
+  hp_noc_przesuniecie:
+    name: "HP plan: przesuniecie krzywej w oknie"
+    min: -10
+    max: 10
+    step: 1
+    mode: box
+    unit_of_measurement: "°C"
+  hp_dzien_przesuniecie:
+    name: "HP plan: przesuniecie krzywej poza oknem"
+    min: -10
+    max: 10
+    step: 1
+    mode: box
+    unit_of_measurement: "°C"
+  hp_cyrk_praca:
+    name: "HP plan: cyrkulacja w oknie - czas pracy"
+    min: 1
+    max: 60
+    step: 1
+    mode: box
+    unit_of_measurement: "min"
+  hp_cyrk_postoj:
+    name: "HP plan: cyrkulacja w oknie - czas postoju"
+    min: 0
+    max: 60
+    step: 1
+    mode: box
+    unit_of_measurement: "min"
+
+input_select:
+  hp_cwu_tryb_w_oknie:
+    name: "HP plan: tryb CWU w oknie"
+    options: [Ekonomiczny, Normalny, Luksus, Smart]
+  hp_cwu_tryb_poza:
+    name: "HP plan: tryb CWU poza oknem"
+    options: [Ekonomiczny, Normalny, Luksus, Smart]
+
+automation:
+  # 1) Obnizenie CO: w oknie przesuniecie krzywej = "w oknie", poza oknem = "poza oknem"
+  - id: hp_plan_noc
+    alias: "HP plan: obnizenie CO"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [schedule.hp_plan_obnizenie_co, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_boolean.hp_plan_noc]
+      - trigger: state
+        entity_id: number.hydrolution_przesuniecie_krzywej_grzewczej
+        from: unavailable
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_plan_noc
+        state: "on"
+      - condition: template
+        value_template: "{{ has_value('number.hydrolution_przesuniecie_krzywej_grzewczej') and has_value('input_number.hp_noc_przesuniecie') and has_value('input_number.hp_dzien_przesuniecie') }}"
+    actions:
+      - variables:
+          target: "{{ states('input_number.hp_noc_przesuniecie') | float(0) if is_state('schedule.hp_plan_obnizenie_co', 'on') else states('input_number.hp_dzien_przesuniecie') | float(0) }}"
+      - condition: template
+        value_template: "{{ (states('number.hydrolution_przesuniecie_krzywej_grzewczej') | float(0)) != target }}"
+      - action: number.set_value
+        target: {entity_id: number.hydrolution_przesuniecie_krzywej_grzewczej}
+        data: {value: "{{ target }}"}
+
+  # 2) Tryb CWU wg godzin
+  - id: hp_plan_cwu
+    alias: "HP plan: tryb CWU wg godzin"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [schedule.hp_plan_tryb_cwu, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_boolean.hp_plan_cwu]
+      - trigger: state
+        entity_id: select.hydrolution_tryb_cwu
+        from: unavailable
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_plan_cwu
+        state: "on"
+      - condition: template
+        value_template: "{{ has_value('select.hydrolution_tryb_cwu') }}"
+    actions:
+      - variables:
+          target: "{{ states('input_select.hp_cwu_tryb_w_oknie') if is_state('schedule.hp_plan_tryb_cwu', 'on') else states('input_select.hp_cwu_tryb_poza') }}"
+      - condition: template
+        value_template: "{{ states('select.hydrolution_tryb_cwu') != target }}"
+      - action: select.select_option
+        target: {entity_id: select.hydrolution_tryb_cwu}
+        data: {option: "{{ target }}"}
+
+  # 3) Cyrkulacja CWU: w oknie czasy "w oknie", poza oknem praca 1 min / postoj 60 min (SMO40 nie ma wl/wyl)
+  - id: hp_plan_cyrk
+    alias: "HP plan: cyrkulacja CWU"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_plan_cyrk]
+      - trigger: state
+        entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy
+        from: unavailable
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_plan_cyrk
+        state: "on"
+      - condition: template
+        value_template: "{{ has_value('number.hydrolution_cyrkulacja_cwu_czas_pracy') and has_value('number.hydrolution_cyrkulacja_cwu_czas_postoju') }}"
+    actions:
+      - variables:
+          w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
+          praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if w_oknie else 1 }}"
+          postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if w_oknie else 60 }}"
+      - condition: template
+        value_template: "{{ (states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0)) != praca or (states('number.hydrolution_cyrkulacja_cwu_czas_postoju') | float(0)) != postoj }}"
+      - action: number.set_value
+        target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy}
+        data: {value: "{{ praca }}"}
+      - action: number.set_value
+        target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
+        data: {value: "{{ postoj }}"}
+
+  # 4) Grzalka dozwolona tylko w oknach
+  - id: hp_plan_grz
+    alias: "HP plan: grzalka wg godzin"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [schedule.hp_plan_grzalka, input_boolean.hp_plan_grz]
+      - trigger: state
+        entity_id: switch.hydrolution_grzalka_dozwolona
+        from: unavailable
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_plan_grz
+        state: "on"
+      - condition: template
+        value_template: "{{ has_value('switch.hydrolution_grzalka_dozwolona') }}"
+    actions:
+      - variables:
+          target: "{{ 'on' if is_state('schedule.hp_plan_grzalka', 'on') else 'off' }}"
+      - condition: template
+        value_template: "{{ states('switch.hydrolution_grzalka_dozwolona') != target }}"
+      - action: "switch.turn_{{ target }}"
+        target: {entity_id: switch.hydrolution_grzalka_dozwolona}
+
+  # 5) Jednorazowe podgrzanie CWU na poczatku kazdego okna
+  - id: hp_plan_boost
+    alias: "HP plan: podgrzanie CWU"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: schedule.hp_plan_podgrzanie_cwu
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_plan_boost
+        state: "on"
+      - condition: template
+        value_template: "{{ has_value('select.hydrolution_podgrzanie_cwu_jednorazowe') }}"
+    actions:
+      - action: select.select_option
+        target: {entity_id: select.hydrolution_podgrzanie_cwu_jednorazowe}
+        data: {option: "Jednorazowo"}

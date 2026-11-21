@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.10
+ * ha-karta-pompa-ciepla  v1.11
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,7 +9,7 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.10';
+const VERSION = 'v1.11';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -48,6 +48,16 @@ const DEFAULT_E = {
  "n_start": "number.hydrolution_harmonogram_nocny_start_godz",
  "n_end": "number.hydrolution_harmonogram_nocny_koniec_godz",
  "hw_hour": "number.hydrolution_harmonogram_cwu_godzina_podgrzania",
+ "pl_noc": "schedule.hp_plan_obnizenie_co",
+ "pl_noc_en": "input_boolean.hp_plan_noc",
+ "pl_cwu": "schedule.hp_plan_tryb_cwu",
+ "pl_cwu_en": "input_boolean.hp_plan_cwu",
+ "pl_cyrk": "schedule.hp_plan_cyrkulacja_cwu",
+ "pl_cyrk_en": "input_boolean.hp_plan_cyrk",
+ "pl_grz": "schedule.hp_plan_grzalka",
+ "pl_grz_en": "input_boolean.hp_plan_grz",
+ "pl_boost": "schedule.hp_plan_podgrzanie_cwu",
+ "pl_boost_en": "input_boolean.hp_plan_boost",
  "sch_n": "switch.hydrolution_harmonogram_nocny_aktywny",
  "sch_hw": "switch.hydrolution_harmonogram_cwu_aktywny",
  "stop_lux": "number.hydrolution_cwu_temp_stop_luksus",
@@ -73,6 +83,31 @@ const EXTRA = ":host { --u: calc(100cqw / 1672); }\n.fl { fill: none; stroke-lin
 const FONT = "'Segoe UI', Roboto, 'Noto Sans', 'Open Sans', sans-serif";
 const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '@keyframes hpok{0%,40%{box-shadow:0 0 0 2px #43d343,0 0 16px rgba(67,211,67,.85)}100%{box-shadow:0 0 0 2px transparent,0 0 0 transparent}}' +
+  '#sch{container-type:inline-size;box-sizing:border-box;padding:2cqw 2cqw 2.4cqw;color:#eef2f6;font-family:' + FONT + ';font-size:clamp(11px,1.05cqw,15px);background:#0e1013}' +
+  '#sch .sh{border-radius:12px;padding:1.4em 1.6em;background:linear-gradient(180deg,rgba(42,48,58,.85),rgba(20,24,31,.9));border:1px solid rgba(255,255,255,.13);box-shadow:0 6px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07)}' +
+  '#sch .sht{display:flex;align-items:center;gap:.8em;font-size:1.45em;font-weight:600;margin-bottom:.9em}#sch .sht small{font-size:.65em;font-weight:400;opacity:.7}' +
+  '#sch button,#sch select,#sch input{font:inherit;color:#fff;box-sizing:border-box}' +
+  '#sch button{cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(62,70,82,.85);border-radius:8px;padding:.45em .9em}#sch button:hover{border-color:rgba(110,193,255,.8)}' +
+  '#sch .tabs{display:flex;flex-wrap:wrap;gap:.5em;margin-bottom:1em}#sch .tab{display:flex;align-items:center;gap:.5em}' +
+  '#sch .tab.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
+  '#sch .dot{width:.7em;height:.7em;border-radius:50%;background:#59626d}#sch .dot.a{background:#43d343;box-shadow:0 0 6px #43d343}#sch .dot.w{background:#ffb300;box-shadow:0 0 6px #ffb300}' +
+  '#sch .warn{margin:0 0 1em;padding:.7em 1em;border-radius:8px;background:rgba(255,160,0,.15);border:1px solid rgba(255,180,0,.6);color:#ffd9a0}' +
+  '#sch .info{margin:0 0 1em;padding:.7em 1em;border-radius:8px;background:rgba(41,182,246,.12);border:1px solid rgba(41,182,246,.45)}' +
+  '#sch .lh{display:flex;flex-wrap:wrap;align-items:center;gap:.6em 1.6em;margin-bottom:.8em}#sch .lh .ds{opacity:.8;flex:1 1 22em}' +
+  '#sch .tg{position:relative;width:3.6em;height:1.9em;border-radius:999px;background:#4a525e;border:none;padding:0}#sch .tg i{position:absolute;top:.2em;left:.2em;width:1.5em;height:1.5em;border-radius:50%;background:#fff;transition:left .15s}' +
+  '#sch .tg.on{background:linear-gradient(180deg,#36a3ff,#1a7fe0);box-shadow:0 0 10px rgba(33,150,243,.6)}#sch .tg.on i{left:1.9em}' +
+  '#sch .pr{display:flex;flex-wrap:wrap;gap:.6em 1.6em;margin-bottom:1em}#sch .pr label{display:flex;align-items:center;gap:.5em}' +
+  '#sch .pr input,#sch .pr select{height:2.1em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);padding:0 .5em}#sch .pr input{width:5em;text-align:center}' +
+  '#sch .hr{position:relative;display:flex;margin-left:3.2em;margin-right:2.6em;height:1.4em;font-size:.85em;opacity:.75}#sch .hr span{position:absolute;transform:translateX(-50%)}' +
+  '#sch .dr{display:flex;align-items:center;gap:.5em;margin:.35em 0}#sch .dn{flex:0 0 2.7em;font-weight:600}#sch .dn.td{color:#7ec8ff}' +
+  '#sch .tl{position:relative;flex:1;height:2.5em;border-radius:7px;background:rgba(10,12,16,.65);border:1px solid rgba(255,255,255,.1);cursor:crosshair;touch-action:none;' +
+  'background-image:repeating-linear-gradient(90deg,transparent 0,transparent calc(12.5% - 1px),rgba(255,255,255,.08) calc(12.5% - 1px),rgba(255,255,255,.08) 12.5%)}' +
+  '#sch .bk{position:absolute;top:2px;bottom:2px;border-radius:5px;background:linear-gradient(180deg,var(--c),var(--c2));border:1px solid rgba(255,255,255,.55);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8em;overflow:hidden;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.6)}' +
+  '#sch .bk.sel{outline:2px solid #fff;z-index:2}#sch .bk.tmp{opacity:.6}' +
+  '#sch .nw{position:absolute;top:-2px;bottom:-2px;width:2px;background:#ff5a4a;z-index:3;pointer-events:none}' +
+  '#sch .cp{flex:0 0 auto;padding:.3em .55em}' +
+  '#sch .ed{display:flex;flex-wrap:wrap;align-items:center;gap:.6em;margin:.9em 0 0;padding:.7em 1em;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(110,193,255,.4)}#sch .ed input{height:2.1em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);padding:0 .5em}' +
+  '#sch .ft{display:flex;flex-wrap:wrap;align-items:center;gap:.7em;margin-top:1em}#sch .ft .hint{flex:1 1 20em;opacity:.65;font-size:.9em}#sch .ft .sv{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}#sch .ft button[disabled]{opacity:.4;cursor:default}' +
   '.ed2{--u:calc(100cqw / 1672);position:absolute;z-index:20;box-sizing:border-box;padding:calc(var(--u)*3);border-radius:calc(var(--u)*8);' +
   'background:linear-gradient(180deg,rgba(40,46,56,.98),rgba(20,24,31,.98));border:1px solid rgba(110,193,255,.75);box-shadow:0 0 calc(var(--u)*10) rgba(33,150,243,.5);' +
   'display:flex;flex-direction:column;gap:calc(var(--u)*2);color:#eef2f6;animation:hppop .12s ease-out}' +
@@ -607,28 +642,17 @@ const OX=1220,OY=745;const st=e=>states[e]?states[e].state:undefined;const u=v=>
 return '<div class="g" style=""></div>' + P(1236,768,I('mdi:snowflake-melt',28,'#81d4fa')) + P(1282,757,'Odszranianie',F(13.5,400,'#dfe5ec')) + P(1282,776,st(E.defrost)||'–',F(18,600,'#fff'));
 
 }},
-{style:{"left": "31.220%", "top": "85.228%", "width": "19.617%", "height": "12.540%", "transform": "none"},keys:["n_start", "n_end", "hw_hour"],ent:null,tap:null,hist:false,fn:(states,entity,E,H)=>{
-const OX=522,OY=802;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';const hh=e=>{const v=n(e);return v===null?'--:--':String(((Math.round(v)%24)+24)%24).padStart(2,'0')+':00'};
-const inner='<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>'
- + '<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(71)+';border-top:1px solid rgba(255,255,255,.08)"></div>';
-return '<div class="g" style=""></div>' + P(537,816,'Harmonogramy',F(17.5,600,'#fff')) + inner
- + P(538,852,I('mdi:weather-night',28,'#29b6f6')) + P(579,845,'Obniżenie nocne (CO)',F(14.5,400,'#eef2f6')) + P(580,862,hh(E.n_start)+' &nbsp;–&nbsp; '+hh(E.n_end),F(14.5,400,'#eef2f6'))
- + P(538,895,I('mdi:water-outline',28,'#29b6f6')) + P(579,887,'Poranne podgrzanie CWU',F(14.5,400,'#eef2f6'))
- + P(580,905,hh(E.hw_hour)+' &nbsp;–&nbsp; '+(n(E.hw_hour)===null?'--:--':String((Math.round(n(E.hw_hour))+1)%24).padStart(2,'0')+':00'),F(14.5,400,'#eef2f6'));
-
-}},
-{style:{"left": "47.667%", "top": "89.586%", "width": "2.273%", "height": "2.125%", "transform": "none"},keys:["sch_n"],ent:"sch_n",tap:{"a": "toggle", "k": "sch_n"},hist:false,fn:(states,entity,E,H)=>{
-const u=v=>'calc(var(--u)*'+v+')';
-const on=entity&&entity.state==='on';
-return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
- + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
-
-}},
-{style:{"left": "47.667%", "top": "94.155%", "width": "2.273%", "height": "2.125%", "transform": "none"},keys:["sch_hw"],ent:"sch_hw",tap:{"a": "toggle", "k": "sch_hw"},hist:false,fn:(states,entity,E,H)=>{
-const u=v=>'calc(var(--u)*'+v+')';
-const on=entity&&entity.state==='on';
-return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
- + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
+{style:{"left": "31.220%", "top": "85.228%", "width": "19.617%", "height": "12.540%", "transform": "none"},keys:[],ent:null,tap:{"a": "schscroll"},hist:false,fn:(states,entity,E,H)=>{
+const OX=522,OY=802;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');
+const row=(y,n,en,sc)=>{const on=st(en)==='on', w=st(sc)==='on'; const c=!on?'#7d8894':(w?'#ffb300':'#43d343'); const t=!on?'wył.':(w?'w oknie':'poza oknem');
+ return P(540,y,'<span style="display:block;width:'+u(9)+';height:'+u(9)+';border-radius:50%;background:'+c+'"></span>') + P(558,y,n,F(14,400,'#eef2f6')) + R(840,y,t,F(14,500,c));};
+return '<div class="g" style=""></div>' + P(537,816,'Harmonogram',F(17.5,600,'#fff')) + R(840,817,'szczegóły niżej ↓',F(12,400,'#9fb0c0'))
+ + '<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(29)+';border-top:1px solid rgba(255,255,255,.1)"></div>'
+ + row(848,'Obniżenie CO','input_boolean.hp_plan_noc','schedule.hp_plan_obnizenie_co')
+ + row(863,'Tryb CWU','input_boolean.hp_plan_cwu','schedule.hp_plan_tryb_cwu')
+ + row(878,'Cyrkulacja CWU','input_boolean.hp_plan_cyrk','schedule.hp_plan_cyrkulacja_cwu')
+ + row(893,'Grzałka','input_boolean.hp_plan_grz','schedule.hp_plan_grzalka')
+ + row(908,'Podgrzanie CWU','input_boolean.hp_plan_boost','schedule.hp_plan_podgrzanie_cwu');
 
 }},
 {style:{"left": "51.495%", "top": "85.228%", "width": "14.055%", "height": "12.540%", "transform": "none"},keys:["hwc_run", "hwc_still"],ent:null,tap:null,hist:false,fn:(states,entity,E,H)=>{
@@ -645,21 +669,6 @@ const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(s
 const on=!((n(E.hwc_run)||0)<=1&&(n(E.hwc_still)||0)>=60);
 return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
  + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
-
-}},
-{style:{"left": "34.330%", "top": "90.542%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "n_start", "l": "Obni\u017cenie nocne \u2013 start (godz.)", "r": [556, 836, 70, 76], "s": "Start (godz.)"},hist:false,fn:(states,entity,E,H)=>{
-
-return '';
-
-}},
-{style:{"left": "37.799%", "top": "90.542%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "n_end", "l": "Obni\u017cenie nocne \u2013 koniec (godz.)", "r": [632, 836, 70, 76], "s": "Koniec (godz.)"},hist:false,fn:(states,entity,E,H)=>{
-
-return '';
-
-}},
-{style:{"left": "34.330%", "top": "95.112%", "width": "3.110%", "height": "2.125%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hw_hour", "l": "Podgrzanie CWU \u2013 godzina", "r": [556, 860, 70, 76], "s": "Godzina"},hist:false,fn:(states,entity,E,H)=>{
-
-return '';
 
 }},
 {style:{"left": "52.512%", "top": "88.629%", "width": "9.091%", "height": "3.826%", "transform": "none"},keys:[],ent:null,tap:{"a": "num", "k": "hwc_run", "l": "Cyrkulacja CWU \u2013 czas pracy", "r": [870, 830, 130, 60], "s": "Czas pracy (min)"},hist:false,fn:(states,entity,E,H)=>{
@@ -759,7 +768,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       '#c{position:relative;container-type:inline-size;width:100%;line-height:1.15;color:#eef2f6;font-family:' + FONT + '}' +
       '#c>img{display:block;width:100%;height:auto;user-select:none;pointer-events:none}' +
       '.el{position:absolute;--u:calc(100cqw / 1672)}.el.t{cursor:pointer}' + EXTRA.replace(':host', '.el') + POP_CSS +
-      '</style><ha-card><div id="c"><img alt="" src="' + img + '"></div></ha-card>';
+      '</style><ha-card><div id="c"><img alt="" src="' + img + '"></div><div id="sch"></div></ha-card>';
     const c = root.getElementById('c');
     this._nodes = ELS.map((el) => {
       const d = document.createElement('div');
@@ -775,6 +784,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     });
     c.addEventListener('click', () => this._close());
     this._c = c;
+    this._sch = this._sch || { lane: 'noc', data: {}, draft: {}, dirty: {}, sel: null, loaded: false, sig: '' };
+    this._schEl = root.getElementById('sch');
+    this._schBind();
     this._pend = [];
     this._built = true;
   }
@@ -795,6 +807,229 @@ class HaKartaPompaCiepla extends HTMLElement {
     });
     this._checkPend();
     if (this._pop && this._pop._upd) this._pop._upd();
+    this._schTick();
+  }
+
+
+  // ====================== HARMONOGRAM (tydzien) ======================
+  _schLanes() {
+    return [
+      { k: 'noc', n: 'Obniżenie CO', sch: 'schedule.hp_plan_obnizenie_co', en: 'input_boolean.hp_plan_noc', t: 'HP plan obnizenie CO', ic: 'mdi:weather-night', c: '#3f7cff', c2: '#2a56c9',
+        d: 'W oknie przesuwa krzywą grzewczą, poza oknem wraca do wartości dziennej.',
+        p: [{ e: 'input_number.hp_noc_przesuniecie', l: 'Przesunięcie w oknie', u: '°C', def: -2 }, { e: 'input_number.hp_dzien_przesuniecie', l: 'Przesunięcie poza oknem', u: '°C', def: 0 }] },
+      { k: 'cwu', n: 'Tryb CWU', sch: 'schedule.hp_plan_tryb_cwu', en: 'input_boolean.hp_plan_cwu', t: 'HP plan tryb CWU', ic: 'mdi:water-boiler', c: '#1fa5f5', c2: '#0f74b8',
+        d: 'W oknie ustawia wybrany tryb CWU, poza oknem drugi.',
+        p: [{ e: 'input_select.hp_cwu_tryb_w_oknie', l: 'Tryb w oknie', def: 'Luksus' }, { e: 'input_select.hp_cwu_tryb_poza', l: 'Tryb poza oknem', def: 'Normalny' }] },
+      { k: 'cyrk', n: 'Cyrkulacja CWU', sch: 'schedule.hp_plan_cyrkulacja_cwu', en: 'input_boolean.hp_plan_cyrk', t: 'HP plan cyrkulacja CWU', ic: 'mdi:autorenew', c: '#43c25a', c2: '#2a8a3c',
+        d: 'W oknie cyrkulacja pracuje wg czasów poniżej. Poza oknem: praca 1 min / postój 60 min (sterownik nie ma pełnego wyłączenia).',
+        p: [{ e: 'input_number.hp_cyrk_praca', l: 'Praca w oknie', u: 'min', def: 60 }, { e: 'input_number.hp_cyrk_postoj', l: 'Postój w oknie', u: 'min', def: 0 }] },
+      { k: 'grz', n: 'Grzałka', sch: 'schedule.hp_plan_grzalka', en: 'input_boolean.hp_plan_grz', t: 'HP plan grzalka', ic: 'mdi:flash', c: '#ffb300', c2: '#c27d00',
+        d: 'Grzałka elektryczna jest dozwolona tylko w oknach.', p: [] },
+      { k: 'boost', n: 'Podgrzanie CWU', sch: 'schedule.hp_plan_podgrzanie_cwu', en: 'input_boolean.hp_plan_boost', t: 'HP plan podgrzanie CWU', ic: 'mdi:water-thermometer', c: '#ff5a3c', c2: '#b8331b',
+        d: 'Na początku każdego okna uruchamia jednorazowe podgrzanie CWU.', p: [] },
+    ];
+  }
+  _schDays() { return ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']; }
+  _schMin(t) { const m = /^(\d+):(\d+)/.exec(t || ''); return m ? Number(m[1]) * 60 + Number(m[2]) : 0; }
+  _schFmt(m, sec) { m = Math.max(0, Math.min(1440, Math.round(m))); const h = Math.floor(m / 60), mm = m % 60; return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + (sec ? ':00' : ''); }
+  _schNorm(arr) {
+    const a = (arr || []).map((b) => ({ f: Math.max(0, Math.min(1440, b.f)), t: Math.max(0, Math.min(1440, b.t)) })).filter((b) => b.t > b.f).sort((x, y) => x.f - y.f);
+    const out = [];
+    a.forEach((b) => { const l = out[out.length - 1]; if (l && b.f <= l.t) l.t = Math.max(l.t, b.t); else out.push({ f: b.f, t: b.t }); });
+    return out;
+  }
+  _schFromItem(item) {
+    const o = {};
+    this._schDays().forEach((d) => { o[d] = this._schNorm(((item && item[d]) || []).map((b) => ({ f: this._schMin(b.from), t: this._schMin(b.to) || (b.to && /^24/.test(b.to) ? 1440 : 0) }))); });
+    return o;
+  }
+  _schDraft(lane) {
+    const S = this._sch;
+    if (!S.draft[lane.k]) S.draft[lane.k] = JSON.parse(JSON.stringify(this._schFromItem(S.data[lane.k])));
+    return S.draft[lane.k];
+  }
+  async _schLoad() {
+    const S = this._sch;
+    if (!this._hass || !this._hass.callWS) return;
+    try {
+      const list = await this._hass.callWS({ type: 'schedule/list' });
+      const by = {}; (list || []).forEach((i) => { by[i.id] = i; });
+      this._schLanes().forEach((l) => {
+        const id = l.sch.split('.')[1];
+        if (by[id]) { S.data[l.k] = by[id]; if (!S.dirty[l.k]) delete S.draft[l.k]; } else delete S.data[l.k];
+      });
+      S.loaded = true; S.err = '';
+    } catch (e) { S.loaded = true; S.err = 'Brak uprawnień do odczytu harmonogramów (potrzebne konto administratora).'; }
+    this._schRender(true);
+  }
+  _schTick() {
+    const S = this._sch;
+    if (!S || !this._schEl || !this._hass) return;
+    if (!S.loaded && !S.loading) { S.loading = true; this._schLoad().then(() => { S.loading = false; S.t = Date.now(); }); return; }
+    if (S.loaded && Date.now() - (S.t || 0) > 300000 && !S.loading) { S.loading = true; this._schLoad().then(() => { S.loading = false; S.t = Date.now(); }); }
+    const st = this._hass.states, E = this._E;
+    const ids = []; this._schLanes().forEach((l) => { ids.push(l.sch, l.en); l.p.forEach((q) => ids.push(q.e)); });
+    ids.push(E.sch_n, E.sch_hw);
+    const sig = ids.map((i) => (st[i] ? st[i].state + (st[i].attributes && st[i].attributes.next_event || '') : '?')).join('|');
+    const busy = S.drag || (this._schEl.shadowRoot ? false : false) || (this._root && this._root.activeElement && this._schEl.contains(this._root.activeElement));
+    if (sig !== S.sig && !busy) { S.sig = sig; this._schRender(true); }
+  }
+  _schRender() {
+    const S = this._sch, el = this._schEl, hass = this._hass;
+    if (!el || !hass) return;
+    const st = hass.states, E = this._E;
+    const lanes = this._schLanes(), lane = lanes.find((l) => l.k === S.lane) || lanes[0];
+    const DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'], days = this._schDays();
+    const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const missing = lanes.filter((l) => !st[l.sch]);
+    const espOn = (st[E.sch_n] && st[E.sch_n].state === 'on') || (st[E.sch_hw] && st[E.sch_hw].state === 'on');
+    let h = '<div class="sh"><div class="sht">Harmonogram<small>tydzień, wszystko robi Home Assistant</small></div>';
+    if (espOn) h += '<div class="warn">⚠ Na ESP jest włączony własny harmonogram („Harmonogram nocny / CWU aktywny”). Planem ma rządzić Home Assistant, więc wyłącz go, bo będą się gryźć. <button data-a="more" data-e="' + (st[E.sch_n] && st[E.sch_n].state === 'on' ? E.sch_n : E.sch_hw) + '">Pokaż przełącznik</button></div>';
+    h += '<div class="tabs">' + lanes.map((l) => {
+      const on = st[l.en] && st[l.en].state === 'on', inw = st[l.sch] && st[l.sch].state === 'on';
+      return '<button class="tab' + (l.k === lane.k ? ' on' : '') + '" data-a="lane" data-k="' + l.k + '"><span class="dot' + (on ? (inw ? ' w' : ' a') : '') + '"></span>' + esc(l.n) + (S.dirty[l.k] ? ' •' : '') + '</button>';
+    }).join('') + '</div>';
+    if (S.err) h += '<div class="info">' + esc(S.err) + '</div>';
+    if (missing.length) {
+      h += '<div class="info">Brakuje harmonogramów w Home Assistant (' + missing.length + ' z 5). ' +
+        (hass.user && hass.user.is_admin ? '<button data-a="mk">Utwórz harmonogramy</button>' : 'Poproś administratora o ich utworzenie.') +
+        ' Pomocnicze przełączniki i automatyzacje dodaje pakiet <code>packages/hydrolution_karta.yaml</code> z repozytorium.</div>';
+    }
+    if (!st[lane.sch]) { el.innerHTML = h + '</div>'; return; }
+    const on = st[lane.en] && st[lane.en].state === 'on', inw = st[lane.sch].state === 'on';
+    const ne = st[lane.sch].attributes && st[lane.sch].attributes.next_event;
+    let nxt = '';
+    if (ne) { const d = new Date(ne); if (!isNaN(d)) nxt = ' · najbliższa zmiana: ' + d.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }); }
+    h += '<div class="lh"><button class="tg' + (on ? ' on' : '') + '" data-a="en" title="Włącz / wyłącz tę funkcję"><i></i></button><b>' + (on ? 'Aktywne' : 'Wyłączone') + '</b>' +
+      '<span>Teraz: <b>' + (inw ? 'w oknie' : 'poza oknem') + '</b>' + esc(nxt) + '</span><span class="ds">' + esc(lane.d) + '</span></div>';
+    if (!st[lane.en]) h += '<div class="info">Brak przełącznika <code>' + lane.en + '</code>. Dodaj pakiet HA z repozytorium (packages/hydrolution_karta.yaml) i przeładuj konfigurację.</div>';
+    if (lane.p.length) {
+      h += '<div class="pr">' + lane.p.map((q) => {
+        const s = st[q.e]; if (!s) return '<label>' + esc(q.l) + ': <i>brak encji</i></label>';
+        if (q.e.startsWith('input_select')) return '<label>' + esc(q.l) + '<select data-a="par" data-e="' + q.e + '">' + (s.attributes.options || []).map((o) => '<option' + (o === s.state ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select></label>';
+        return '<label>' + esc(q.l) + '<input type="number" data-a="par" data-e="' + q.e + '" value="' + Number(s.state) + '" min="' + s.attributes.min + '" max="' + s.attributes.max + '" step="' + (s.attributes.step || 1) + '">' + (q.u || '') + '</label>';
+      }).join('') + '</div>';
+    }
+    const dr = this._schDraft(lane);
+    const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes(), wd = (now.getDay() + 6) % 7;
+    h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
+    days.forEach((d, i) => {
+      h += '<div class="dr"><span class="dn' + (i === wd ? ' td' : '') + '">' + DL[i] + '</span><div class="tl" data-day="' + d + '" style="--c:' + lane.c + ';--c2:' + lane.c2 + '">';
+      dr[d].forEach((b, j) => {
+        const sel = S.sel && S.sel.d === d && S.sel.i === j;
+        h += '<div class="bk' + (sel ? ' sel' : '') + '" data-a="bk" data-d="' + d + '" data-i="' + j + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '</div>';
+      });
+      if (i === wd) h += '<div class="nw" style="left:' + (nowMin / 14.4) + '%"></div>';
+      h += '</div><button class="cp" data-a="cp" data-d="' + d + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button></div>';
+    });
+    if (S.sel && dr[S.sel.d] && dr[S.sel.d][S.sel.i]) {
+      const b = dr[S.sel.d][S.sel.i];
+      h += '<div class="ed">Okno <b>' + DL[days.indexOf(S.sel.d)] + '</b>: od <input type="time" data-a="tf" value="' + this._schFmt(b.f) + '"> do <input type="time" data-a="tt" value="' + this._schFmt(b.t === 1440 ? 1440 : b.t) + '"> <button data-a="del">Usuń okno</button><span style="opacity:.6">(koniec 00:00 = do północy)</span></div>';
+    }
+    const dirty = !!S.dirty[lane.k];
+    h += '<div class="ft"><span class="hint">Przeciągnij po osi czasu, żeby dodać okno (krok 15 min). Kliknij okno, żeby je edytować. ⧉ kopiuje dzień na wszystkie dni. Czerwona kreska = teraz.</span>' +
+      '<button data-a="undo"' + (dirty ? '' : ' disabled') + '>Cofnij zmiany</button><button class="sv" data-a="save"' + (dirty ? '' : ' disabled') + '>Zapisz harmonogram</button></div></div>';
+    el.innerHTML = h;
+  }
+  _schBind() {
+    const el = this._schEl, S = () => this._sch;
+    if (!el || el._bound) return;
+    el._bound = true;
+    const lane = () => this._schLanes().find((l) => l.k === S().lane) || this._schLanes()[0];
+    const snap = (ev, tl) => { const r = tl.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); return Math.round(x * 96) * 15; };
+    const mark = () => { S().dirty[lane().k] = true; };
+    el.addEventListener('pointerdown', (ev) => {
+      const tl = ev.target.closest && ev.target.closest('.tl');
+      if (!tl || (ev.target.closest('.bk'))) return;
+      ev.preventDefault();
+      const d = tl.getAttribute('data-day'), a = snap(ev, tl);
+      S().drag = { tl, d, a, b: a, tmp: null };
+      try { tl.setPointerCapture(ev.pointerId); } catch (e) { /* brak */ }
+    });
+    el.addEventListener('pointermove', (ev) => {
+      const g = S().drag; if (!g) return;
+      g.b = snap(ev, g.tl);
+      if (!g.tmp) { g.tmp = document.createElement('div'); g.tmp.className = 'bk tmp'; g.tl.appendChild(g.tmp); }
+      const f = Math.min(g.a, g.b), t = Math.max(g.a, g.b);
+      g.tmp.style.left = (f / 14.4) + '%'; g.tmp.style.width = ((t - f) / 14.4) + '%';
+      g.tmp.textContent = this._schFmt(f) + '–' + this._schFmt(t);
+    });
+    const endDrag = () => {
+      const g = S().drag; if (!g) return;
+      S().drag = null;
+      let f = Math.min(g.a, g.b), t = Math.max(g.a, g.b);
+      if (t - f < 15) { f = Math.min(g.a, 1380); t = f + 60; }
+      const dr = this._schDraft(lane());
+      dr[g.d].push({ f, t });
+      dr[g.d] = this._schNorm(dr[g.d]);
+      S().sel = { d: g.d, i: dr[g.d].findIndex((b) => b.f <= f && b.t >= t) };
+      mark(); this._schRender();
+    };
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', () => { const g = S().drag; if (g && g.tmp) g.tmp.remove(); S().drag = null; });
+    el.addEventListener('click', (ev) => {
+      const t = ev.target.closest && ev.target.closest('[data-a]'); if (!t) return;
+      const a = t.getAttribute('data-a'), hass = this._hass, l = lane(), dr = this._schDraft(l);
+      if (a === 'lane') { S().lane = t.getAttribute('data-k'); S().sel = null; this._schRender(); }
+      else if (a === 'more') this._more(t.getAttribute('data-e'));
+      else if (a === 'bk') { S().sel = { d: t.getAttribute('data-d'), i: Number(t.getAttribute('data-i')) }; this._schRender(); }
+      else if (a === 'cp') {
+        const src = JSON.parse(JSON.stringify(dr[t.getAttribute('data-d')]));
+        this._schDays().forEach((d) => { dr[d] = JSON.parse(JSON.stringify(src)); });
+        S().sel = null; mark(); this._schRender();
+      }
+      else if (a === 'del') { const s = S().sel; if (s) { dr[s.d].splice(s.i, 1); S().sel = null; mark(); this._schRender(); } }
+      else if (a === 'undo') { delete S().draft[l.k]; delete S().dirty[l.k]; S().sel = null; this._schRender(); }
+      else if (a === 'save') this._schSave(l);
+      else if (a === 'en') hass.callService('input_boolean', 'toggle', { entity_id: l.en });
+      else if (a === 'mk') this._schCreate();
+    });
+    el.addEventListener('change', (ev) => {
+      const t = ev.target, a = t.getAttribute && t.getAttribute('data-a'); if (!a) return;
+      const l = lane(), dr = this._schDraft(l), hass = this._hass;
+      if (a === 'par') {
+        const e = t.getAttribute('data-e');
+        if (e.startsWith('input_select')) hass.callService('input_select', 'select_option', { entity_id: e, option: t.value });
+        else { const v = parseFloat(String(t.value).replace(',', '.')); if (!isNaN(v)) hass.callService('input_number', 'set_value', { entity_id: e, value: v }); }
+      } else if ((a === 'tf' || a === 'tt') && S().sel) {
+        const s = S().sel, b = dr[s.d][s.i]; if (!b) return;
+        let m = this._schMin(t.value); if (a === 'tt' && m === 0) m = 1440;
+        if (a === 'tf') b.f = m; else b.t = m;
+        if (b.t <= b.f) { if (a === 'tf') b.f = Math.max(0, b.t - 15); else b.t = Math.min(1440, b.f + 15); }
+        dr[s.d] = this._schNorm(dr[s.d]);
+        S().sel = { d: s.d, i: Math.max(0, dr[s.d].findIndex((x) => x.f <= b.f && x.t >= b.t)) };
+        mark(); this._schRender();
+      }
+    });
+  }
+  async _schSave(l) {
+    const S = this._sch, dr = this._schDraft(l);
+    const body = { name: l.t, icon: l.ic };
+    this._schDays().forEach((d) => { body[d] = dr[d].map((b) => ({ from: this._schFmt(b.f, true), to: this._schFmt(b.t, true) })); });
+    try {
+      if (S.data[l.k]) await this._hass.callWS(Object.assign({ type: 'schedule/update', schedule_id: S.data[l.k].id }, body));
+      else await this._hass.callWS(Object.assign({ type: 'schedule/create' }, body));
+      delete S.dirty[l.k]; delete S.draft[l.k]; S.sel = null; S.err = '';
+      await this._schLoad();
+    } catch (e) { S.err = 'Nie udało się zapisać harmonogramu: ' + (e && (e.message || e.code) || e); this._schRender(); }
+  }
+  async _schCreate() {
+    const S = this._sch, hass = this._hass;
+    try {
+      for (const l of this._schLanes()) {
+        if (hass.states[l.sch]) continue;
+        const body = { type: 'schedule/create', name: l.t, icon: l.ic };
+        this._schDays().forEach((d) => { body[d] = []; });
+        await hass.callWS(body);
+        for (const q of l.p) {
+          const s = hass.states[q.e]; if (!s || q.def === undefined) continue;
+          if (q.e.startsWith('input_select')) hass.callService('input_select', 'select_option', { entity_id: q.e, option: q.def });
+          else hass.callService('input_number', 'set_value', { entity_id: q.e, value: q.def });
+        }
+      }
+      S.err = '';
+    } catch (e) { S.err = 'Nie udało się utworzyć harmonogramów: ' + (e && (e.message || e.code) || e); }
+    setTimeout(() => this._schLoad(), 1500);
   }
 
   // ---------- interakcja: okienka edycji ----------
@@ -968,6 +1203,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (t.a === 'sel') { this._sel(t, node); return; }
     if (t.a === 'sw') { this._sw(t, node); return; }
     if (t.a === 'hwc') { this._close(); this._hwc(node); return; }
+    if (t.a === 'schscroll') { this._close(); if (this._schEl && this._schEl.scrollIntoView) this._schEl.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
     this._close();
     if (t.a === 'more') {
       const ev = new Event('hass-more-info', { bubbles: true, composed: true });

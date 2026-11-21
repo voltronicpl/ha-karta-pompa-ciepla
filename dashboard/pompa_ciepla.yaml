@@ -1452,61 +1452,26 @@ views:
         height: 4.995%
         transform: none
     - type: custom:button-card
-      template: hp
+      template: hp_hit
       custom_fields:
         c: |-
           [[[
-          const OX=522,OY=802;const st=e=>states[e]?states[e].state:undefined;const n=e=>{const v=parseFloat(st(e));return isNaN(v)?null:v};const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const I=(i,s,c)=>'<ha-icon icon="'+i+'" style="display:block;color:'+(c||'#eef2f6')+';--mdc-icon-size:'+u(s)+';width:'+u(s)+';height:'+u(s)+'"></ha-icon>';const hh=e=>{const v=n(e);return v===null?'--:--':String(((Math.round(v)%24)+24)%24).padStart(2,'0')+':00'};
-          const inner='<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(28)+';bottom:'+u(6)+';border-radius:'+u(6)+';background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)"></div>'
-           + '<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(71)+';border-top:1px solid rgba(255,255,255,.08)"></div>';
-          return '<div class="g" style=""></div>' + P(537,816,'Harmonogramy',F(17.5,600,'#fff')) + inner
-           + P(538,852,I('mdi:weather-night',28,'#29b6f6')) + P(579,845,'Obniżenie nocne (CO)',F(14.5,400,'#eef2f6')) + P(580,862,hh('number.hydrolution_harmonogram_nocny_start_godz')+' &nbsp;–&nbsp; '+hh('number.hydrolution_harmonogram_nocny_koniec_godz'),F(14.5,400,'#eef2f6'))
-           + P(538,895,I('mdi:water-outline',28,'#29b6f6')) + P(579,887,'Poranne podgrzanie CWU',F(14.5,400,'#eef2f6'))
-           + P(580,905,hh('number.hydrolution_harmonogram_cwu_godzina_podgrzania')+' &nbsp;–&nbsp; '+(n('number.hydrolution_harmonogram_cwu_godzina_podgrzania')===null?'--:--':String((Math.round(n('number.hydrolution_harmonogram_cwu_godzina_podgrzania'))+1)%24).padStart(2,'0')+':00'),F(14.5,400,'#eef2f6'));
+          const OX=522,OY=802;const st=e=>states[e]?states[e].state:undefined;const u=v=>'calc(var(--u)*'+v+')';const F=(s,w,c)=>'font-size:'+u(s)+';font-weight:'+(w||400)+';color:'+(c||'#eef2f6')+';';const B=(x,y,h,c,t)=>'<div style="position:absolute;left:'+u(x-OX)+';top:'+u(y-OY)+';transform:'+t+';white-space:nowrap;'+(c||'')+'">'+h+'</div>';const P=(x,y,h,c)=>B(x,y,h,c,'translateY(-50%)');const R=(x,y,h,c)=>B(x,y,h,c,'translate(-100%,-50%)');
+          const row=(y,n,en,sc)=>{const on=st(en)==='on', w=st(sc)==='on'; const c=!on?'#7d8894':(w?'#ffb300':'#43d343'); const t=!on?'wył.':(w?'w oknie':'poza oknem');
+           return P(540,y,'<span style="display:block;width:'+u(9)+';height:'+u(9)+';border-radius:50%;background:'+c+'"></span>') + P(558,y,n,F(14,400,'#eef2f6')) + R(840,y,t,F(14,500,c));};
+          return '<div class="g" style=""></div>' + P(537,816,'Harmonogram',F(17.5,600,'#fff')) + R(840,817,'szczegóły niżej ↓',F(12,400,'#9fb0c0'))
+           + '<div style="position:absolute;left:'+u(10)+';right:'+u(8)+';top:'+u(29)+';border-top:1px solid rgba(255,255,255,.1)"></div>'
+           + row(848,'Obniżenie CO','input_boolean.hp_plan_noc','schedule.hp_plan_obnizenie_co')
+           + row(863,'Tryb CWU','input_boolean.hp_plan_cwu','schedule.hp_plan_tryb_cwu')
+           + row(878,'Cyrkulacja CWU','input_boolean.hp_plan_cyrk','schedule.hp_plan_cyrkulacja_cwu')
+           + row(893,'Grzałka','input_boolean.hp_plan_grz','schedule.hp_plan_grzalka')
+           + row(908,'Podgrzanie CWU','input_boolean.hp_plan_boost','schedule.hp_plan_podgrzanie_cwu');
           ]]]
       style:
         left: 31.220%
         top: 85.228%
         width: 19.617%
         height: 12.540%
-        transform: none
-    - type: custom:button-card
-      template: hp_hit
-      entity: switch.hydrolution_harmonogram_nocny_aktywny
-      tap_action:
-        action: toggle
-      custom_fields:
-        c: |-
-          [[[
-          const u=v=>'calc(var(--u)*'+v+')';
-          const on=entity&&entity.state==='on';
-          return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
-           + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
-          ]]]
-      style:
-        left: 47.667%
-        top: 89.586%
-        width: 2.273%
-        height: 2.125%
-        transform: none
-    - type: custom:button-card
-      template: hp_hit
-      entity: switch.hydrolution_harmonogram_cwu_aktywny
-      tap_action:
-        action: toggle
-      custom_fields:
-        c: |-
-          [[[
-          const u=v=>'calc(var(--u)*'+v+')';
-          const on=entity&&entity.state==='on';
-          return '<div style="position:absolute;inset:0;border-radius:999px;background:'+(on?'linear-gradient(180deg,#36a3ff,#1a7fe0)':'#4a525e')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(33,150,243,.6)':'none')+'"></div>'
-           + '<div style="position:absolute;top:'+u(2.5)+';'+(on?'right':'left')+':'+u(2.5)+';width:'+u(15)+';height:'+u(15)+';border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div>';
-          ]]]
-      style:
-        left: 47.667%
-        top: 94.155%
-        width: 2.273%
-        height: 2.125%
         transform: none
     - type: custom:button-card
       template: hp
@@ -1543,57 +1508,6 @@ views:
         left: 62.081%
         top: 89.586%
         width: 2.273%
-        height: 2.125%
-        transform: none
-    - type: custom:button-card
-      template: hp_hit
-      tap_action:
-        action: more-info
-        entity: number.hydrolution_harmonogram_nocny_start_godz
-      custom_fields:
-        c: |-
-          [[[
-
-          return '';
-          ]]]
-      style:
-        left: 34.330%
-        top: 90.542%
-        width: 3.110%
-        height: 2.125%
-        transform: none
-    - type: custom:button-card
-      template: hp_hit
-      tap_action:
-        action: more-info
-        entity: number.hydrolution_harmonogram_nocny_koniec_godz
-      custom_fields:
-        c: |-
-          [[[
-
-          return '';
-          ]]]
-      style:
-        left: 37.799%
-        top: 90.542%
-        width: 3.110%
-        height: 2.125%
-        transform: none
-    - type: custom:button-card
-      template: hp_hit
-      tap_action:
-        action: more-info
-        entity: number.hydrolution_harmonogram_cwu_godzina_podgrzania
-      custom_fields:
-        c: |-
-          [[[
-
-          return '';
-          ]]]
-      style:
-        left: 34.330%
-        top: 95.112%
-        width: 3.110%
         height: 2.125%
         transform: none
     - type: custom:button-card
