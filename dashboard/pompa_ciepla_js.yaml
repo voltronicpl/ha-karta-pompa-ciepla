@@ -1,0 +1,12 @@
+# Osobny dashboard (zakladka w lewym menu) z karta JS z HACS.
+# Ustawienia -> Dashboardy -> Dodaj dashboard -> "Nowy dashboard od zera",
+# tytul "Pompa ciepla", ikona mdi:heat-pump, "Pokaz w pasku bocznym" = wl.
+# Otworz go -> Edytuj -> ⋮ -> Edytor kodu (raw) -> wklej calosc ponizej.
+title: Pompa ciepła
+views:
+  - title: Pompa ciepła
+    path: pompa-ciepla
+    icon: mdi:heat-pump
+    type: panel
+    cards:
+      - type: custom:ha-karta-pompa-ciepla

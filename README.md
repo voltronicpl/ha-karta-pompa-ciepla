@@ -15,7 +15,8 @@ Podgląd jest wygenerowany z przykładowymi wartościami. Wykres trendów to w H
 | `packages/hydrolution_karta.yaml` | pakiet HA: moc grzewcza, moc elektryczna (szacunek), COP, energia dziś/miesiąc, czasy pracy dziś, starty dziś, tryb systemu, antylegionella, skrypty przycisków trybu |
 | `www/hydrolution/tlo.png` | tło 1672×941 |
 | `docs/wzor.png` | wzór, z którego robiona była karta |
-| `dist/ha-karta-pompa-ciepla.js` + `hacs.json` | karta JS dla HACS (`type: custom:ha-karta-pompa-ciepla`) |
+| `dist/ha-karta-pompa-ciepla.js` + `hacs.json` | karta JS dla HACS (`type: custom:ha-karta-pompa-ciepla`) i panel boczny (`ha-pompa-ciepla-panel`) |
+| `dashboard/pompa_ciepla_js.yaml` | osobny dashboard (zakładka w menu) z kartą JS |
 | `tools/` | generator: `python3 gen.py karta.yaml preview.html dist.js v1.x`, podgląd `node shot.js` / `node jsshot.js` |
 
 Kod ESP (v5.3) nie jest w tym repo.
@@ -37,6 +38,26 @@ Karta `custom:ha-karta-pompa-ciepla` to jeden plik JS. Nie potrzebuje button-car
    Klucze encji (`bt1`, `bt12`, `prio`, `pwr`…) są wypisane na początku pliku `dist/ha-karta-pompa-ciepla.js` (`DEFAULT_E`).
 
 Wykres trendów 24 h karta rysuje sama z historii HA i odświeża go co 5 minut.
+
+## Osobna zakładka w lewym menu HA
+
+**Sposób A, dashboard (najprościej):**
+1. **Ustawienia → Dashboardy → Dodaj dashboard → Nowy dashboard od zera.** Tytuł „Pompa ciepła”, ikona `mdi:heat-pump`, włącz **Pokaż w pasku bocznym**.
+2. Otwórz go i wejdź w **Edytuj → ⋮ → Edytor kodu (raw)**. Wklej `dashboard/pompa_ciepla_js.yaml` (widok typu Panel z kartą na całą szerokość).
+
+**Sposób B, panel bez edytora dashboardów (`panel_custom`):** dopisz do `configuration.yaml` i zrestartuj HA:
+```yaml
+panel_custom:
+  - name: ha-pompa-ciepla-panel
+    url_path: pompa-ciepla
+    sidebar_title: Pompa ciepła
+    sidebar_icon: mdi:heat-pump
+    module_url: /hacsfiles/ha-karta-pompa-ciepla/ha-karta-pompa-ciepla.js
+    # config:                     # opcjonalnie, to samo co w karcie
+    #   entities:
+    #     bt1: sensor.moja_temperatura_zewnetrzna
+```
+Panel ma pasek z tytułem i przyciskiem menu. Karta jest dopasowana do ekranu (szerokość i wysokość).
 
 ## Instalacja ręczna (YAML, button-card)
 

@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.3
+ * ha-karta-pompa-ciepla  v1.4
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,7 +9,7 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.3';
+const VERSION = 'v1.4';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -764,6 +764,33 @@ class HaKartaPompaCiepla extends HTMLElement {
 }
 
 if (!customElements.get('ha-karta-pompa-ciepla')) customElements.define('ha-karta-pompa-ciepla', HaKartaPompaCiepla);
+
+// Panel boczny (panel_custom): osobna zakladka w lewym menu HA, karta dopasowana do ekranu.
+class HaPompaCieplaPanel extends HTMLElement {
+  connectedCallback() {
+    if (this._root) return;
+    this._root = this.attachShadow({ mode: 'open' });
+    this._root.innerHTML = '<style>:host{display:block;min-height:100vh;background:#0e1013}' +
+      '.bar{display:flex;align-items:center;gap:8px;height:56px;padding:0 8px;color:#eef2f6;font:500 20px ' + FONT + ';background:#15181d;border-bottom:1px solid rgba(255,255,255,.08)}' +
+      '.wrap{box-sizing:border-box;padding:8px;margin:0 auto;width:100%;max-width:calc((100vh - 72px) * 1672 / 941)}' +
+      '</style><div class="bar"><ha-menu-button></ha-menu-button><span>Pompa ciepła</span></div><div class="wrap"></div>';
+    this._menu = this._root.querySelector('ha-menu-button');
+    this._card = document.createElement('ha-karta-pompa-ciepla');
+    this._card.setConfig((this.panel && this.panel.config) || {});
+    this._root.querySelector('.wrap').appendChild(this._card);
+    this._sync();
+  }
+  set hass(h) { this._hass = h; this._sync(); }
+  set narrow(n) { this._narrow = n; this._sync(); }
+  set panel(p) { this._panel = p; if (this._card) this._card.setConfig((p && p.config) || {}); this._sync(); }
+  get panel() { return this._panel; }
+  _sync() {
+    if (!this._card || !this._hass) return;
+    this._card.hass = this._hass;
+    if (this._menu) { this._menu.hass = this._hass; this._menu.narrow = this._narrow; }
+  }
+}
+if (!customElements.get('ha-pompa-ciepla-panel')) customElements.define('ha-pompa-ciepla-panel', HaPompaCieplaPanel);
 window.customCards = window.customCards || [];
 if (!window.customCards.find((c) => c.type === 'ha-karta-pompa-ciepla')) {
   window.customCards.push({ type: 'ha-karta-pompa-ciepla', name: 'Karta pompy ciepła (MHI Hydrolution)', description: 'Panel pompy ciepła na tle instalacji, encje ESPHome hydrolution v5.3', preview: false });
