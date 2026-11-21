@@ -22,6 +22,13 @@ Kod ESP (v5.3) nie jest w tym repo.
 ## Instalacja
 
 1. **HACS → Frontend**: zainstaluj `button-card`, `apexcharts-card`, `card-mod` i przeładuj przeglądarkę.
+   - HACS: https://hacs.xyz/docs/use/
+   - button-card: https://github.com/custom-cards/button-card
+     [![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=custom-cards&repository=button-card&category=plugin)
+   - apexcharts-card: https://github.com/RomRider/apexcharts-card
+     [![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=RomRider&repository=apexcharts-card&category=plugin)
+   - card-mod: https://github.com/thomasloven/lovelace-card-mod
+     [![HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=thomasloven&repository=lovelace-card-mod&category=plugin)
 2. Skopiuj `www/hydrolution/tlo.png` do `/config/www/hydrolution/tlo.png`.
 3. Skopiuj `packages/hydrolution_karta.yaml` do `/config/packages/`. W `configuration.yaml` dodaj (jeśli nie masz):
    ```yaml
