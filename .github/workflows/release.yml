@@ -1,0 +1,43 @@
+# Automatyczny release: commit na main o nazwie vX.Y -> tag + release vX.Y (HACS pokazuje numer wersji).
+# Reczne uruchomienie (Actions -> release -> Run workflow) dla starszego commita: podaj wersje i SHA.
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Wersja, np. v1.5"
+        required: true
+      sha:
+        description: "SHA commita"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tag i release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          MSG: ${{ github.event.head_commit.message }}
+          IN_TAG: ${{ inputs.tag }}
+          IN_SHA: ${{ inputs.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="$IN_TAG"; SHA="$IN_SHA"
+          else
+            TAG="$(printf '%s\n' "$MSG" | head -n1 | tr -d '[:space:]')"; SHA="$GITHUB_SHA"
+          fi
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+(\.[0-9]+)+$'; then
+            echo "Commit '$TAG' to nie numer wersji, pomijam."; exit 0
+          fi
+          if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
+            echo "Release $TAG juz istnieje, pomijam."; exit 0
+          fi
+          gh release create "$TAG" -R "$REPO" --target "$SHA" --title "$TAG" --generate-notes
