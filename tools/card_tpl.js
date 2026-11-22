@@ -89,6 +89,8 @@ const NAU_CSS = '#tb{display:flex;gap:.5em;padding-top:.8em;background:#0e1013}#
   '#nau .why{margin-top:.8em}#nau .wt{opacity:.8;margin-bottom:.3em}#nau .wr{display:flex;justify-content:space-between;gap:1em;padding:.35em .7em;border-radius:6px;background:rgba(255,255,255,.04);margin:.2em 0}#nau .wr b{white-space:nowrap;color:#7ee04a}' +
   '#nau .wn{opacity:.6;font-size:.88em;margin-top:.5em}' +
   '#nau input.cel{width:5em;height:2.1em;text-align:center;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;font-weight:700}#nau .lh button{padding:.35em .8em}' +
+  '#nau .wu{position:absolute;top:-2px;bottom:-2px;width:2px;background:#ffb300;z-index:3;pointer-events:none}#nau .wu span{position:absolute;left:4px;top:1px;font-size:.72em;color:#ffd27a;white-space:nowrap;text-shadow:0 1px 2px #000}' +
+  '#nau .wk label{display:flex;align-items:center;gap:.4em}#nau .wk select,#nau .wk input[type=time],#nau .wk input[type=number]{height:2em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;padding:0 .4em}#nau .wk input[type=number]{width:4em;text-align:center}' +
   '#nau .tl.ne{cursor:crosshair}#nau .mn{position:absolute;bottom:1px;height:3px;background:#ffd54f;border-radius:2px;pointer-events:none;z-index:1}#nau .bk.pr2{cursor:pointer}#nau .bk.pr2.sel{outline:2px solid #fff}#nau .tg[disabled]{opacity:.4}' +
   '#nau .tl.ro{cursor:default}#nau .lay{position:absolute;inset:0;border-radius:6px;pointer-events:none}#nau .bk.pr2{background:rgba(67,194,90,.25);border:2px solid #43d343}' +
   '#nau .nd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.5;font-size:.85em}' +
@@ -829,6 +831,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     const circ = (arr) => { if (!arr.length) return null; const a = arr.map((m) => m / 1440 * 2 * Math.PI); const x = a.reduce((s, v) => s + Math.cos(v), 0), y = a.reduce((s, v) => s + Math.sin(v), 0); let m = Math.atan2(y, x) / 2 / Math.PI * 1440; if (m < 0) m += 1440; return Math.round(m / 15) * 15; };
     return {
       blocks, ph: ph.map((r, wd) => r.map((v, k) => (cnt[wd][k] ? v / cnt[wd][k] : null))), ps: ps.map((r, wd) => r.map((v, k) => (cnt[wd][k] ? v / cnt[wd][k] : null))),
+      // pora wstawania: koniec wykrytego snu, osobno dni robocze (Pn-Pt) i weekend (So-Nd) wg dnia poranka
+      wakeWd: nights.map((b) => [new Date(t0 + b[1] * SL).getDay(), mins(b[1])]).filter((x) => x[0] >= 1 && x[0] <= 5 && x[1] >= 240 && x[1] <= 720).map((x) => x[1]),
+      wakeWe: nights.map((b) => [new Date(t0 + b[1] * SL).getDay(), mins(b[1])]).filter((x) => (x[0] === 0 || x[0] === 6) && x[1] >= 240 && x[1] <= 720).map((x) => x[1]),
       days: Math.floor((now - t0) / 864e5), pers, actN, noisy, defN, sleepFrom: circ(nights.map((b) => mins(b[0]))), sleepTo: circ(nights.map((b) => mins(b[1]))), nights: nights.length,
     };
   }
@@ -894,9 +899,30 @@ class HaKartaPompaCiepla extends HTMLElement {
     const N = this._nau;
     if (N.cargs && N.res) { try { N.res.curve = this._nauCurve(...N.cargs); } catch (e) { /* brak */ } this._nauRender(); } else this._nauLoad();
   }
+  _nauWake(Y) {
+    // pora wstawania: reczna (HH:MM) albo Auto (mediana konca snu z historii), w weekend domyslnie ok. 8:00
+    const N = this._nau, w = (N.src && N.src.wake) || {};
+    const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b.length ? Math.round(b[Math.floor(b.length / 2)] / 5) * 5 : null; };
+    const aWd = Y ? med(Y.wakeWd || []) : null, aWe = Y ? med(Y.wakeWe || []) : null;
+    const pick = (v, auto, def) => (v && /^\d{1,2}:\d{2}$/.test(v) ? { m: this._schMin(v), src: 'ręcznie' } : auto !== null ? { m: auto, src: 'auto z historii' } : { m: def, src: 'auto, brak historii: domyślnie' });
+    const pre = Math.max(0, Math.min(120, Number(w.pre !== undefined ? w.pre : 20)));
+    return { wd: pick(w.wd, aWd, 390), we: pick(w.we, aWe, 480), pre, on: w.on !== false, aWd, aWe, nWd: Y ? (Y.wakeWd || []).length : 0, nWe: Y ? (Y.wakeWe || []).length : 0 };
+  }
+  _nauBase(Y) {
+    // propozycja + okno cyrkulacji od (wstanie - X min) do wstania + 30 min
+    const out = (Y.blocks || []).map((d) => (d ? JSON.parse(JSON.stringify(d)) : null));
+    const W = this._nauWake(Y);
+    if (!W.on) return out;
+    for (let i = 0; i < 7; i++) {
+      const m = (i >= 5 ? W.we : W.wd).m;
+      const f = Math.max(0, m - W.pre), t = Math.min(1440, m + 30);
+      out[i] = this._schNorm((out[i] || []).concat([{ f, t }]));
+    }
+    return out;
+  }
   _nauEdit() {
     const N = this._nau;
-    if (!N.edit) N.edit = JSON.parse(JSON.stringify((N.res && N.res.cyrk && N.res.cyrk.blocks) || [null, null, null, null, null, null, null]));
+    if (!N.edit) N.edit = (N.res && N.res.cyrk) ? this._nauBase(N.res.cyrk) : [null, null, null, null, null, null, null];
     for (let k = 0; k < 7; k++) if (!N.edit[k]) N.edit[k] = [];
     return N.edit;
   }
@@ -957,7 +983,15 @@ class HaKartaPompaCiepla extends HTMLElement {
       '<span class="ds">Sen: ' + (Y.actN ? 'wykryty z ' + Y.nights + ' nocy' + (Y.sleepFrom !== null ? ', zwykle ok. ' + fmt(Y.sleepFrom) + '–' + fmt(Y.sleepTo) : '') + (Y.defN ? '; ' + Y.defN + ' nocy bez wyraźnego snu: przyjęte 23:00–6:00' : '') : 'brak encji aktywności, przyjęty 23:00–6:00') +
       (Y.noisy && Y.noisy.length ? '. Pominięte encje zmieniające się co noc: ' + Y.noisy.length : '') + '.</span></div>';
     const DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'], days = this._schDays();
-    const bl = N.edit || Y.blocks;
+    const W = this._nauWake(Y);
+    const bl = N.edit || this._nauBase(Y);
+    const wOpt = (k, lab, cur, auto) => '<label>' + lab + ' <select data-a="wk" data-k="' + k + '"><option value="auto"' + (cur ? '' : ' selected') + '>Auto</option><option value="man"' + (cur ? ' selected' : '') + '>Ręcznie</option></select>' +
+      (cur ? ' <input type="time" data-a="wt" data-k="' + k + '" value="' + esc(cur) + '">' : ' <b>' + fmt((k === 'wd' ? W.wd : W.we).m) + '</b>') + '</label>';
+    const ws = (N.src && N.src.wake) || {};
+    h += '<div class="lh wk"><b>Pora wstawania</b>' + wOpt('wd', 'Pn–Pt:', ws.wd, W.aWd) + wOpt('we', 'So–Nd:', ws.we, W.aWe) +
+      '<label>cyrkulacja <input type="number" min="0" max="120" step="5" data-a="wp" value="' + W.pre + '"> min przed</label>' +
+      '<label><input type="checkbox" data-a="won"' + (W.on ? ' checked' : '') + '> dodaj do propozycji</label>' +
+      '<span class="ds">Auto: Pn–Pt ' + (W.aWd !== null ? fmt(W.aWd) + ' (z ' + W.nWd + ' poranków)' : 'brak historii, przyjęte 6:30') + ', So–Nd ' + (W.aWe !== null ? fmt(W.aWe) + ' (z ' + W.nWe + ' poranków)' : 'brak historii, przyjęte 8:00') + '. Wstanie = koniec wykrytego snu (telefony + aktywność).' + (N.edit ? ' Masz ręczne poprawki okien: zmiana pory wstawania zadziała po „Przywróć propozycję”.' : '') + '</span></div>';
     const S = this._sch, main = S && S.data && S.data.cyrk ? this._schFromItem(S.data.cyrk) : null;
     const grad = (arr, rgb, mx) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(' + rgb + ',' + (v === null ? 0 : (v * mx).toFixed(2)) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
     h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
@@ -967,6 +1001,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (main) main[days[i]].forEach((b) => { h += '<div class="mn" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%"></div>'; });
       if (bl[i]) bl[i].forEach((b, j) => { const sel = N.sel && N.sel.i === i && N.sel.j === j; h += '<div class="bk pr2' + (sel ? ' sel' : '') + '" data-a="nbk" data-d="' + i + '" data-i="' + j + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + fmt(b.f) + '–' + fmt(b.t) + '</div>'; });
       else h += '<div class="nd">za mało danych (przeciągnij, żeby dodać)</div>';
+      if (W.on) { const wm = (i >= 5 ? W.we : W.wd).m; h += '<div class="wu" style="left:' + (wm / 14.4) + '%" title="wstajemy ' + fmt(wm) + '"><span>⏰ ' + fmt(wm) + '</span></div>'; }
       if (i === wd) h += '<div class="nw" style="left:' + (slot * 15 / 14.4 + (now.getMinutes() % 15) / 14.4) + '%"></div>';
       h += '</div><button class="cp" data-a="ncp" data-d="' + i + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button></div>';
     });
@@ -974,7 +1009,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       const b = bl[N.sel.i][N.sel.j];
       h += '<div class="ed">Okno <b>' + DL[N.sel.i] + '</b>: od <input type="time" data-a="ntf" value="' + fmt(b.f) + '"> do <input type="time" data-a="ntt" value="' + fmt(b.t) + '"> <button data-a="ndel">Usuń okno</button><span style="opacity:.6">(koniec 00:00 = do północy)</span></div>';
     }
-    h += '<div class="lg"><span><i style="background:rgba(67,194,90,.45)"></i>ktoś w domu (im mocniej, tym częściej)</span><span><i style="background:rgba(90,120,255,.6)"></i>sen</span><span><i class="pb"></i>okna do wysłania' + (N.edit ? ' (poprawione ręcznie)' : ' (propozycja)') + '</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span><span><i style="background:#ff5a4a;width:2px"></i>teraz</span></div>';
+    h += '<div class="lg"><span><i style="background:rgba(67,194,90,.45)"></i>ktoś w domu (im mocniej, tym częściej)</span><span><i style="background:rgba(90,120,255,.6)"></i>sen</span><span><i class="pb"></i>okna do wysłania' + (N.edit ? ' (poprawione ręcznie)' : ' (propozycja)') + '</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span><span><i style="background:#ff5a4a;width:2px"></i>teraz</span><span><i style="background:#ffb300;width:2px"></i>wstajemy</span></div>';
     h += '<div class="ft"><span class="hint">Przeciągnij po osi, żeby dodać okno, kliknij okno, żeby zmienić godziny albo usunąć, ⧉ kopiuje dzień. „Wyślij na główną” wpisze okna do harmonogramu Cyrkulacja CWU (zapisujesz tam „Zapisz harmonogram”).</span>' +
       (N.edit ? '<button data-a="nrst">Przywróć propozycję</button>' : '') + '<button class="sv" data-a="send">Wyślij na główną</button></div>';
     return h + '</div>';
@@ -985,7 +1020,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const S = this._sch, lane = this._schLanes().find((l) => l.k === 'cyrk');
     const dr = this._schDraft(lane);
     let n = 0;
-    const bl = N.edit || r.blocks;
+    const bl = N.edit || this._nauBase(r);
     this._schDays().forEach((d, i) => { if (bl[i]) { dr[d] = this._schNorm(JSON.parse(JSON.stringify(bl[i]))); n++; } });
     S.dirty.cyrk = true; S.lane = 'cyrk'; S.sel = null;
     S.note = { k: 'cyrk', t: 'Wpisano propozycję z zakładki Nauka (' + n + ' z 7 dni). Sprawdź i kliknij „Zapisz harmonogram”, albo „Cofnij zmiany”. Przełącznik Aktywne nie był ruszany.' };
@@ -1038,6 +1073,14 @@ class HaKartaPompaCiepla extends HTMLElement {
       el.addEventListener('pointercancel', () => { const g = N.drag; if (g && g.tmp) g.tmp.remove(); N.drag = null; });
       el.addEventListener('change', (ev) => {
         const t = ev.target, a = t.getAttribute && t.getAttribute('data-a');
+        if (a === 'wk' || a === 'wt' || a === 'wp' || a === 'won') {
+          const w = N.src.wake = Object.assign({}, N.src.wake || {}), k = t.getAttribute('data-k');
+          if (a === 'wk') { if (t.value === 'auto') delete w[k]; else w[k] = this._schFmt((k === 'wd' ? this._nauWake(N.res && N.res.cyrk).wd : this._nauWake(N.res && N.res.cyrk).we).m); }
+          else if (a === 'wt') { if (/^\d{1,2}:\d{2}/.test(t.value)) w[k] = t.value.slice(0, 5); }
+          else if (a === 'wp') { const v = parseInt(t.value, 10); if (!isNaN(v)) w.pre = Math.max(0, Math.min(120, v)); }
+          else if (a === 'won') w.on = !!t.checked;
+          this._nauSrcSave(); this._nauRender(); return;
+        }
         if (a === 'cel') { const v = parseFloat(String(t.value).replace(',', '.')); if (isFinite(v) && v >= 10 && v <= 30) N.src.cel = v; else delete N.src.cel; this._nauSrcSave(); this._nauRecalc(); return; }
         if ((a !== 'ntf' && a !== 'ntt') || !N.sel) return;
         const e = this._nauEdit(), b = e[N.sel.i] && e[N.sel.i][N.sel.j]; if (!b) return;

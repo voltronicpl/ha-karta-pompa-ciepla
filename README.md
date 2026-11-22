@@ -155,3 +155,7 @@ dopasuj_ekran: true  # false = stare zachowanie (karta na całą szerokość)
 3. Narzędzia deweloperskie → YAML → „Sprawdź konfigurację”, potem przeładuj: Przełączniki (input boolean), Encje szablonów, Automatyzacje. Restart nie jest potrzebny.
 4. Karta → zakładka **Nauka** → na dole „Źródła nauki” → „Czujnik salonu”: wpisz albo wybierz swój czujnik salonu (np. `sensor.czujnik_temperatury_salon_temperature`) → **Ustaw**. Karta sama szuka encji z „salon” w nazwie, więc zwykle jest już ustawiony.
 5. Suwak „Automatyzacja cyrkulacji” w Nauce włączasz sam, kiedy chcesz.
+
+## v1.17: pora wstawania
+
+W Nauce przy cyrkulacji jest „Pora wstawania”, osobno Pn–Pt i So–Nd: **Auto** (mediana końca wykrytego snu z historii telefonów i aktywności; bez historii 6:30 w tygodniu i 8:00 w weekend) albo **Ręcznie** (godzina). Cyrkulacja dostaje okno od „wstanie − X min” (domyślnie 20, do zmiany) do pół godziny po wstaniu. Na wykresie jest znacznik ⏰ z godziną. Ustawienia zapisują się w HA razem ze „Źródłami nauki”. Pakietu HA nie trzeba zmieniać.
