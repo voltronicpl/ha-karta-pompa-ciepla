@@ -84,6 +84,13 @@ const NAU_CSS = '#pk{margin:0;padding:.55em 1em;background:rgba(255,160,0,.16);b
   '#sch .au{display:inline-block;margin-left:.4em;padding:0 .45em;border-radius:999px;font-size:.78em;background:#7c4dff;color:#fff;font-weight:600}#sch .tl.lk{cursor:not-allowed}#sch .tl.lk .bk{cursor:default;background:linear-gradient(180deg,#8f6bff,#5a33c9);border-color:#b39dff}' +
   '#nau .ht{position:absolute;bottom:1px;height:4px;background:#ff5a4a;border-radius:2px;pointer-events:none;z-index:2}#nau .bk.cw{background:rgba(31,165,245,.28);border:2px solid #29b6f6;cursor:default}#nau .lg i.cb{border:2px solid #29b6f6;background:rgba(31,165,245,.28);box-sizing:border-box}' +
   '#nau .wk input.g12{width:14em;height:2em;text-align:left;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;padding:0 .5em}#nau .sk{opacity:.75;font-size:.88em}' +
+  '#nau .cm,#sch .cm{position:absolute;top:2px;bottom:2px;border-radius:5px;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;font-size:.74em;color:#fff;pointer-events:none;box-sizing:border-box}' +
+  '.cm.L{background:rgba(31,165,245,.55);border:1.5px solid #29b6f6;z-index:2}.cm.N{background:rgba(150,160,172,.18);border:1px solid rgba(150,160,172,.35);color:#c8d0da;z-index:1}.cm.E{background:rgba(124,77,255,.55);border:1.5px solid #b39dff;z-index:2}' +
+  '#sch .ms{position:absolute;left:0;right:0;bottom:-7px;height:5px;pointer-events:none}#sch .ms i{position:absolute;top:0;bottom:0}#sch .ms i.L{background:#29b6f6}#sch .ms i.N{background:rgba(150,160,172,.5)}#sch .ms i.E{background:#9e7bff}#sch .dr.cwm{margin-bottom:.55em}' +
+  '.lg i.L,.lgm i.L{background:rgba(31,165,245,.7)}.lg i.N,.lgm i.N{background:rgba(150,160,172,.4)}.lg i.E,.lgm i.E{background:rgba(124,77,255,.7)}' +
+  '#sch .lgm{display:flex;flex-wrap:wrap;gap:.3em 1.2em;margin:.5em 0 0 3.2em;opacity:.8;font-size:.9em}#sch .lgm i{display:inline-block;width:1.4em;height:.7em;border-radius:3px;margin-right:.4em;vertical-align:middle}' +
+  '.pp .pr2 .tg{position:relative;flex:0 0 auto;width:58px;height:30px;border-radius:999px;background:#4a525e;border:none;padding:0;cursor:pointer}.pp .pr2 .tg i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}.pp .pr2 .tg.on{background:linear-gradient(180deg,#36a3ff,#1a7fe0)}.pp .pr2 .tg.on i{left:31px}' +
+  '.pp .pn{opacity:.75;font-size:.85em;margin:.4em 0;max-width:22em;line-height:1.3}.pp .pr2{display:flex;align-items:center;justify-content:space-between;gap:1em;margin:.35em 0}' +
   '#tb{display:flex;gap:.5em;padding-top:.8em;background:#0e1013}#tb button{font:inherit;font-size:1.05em;color:#eef2f6;cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(62,70,82,.85);border-radius:8px 8px 0 0;padding:.5em 1.4em}' +
   '#tb button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
   '#nau{box-sizing:border-box;padding:12px;color:#eef2f6;font-family:' + FONT + ';font-size:13px;background:#0e1013}#nau[hidden],#sch[hidden]{display:none}' +
@@ -323,15 +330,18 @@ class HaKartaPompaCiepla extends HTMLElement {
     const dr = this._schDraft(lane);
     const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes(), wd = (now.getDay() + 6) % 7;
     h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
+    const MS = lane.k === 'cwu' ? this._cwuModes(days.map((d) => dr[d]), st[E.cwu_wait] ? Number(st[E.cwu_wait].state) : 30, this._schAuto(lane)) : null, NMS = MS ? this._cwuNames() : null;
     days.forEach((d, i) => {
-      h += '<div class="dr"><span class="dn' + (i === wd ? ' td' : '') + '">' + DL[i] + '</span><div class="tl' + (lk ? ' lk' : '') + '" data-day="' + d + '" style="--c:' + lane.c + ';--c2:' + lane.c2 + '">';
+      h += '<div class="dr' + (MS ? ' cwm' : '') + '"><span class="dn' + (i === wd ? ' td' : '') + '">' + DL[i] + '</span><div class="tl' + (lk ? ' lk' : '') + '" data-day="' + d + '" style="--c:' + lane.c + ';--c2:' + lane.c2 + '">';
       dr[d].forEach((b, j) => {
         const sel = S.sel && S.sel.d === d && S.sel.i === j;
         h += '<div class="bk' + (sel ? ' sel' : '') + '" data-a="bk" data-d="' + d + '" data-i="' + j + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '</div>';
       });
       if (i === wd) h += '<div class="nw" style="left:' + (nowMin / 14.4) + '%"></div>';
+      if (MS) h += '<div class="ms">' + MS[i].map((b) => '<i class="' + b.m + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%" title="' + esc(NMS[b.m]) + ' ' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '"></i>').join('') + '</div>';
       h += '</div>' + (lk ? '<span class="cp"></span>' : '<button class="cp" data-a="cp" data-d="' + d + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button>') + '</div>';
     });
+    if (MS) h += '<div class="lgm"><span>Pasek pod osią = tryb CWU:</span><span><i class="L"></i>' + esc(NMS.L) + ' (w oknie)</span>' + (this._schAuto(lane) ? '<span><i class="E"></i>Ekonomiczny (czeka na tanią)</span>' : '') + '<span><i class="N"></i>' + esc(NMS.N) + ' (poza oknem)</span></div>';
     if (lk) { el.innerHTML = h + '<div class="ft"><span class="hint">Automatyczny harmonogram z Nauki. Czerwona kreska = teraz.</span></div></div>'; return; }
     if (S.sel && dr[S.sel.d] && dr[S.sel.d][S.sel.i]) {
       const b = dr[S.sel.d][S.sel.i];
@@ -1307,6 +1317,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const now = new Date(), wd = (now.getDay() + 6) % 7, nm = now.getHours() * 60 + now.getMinutes();
     const S = this._sch, main = S && S.data && S.data.cwu ? this._schFromItem(S.data.cwu) : null;
     let mx = 0; if (R) R.use.forEach((d) => d.forEach((v) => { mx = Math.max(mx, v); }));
+    const cw = this._hass.states[this._E.cwu_wait], wait = cw ? Number(cw.state) : 30, NM = this._cwuNames(), MD = this._cwuModes(P.blocks, wait, true);
     const grad = (arr) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(255,152,0,' + (mx ? Math.min(0.85, v / mx * 0.85) : 0).toFixed(2) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
     let h = '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
     const wk0 = new Date(now); wk0.setHours(0, 0, 0, 0); wk0.setDate(wk0.getDate() - wd);
@@ -1320,15 +1331,34 @@ class HaKartaPompaCiepla extends HTMLElement {
         R.runs.forEach(([a, b]) => { if (b <= a0 || a >= a1) return; const f = Math.max(a, a0), t = Math.min(b, a1); h += '<div class="ht" style="left:' + ((f - a0) / 864e5 * 100) + '%;width:' + Math.max(0.3, (t - f) / 864e5 * 100) + '%"></div>'; });
       }
       if (main) main[days[i]].forEach((b) => { h += '<div class="mn" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%;bottom:6px"></div>'; });
-      P.blocks[i].forEach((b) => { h += '<div class="bk cw" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + fmt(b.f) + '–' + fmt(b.t) + '</div>'; });
+      MD[i].forEach((b) => { const w = (b.t - b.f) / 14.4; h += '<div class="cm ' + b.m + '" style="left:' + (b.f / 14.4) + '%;width:' + w + '%" title="' + esc(NM[b.m]) + ' ' + fmt(b.f) + '–' + fmt(b.t) + '">' + (w >= 9 ? esc(NM[b.m]) + ' ' + fmt(b.f) + '–' + fmt(b.t) : w >= 5 ? fmt(b.f) + '–' + fmt(b.t) : '') + '</div>'; });
       if (i === wd) h += '<div class="nw" style="left:' + (nm / 14.4) + '%"></div>';
       h += '</div><span class="cp"></span></div>';
     });
     const skip = P.segs.filter((s) => !s.inc);
-    h += '<div class="lg"><span><i style="background:rgba(67,194,90,.35)"></i>tania strefa G12</span><span><i style="background:rgba(255,152,0,.7)"></i>zużycie ciepłej wody (im mocniej, tym więcej)</span><span><i class="cb"></i>grzanie na ' + esc((this._hass.states['input_select.hp_cwu_tryb_w_oknie'] || {}).state || 'Luksus') + ' (propozycja)</span><span><i style="background:#ff5a4a;height:.3em"></i>grzało CWU (ostatni tydzień)</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span></div>';
+    h += '<div class="lg"><span><i style="background:rgba(67,194,90,.35)"></i>tania strefa G12</span><span><i style="background:rgba(255,152,0,.7)"></i>zużycie ciepłej wody (im mocniej, tym więcej)</span><span><i class="L"></i>' + esc(NM.L) + ': grzanie w taniej strefie</span><span><i class="E"></i>' + esc(NM.E) + ': ' + Math.round(wait) + ' min przed tanią, czeka</span><span><i class="N"></i>' + esc(NM.N) + ': droga strefa, dogrzewa tylko poniżej progu</span><span><i style="background:#ff5a4a;height:.3em"></i>grzało CWU (ostatni tydzień)</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span></div>';
     if (skip.length) h += '<div class="wn sk">Pominięte tanie strefy (po nich do następnej taniej zużycie poniżej ' + P.prog + ' °C): ' + skip.map((s) => { const q = s.a % (7 * 96); return DL[Math.floor(q / 96)] + ' ' + fmt((q % 96) * 15) + ' (' + s.after.toFixed(1) + ' °C)'; }).join(', ') + '.</div>';
     h += '<div class="ft"><span class="hint">Propozycja = tanie strefy, po których zużywacie wodę. „Wyślij na główną” wpisze je do harmonogramu „Tryb CWU” (zapisujesz tam „Zapisz harmonogram”). Przy włączonej automatyzacji CWU harmonogram ustawia się sam.</span><button class="sv" data-a="sendcwu">Wyślij na główną</button></div>';
     return h;
+  }
+  // v1.26: tryb CWU w czasie: L = okno (tryb w oknie, np. Luksus), E = <= czekaj min przed oknem (Ekonomiczny), N = poza (np. Normalny)
+  _cwuModes(blocks, wait, withE) {
+    const n = 672, L = new Uint8Array(n);
+    for (let i = 0; i < 7; i++) (blocks[i] || []).forEach((b) => { for (let m = b.f; m < b.t; m += 15) L[i * 96 + Math.floor(m / 15)] = 1; });
+    const any = L.some((x) => x), md = new Array(n).fill('N'), ws = Math.ceil((Number(wait) || 0) / 15);
+    for (let k = 0; k < n; k++) if (L[k]) md[k] = 'L';
+    if (any && withE && ws > 0) for (let k = 0; k < n; k++) if (L[k] && !L[(k - 1 + n) % n]) for (let j = 1; j <= ws; j++) { const q = (k - j + n) % n; if (L[q]) break; md[q] = 'E'; }
+    const out = [];
+    for (let i = 0; i < 7; i++) {
+      const seg = [];
+      for (let k = 0; k < 96; k++) { const m = md[i * 96 + k], l = seg[seg.length - 1]; if (l && l.m === m) l.t += 15; else seg.push({ f: k * 15, t: k * 15 + 15, m }); }
+      out.push(seg);
+    }
+    return out;
+  }
+  _cwuNames() {
+    const st = this._hass.states, g = (id, d) => { const s = st[id]; return s && s.state && s.state !== 'unknown' && s.state !== 'unavailable' ? s.state : d; };
+    return { L: g('input_select.hp_cwu_tryb_w_oknie', 'Luksus'), N: g('input_select.hp_cwu_tryb_poza', 'Normalny'), E: 'Ekonomiczny' };
   }
   _nauSendCwu() {
     const N = this._nau, P = this._nauCwuPlan(N.res && N.res.cwu);
@@ -1642,9 +1672,43 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._waitFor(E.hwc_run, (st) => st[E.hwc_run] && Number(st[E.hwc_run].state) === tr && st[E.hwc_still] && Number(st[E.hwc_still].state) === ts, node);
   }
 
+  // v1.26: Priorytet pracy -> wybor Auto / Recznie (Tryb pracy 47137) + CO / CWU dozwolone w Recznym
+  _prio(node) {
+    const hass = this._hass, E = this._E;
+    if (!hass.states[E.opmode]) { this._more(E.prio); return; }
+    const p = this._popup(node, 'Priorytet / tryb pracy', (b) => {
+      b.innerHTML = '<div class="pn now"></div><div class="ls"></div><div class="man"></div><div class="pn">Auto: pompa sama decyduje, kiedy grzać CO, a kiedy CWU. Ręcznie: sam zezwalasz na CO i CWU. CO wł/wył działa tylko w trybie Ręczny / Tylko grzałka; „Produkcja CWU” na SMO40 może nie działać (rejestr 47387).</div><div class="ac"><button class="mi">Więcej…</button></div>';
+      b.querySelector('.mi').addEventListener('click', () => { this._close(); this._more(E.opmode); });
+      b.addEventListener('click', (ev) => {
+        const x = ev.target.closest && ev.target.closest('[data-o],[data-s]'); if (!x) return;
+        const st = this._hass.states;
+        if (x.hasAttribute('data-o')) {
+          const o = x.getAttribute('data-o'); if (st[E.opmode].state === o) return;
+          hass.callService('select', 'select_option', { entity_id: E.opmode, option: o });
+          this._waitFor(E.opmode, (s2) => s2[E.opmode] && s2[E.opmode].state === o, node);
+        } else {
+          const id = E[x.getAttribute('data-s')]; if (!st[id]) return;
+          const on = st[id].state === 'on';
+          hass.callService('switch', on ? 'turn_off' : 'turn_on', { entity_id: id });
+          this._waitFor(id, (s2) => s2[id] && s2[id].state === (on ? 'off' : 'on'), node);
+        }
+      });
+    });
+    p._upd = () => {
+      const st = this._hass.states, m = st[E.opmode] ? st[E.opmode].state : '', pr = st[E.prio] ? st[E.prio].state : '–';
+      p.querySelector('.now').textContent = 'Teraz pompa robi: ' + (pr === 'Ogrzewanie' ? 'CO' : pr === 'Wylaczona' ? 'postój' : pr) + ' · tryb pracy: ' + (m || '–');
+      p.querySelector('.ls').innerHTML = [['Auto', 'Auto'], ['Reczny', 'Ręcznie']].map(([o, l]) => '<button class="op' + (m === o ? ' on' : '') + '" data-o="' + o + '">' + l + '</button>').join('') +
+        (m === 'Tylko grzalka' ? '<button class="op on" data-o="Tylko grzalka">Tylko grzałka</button>' : '');
+      const man = m === 'Reczny' || m === 'Tylko grzalka';
+      const row = (k, l) => { const s = st[E[k]]; if (!s) return '<div class="pr2"><span>' + l + '</span><i>brak encji</i></div>'; return '<div class="pr2"><span>' + l + ': <b>' + (s.state === 'on' ? 'wł.' : 'wył.') + '</b></span><button class="tg' + (s.state === 'on' ? ' on' : '') + '" data-s="' + k + '"><i></i></button></div>'; };
+      p.querySelector('.man').innerHTML = man ? row('heat_ok', 'CO (ogrzewanie dozwolone)') + row('hw_prod', 'CWU (produkcja CWU)') : '';
+    };
+    p._upd();
+  }
   _tap(el, node) {
     const t = el.tap, E = this._E, hass = this._hass;
     if (!t || !hass) return;
+    if (t.a === 'prio') { this._prio(node); return; }
     if (t.a === 'num' && t.l) { this._num(t, node); return; }
     if (t.a === 'sel') { this._sel(t, node); return; }
     if (t.a === 'sw') { this._sw(t, node); return; }

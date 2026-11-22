@@ -78,6 +78,9 @@ E = dict(
     g12_do='sensor.hp_g12_do_taniej',
     cwu_wait='input_number.hp_cwu_czekaj_min',
     cpr_cwu='binary_sensor.hp_sprezarka_cwu',
+    opmode='select.hydrolution_tryb_pracy',
+    heat_ok='switch.hydrolution_ogrzewanie_dozwolone',
+    hw_prod='switch.hydrolution_produkcja_cwu',
 )
 
 # cyrkulacja CWU "wlaczona" = nie jest w stanie praca 1 min / postoj 60 min (brak rejestru wl/wyl w SMO40)
@@ -324,6 +327,7 @@ for i, (ic, col, lab, vjs, ent) in enumerate(ROWS):
         body += "\n + '<div style=\"position:absolute;left:%s;right:%s;top:%s;border-top:1px solid rgba(255,255,255,.08)\"></div>'" % ("'+u(10)+'", "'+u(10)+'", "'+u(%d)+'" % (y + 16 - 182))
 el(1325, 182, 335, 133, body + ";")
 ROWJS = {'hwmode': {'a': 'sel', 'k': 'hwmode', 'l': 'Tryb CWU'},
+         'prio': {'a': 'prio'},
          'add': {'a': 'sw', 'k': 'add', 'l': 'Grzałka elektryczna'},
          'leg': {'a': 'sw', 'k': 'leg', 'l': 'Antylegionella (okresowe podgrzewanie)'}}
 for i, r in enumerate(ROWS):

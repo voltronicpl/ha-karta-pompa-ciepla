@@ -217,3 +217,10 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - **Poprawka:** po kliknięciu suwaka w Nauce (Automatyzacja cyrkulacji / CWU) przycisk zostawał z focusem i karta wstrzymywała odświeżanie, więc suwak wyglądał na martwy, a drugi klik wyłączał z powrotem. Teraz odświeżanie wstrzymuje się tylko przy pisaniu w polu.
 - **Poprawka:** przy mniej niż 7 dniach historii zużycia wody (albo bez każdego dnia tygodnia) propozycja CWU = wszystkie tanie strefy (wcześniej przy pustej historii zostawała tylko 13–15, bez nocy). Liczenie dni historii obejmuje też bieżący dzień. Przy remisie wybierana jest dłuższa strefa (noc).
 - Pakiet HA bez zmian (1.24).
+
+## v1.26: tryby CWU na wykresie, Priorytet pracy = Auto / Ręcznie
+
+- **Nauka → CWU:** wykres w kolorach trybu CWU: niebieski = tryb „w oknie” (domyślnie **Luksus**, grzanie w taniej strefie), fioletowy = **Ekonomiczny** (ostatnie 30 min przed tanią, czeka), szary = tryb „poza oknem” (domyślnie **Normalny**, dogrzewa tylko poniżej progu). Godziny przy blokach, legenda.
+- **Główna → Harmonogram → Tryb CWU:** pod osią każdego dnia pasek z tymi samymi kolorami (Ekonomiczny tylko przy włączonej automatyzacji CWU, bo tylko ona go ustawia).
+- **Priorytet pracy** (lista statusów w panelu po prawej): kliknięcie otwiera wybór **Auto** / **Ręcznie** (`select.hydrolution_tryb_pracy`, rejestr 47137). Auto = pompa sama decyduje CO/CWU. Po wybraniu Ręcznie są dwa przełączniki: **CO** (`switch.hydrolution_ogrzewanie_dozwolone`, 47371) i **CWU** (`switch.hydrolution_produkcja_cwu`, 47387). CO wł/wył działa tylko w trybie Ręczny / Tylko grzałka; „Produkcja CWU” na SMO40 może nie działać. Sam „Priorytet pracy” (43086) to tylko odczyt tego, co pompa robi teraz.
+- Pakiet HA i ESP bez zmian (pakiet 1.24).
