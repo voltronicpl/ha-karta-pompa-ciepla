@@ -88,7 +88,9 @@ const NAU_CSS = '#tb{display:flex;gap:.5em;padding-top:.8em;background:#0e1013}#
   '#nau .pv em{font-style:normal;font-weight:700}#nau .pv em.u{color:#ff9e80}#nau .pv em.d{color:#7ee04a}' +
   '#nau .why{margin-top:.8em}#nau .wt{opacity:.8;margin-bottom:.3em}#nau .wr{display:flex;justify-content:space-between;gap:1em;padding:.35em .7em;border-radius:6px;background:rgba(255,255,255,.04);margin:.2em 0}#nau .wr b{white-space:nowrap;color:#7ee04a}' +
   '#nau .wn{opacity:.6;font-size:.88em;margin-top:.5em}' +
-  '#nau .tl.ro{cursor:default}#nau .lay{position:absolute;inset:0;border-radius:6px;pointer-events:none}#nau .bk.pr2{background:rgba(67,194,90,.25);border:2px solid #43d343;cursor:default}' +
+  '#nau input.cel{width:5em;height:2.1em;text-align:center;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;font-weight:700}#nau .lh button{padding:.35em .8em}' +
+  '#nau .tl.ne{cursor:crosshair}#nau .mn{position:absolute;bottom:1px;height:3px;background:#ffd54f;border-radius:2px;pointer-events:none;z-index:1}#nau .bk.pr2{cursor:pointer}#nau .bk.pr2.sel{outline:2px solid #fff}#nau .tg[disabled]{opacity:.4}' +
+  '#nau .tl.ro{cursor:default}#nau .lay{position:absolute;inset:0;border-radius:6px;pointer-events:none}#nau .bk.pr2{background:rgba(67,194,90,.25);border:2px solid #43d343}' +
   '#nau .nd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.5;font-size:.85em}' +
   '#nau .lg{display:flex;flex-wrap:wrap;gap:.4em 1.4em;margin:.6em 0 0 3.2em;opacity:.8;font-size:.9em}#nau .lg i{display:inline-block;width:1.4em;height:.8em;border-radius:3px;margin-right:.4em;vertical-align:middle}#nau .lg i.pb{border:2px solid #43d343;background:rgba(67,194,90,.25);box-sizing:border-box}' +
   '#nau .src{display:flex;flex-wrap:wrap;align-items:center;gap:.5em 1em;padding:.55em 0;border-bottom:1px solid rgba(255,255,255,.06)}#nau .sn{flex:0 0 15em;display:flex;flex-direction:column}#nau .sn small{opacity:.6}' +
@@ -446,8 +448,15 @@ class HaKartaPompaCiepla extends HTMLElement {
   //     dni_cyrkulacja: 28                  # max dni historii do cyrkulacji
   _nauCfg() { return (this._config && this._config.nauka) || {}; }
   _nauSrc(k) { const s = this._nau && this._nau.src; return s && Array.isArray(s[k]) ? s[k].filter((i) => this._hass.states[i]) : null; }
+  _nauSalon() {
+    const st = this._hass.states, own = this._nauSrc('salon');
+    if (own) return own.slice(0, 1);
+    if (this._nauCfg().salon && st[this._nauCfg().salon]) return [this._nauCfg().salon];
+    return Object.keys(st).filter((i) => { const a = st[i].attributes || {}; return i.startsWith('sensor.') && a.device_class === 'temperature' && /(salon|living)/i.test(i + ' ' + (a.friendly_name || '')) && !isNaN(parseFloat(st[i].state)); }).slice(0, 1);
+  }
   _nauIndoor() {
     const c = this._nauCfg(), st = this._hass.states;
+    if (this._nauSalon().length) return this._nauSalon();
     if (this._nauSrc('t_dom')) return this._nauSrc('t_dom');
     if (c.t_dom) return [].concat(c.t_dom).filter((i) => st[i]);
     const good = /(salon|pok[oó]j|pokoj|sypialn|kuchn|biuro|gabinet|parter|pi[eę]tr|pietr|wewn|indoor|living|bedroom|lazienk|łazienk|dzieci|korytarz|hol\b|w domu)/i;
@@ -477,9 +486,10 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!N || !this._hass || this._tabCur !== 'nau') return;
     if (!N.loading && (!N.res || Date.now() - N.at > 30 * 60000)) { this._nauLoad(); return; }
     // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
-    const st = this._hass.states, ids = this._nauPersons().concat([this._E.bt1]);
-    const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|');
-    if (sig !== N.sig) { N.sig = sig; this._nauRender(); }
+    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home']);
+    const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|') + '|' + Math.floor(Date.now() / 300000);
+    const busy = N.drag || (this._nauEl && this._nauEl.contains(this.shadowRoot && this.shadowRoot.activeElement));
+    if (sig !== N.sig && !busy) { N.sig = sig; this._nauRender(); }
   }
   async _nauStats(ids, startMs) {
     const out = {};
@@ -525,6 +535,53 @@ class HaKartaPompaCiepla extends HTMLElement {
     });
     return out;
   }
+  async _nauPrevFc(pastDays) {
+    // prognoza wydana dobe wczesniej (archiwum prognoz Open-Meteo "previous runs") do porownania z pomiarem BT1
+    const c = this._nauCfg(), hc = this._hass.config || {};
+    const lat = Number(c.lat !== undefined ? c.lat : hc.latitude), lon = Number(c.lon !== undefined ? c.lon : hc.longitude);
+    if (!isFinite(lat) || !isFinite(lon)) throw new Error('brak położenia domu w HA');
+    const r = await fetch('https://previous-runs-api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(2) + '&longitude=' + lon.toFixed(2) +
+      '&hourly=temperature_2m_previous_day1&timeformat=unixtime&timezone=auto&forecast_days=1&past_days=' + Math.max(1, Math.min(92, pastDays)));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json(), H = j.hourly || {}, out = {};
+    (H.time || []).forEach((t, i) => { const v = (H.temperature_2m_previous_day1 || [])[i]; if (v !== null && v !== undefined && isFinite(v)) out[t * 1000] = v; });
+    return out;
+  }
+  _nauFcHtml(C, P) {
+    if (!P) return '';
+    const now = Date.now();
+    const pairs = Object.keys(P).map(Number).filter((t) => t <= now && C.toutH[t] !== undefined).sort((a, b) => a - b).map((t) => [t, P[t], C.toutH[t]]);
+    let h = '<div class="sec"><div class="st2">Prognoza temperatury vs rzeczywistość<small> – prognoza Open-Meteo wydana dobę wcześniej na tle pomiaru pompy BT1</small></div>';
+    if (pairs.length < 24) return h + '<div class="info">Za mało godzin z pomiarem pompy i prognozą (' + pairs.length + ' h). Wróć za dzień.</div></div>';
+    const err = pairs.map((p) => p[1] - p[2]);
+    const mae = err.reduce((a, x) => a + Math.abs(x), 0) / err.length, bias = err.reduce((a, x) => a + x, 0) / err.length;
+    const mx = err.reduce((a, x) => (Math.abs(x) > Math.abs(a) ? x : a), 0);
+    const days = new Set(pairs.map((p) => new Date(p[0]).toDateString())).size;
+    const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1);
+    h += '<div class="kt"><div class="k"><span>Średni błąd prognozy</span><b>' + mae.toFixed(1) + ' °C</b><i>z ' + days + ' dni (' + pairs.length + ' h)</i></div>' +
+      '<div class="k"><span>Prognoza średnio</span><b>' + sg(bias) + ' °C</b><i>' + (Math.abs(bias) < 0.3 ? 'bez wyraźnego przechyłu' : bias > 0 ? 'za ciepła względem czujnika pompy' : 'za zimna względem czujnika pompy') + '</i></div>' +
+      '<div class="k"><span>Największa pomyłka</span><b>' + sg(mx) + ' °C</b><i>pojedyncza godzina</i></div></div>';
+    // wykres: ostatnie 7 dni
+    const t0 = now - 7 * 864e5, pv = pairs.filter((p) => p[0] >= t0);
+    const fc = Object.keys(P).map(Number).filter((t) => t >= t0 && t <= now).sort((a, b) => a - b).map((t) => [t, P[t]]);
+    const ms = pv.map((p) => [p[0], p[2]]);
+    const all = fc.map((p) => p[1]).concat(ms.map((p) => p[1]));
+    if (all.length > 1) {
+      const lo = Math.floor((Math.min(...all) - 1) / 5) * 5, hi = Math.ceil((Math.max(...all) + 1) / 5) * 5;
+      const X0 = 46, X1 = 590, Y0 = 26, Y1 = 150, sx = (t) => X0 + (t - t0) / (now - t0) * (X1 - X0), sy = (v) => Y1 - (v - lo) / ((hi - lo) || 1) * (Y1 - Y0);
+      let g = '';
+      for (let v = lo; v <= hi; v += 5) g += '<line x1="' + X0 + '" y1="' + sy(v) + '" x2="' + X1 + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + ' °C</text>';
+      const DL = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'], d = new Date(t0); d.setHours(0, 0, 0, 0);
+      for (d.setDate(d.getDate() + 1); d.getTime() <= now; d.setDate(d.getDate() + 1)) { const x = sx(d.getTime()); g += '<line x1="' + x + '" y1="' + Y0 + '" x2="' + x + '" y2="' + Y1 + '" stroke="rgba(255,255,255,.07)"/><text x="' + (x + 18) + '" y="' + (Y1 + 15) + '" text-anchor="middle">' + DL[d.getDay()] + '</text>'; }
+      const line = (pts, col, dash, w) => { let out = '', seg = [];
+        const flush = () => { if (seg.length > 1) out += '<polyline points="' + seg.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="5 4"' : '') + ' stroke-linejoin="round"/>'; seg = []; };
+        pts.forEach((p, k) => { if (k && p[0] - pts[k - 1][0] > 3 * 36e5) flush(); seg.push(sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)); }); flush(); return out; };
+      const leg = '<line x1="50" y1="10" x2="74" y2="10" stroke="#ffab1a" stroke-width="2.4"/><text x="80" y="14" fill="#e3e8ee">Rzeczywistość (pompa BT1)</text>' +
+        '<line x1="250" y1="10" x2="274" y2="10" stroke="#c38fff" stroke-width="1.8" stroke-dasharray="5 4"/><text x="280" y="14" fill="#e3e8ee">Prognoza z dnia wcześniej</text>';
+      h += '<svg viewBox="0 0 600 170" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + '</g>' + line(fc, '#c38fff', true, 1.8) + line(ms, '#ffab1a', false, 2.4) + '</svg>';
+    }
+    return h + '<div class="wn">Błąd = prognoza − pomiar. Czujnik BT1 wisi na ścianie domu, więc stały przechył może też wynikać z miejsca czujnika (słońce, ściana), nie tylko z prognozy.</div></div>';
+  }
   async _nauLoad() {
     const N = this._nau, hass = this._hass, E = this._E, c = this._nauCfg();
     N.loading = true; N.err = ''; this._nauRender();
@@ -534,10 +591,11 @@ class HaKartaPompaCiepla extends HTMLElement {
     try {
       const dk = Math.max(3, Math.min(92, Number(c.dni_krzywa) || 60));
       const tin = this._nauIndoor();
-      const stats = await this._nauStats([E.bt1].concat(tin), now - dk * 864e5);
+      const stats = await this._nauStats([E.t_out_hist, E.bt1].filter((i) => i && hass.states[i]).concat(tin), now - dk * 864e5);
       let W = {};
       try { W = await this._nauWeather(dk); } catch (e) { res.errs.push('Pogoda Open-Meteo niedostępna (' + (e && e.message || e) + '), liczę bez wiatru i słońca.'); }
       res.wx = W;
+      try { res.prev = await this._nauPrevFc(dk); } catch (e) { res.prev = null; res.errs.push('Archiwum prognoz Open-Meteo niedostępne (' + (e && e.message || e) + '), brak porównania prognoza/pomiar.'); }
       const pg = this._nauSrc('pogoda') || [].concat(c.pogoda || []).filter((i) => hass.states[i]);
       if (pg.length) {
         const ps = await this._nauStats(pg, now - dk * 864e5);
@@ -551,6 +609,7 @@ class HaKartaPompaCiepla extends HTMLElement {
           (ps[id] || []).forEach(([t, v]) => { const h = Math.floor(t / 36e5) * 36e5; if (h > now) return; W[h] = W[h] || { t: h }; W[h][k] = v * f; });
         });
       }
+      N.cargs = [stats, tin, W, now - dk * 864e5];
       res.curve = this._nauCurve(stats, tin, W, now - dk * 864e5);
     } catch (e) { res.errs.push('Krzywa: ' + (e && e.message || e)); }
     try {
@@ -582,8 +641,12 @@ class HaKartaPompaCiepla extends HTMLElement {
     // srednia godzinowa z czujnikow w domu
     const tinH = {};
     tin.forEach((id) => (stats[id] || []).forEach(([t, v]) => { const h = Math.floor(t / 36e5) * 36e5; (tinH[h] = tinH[h] || []).push(v); }));
+    // temp. zewn.: pomiar z pompy (BT1, wlasna historia sensor.hp_temperatura_zewnetrzna_bt1 + historia BT1),
+    // Open-Meteo tylko jako symulacja (godziny bez pomiaru i prognoza)
     const toutH = {};
     (stats[E.bt1] || []).forEach(([t, v]) => { toutH[Math.floor(t / 36e5) * 36e5] = v; });
+    (stats[E.t_out_hist] || []).forEach(([t, v]) => { toutH[Math.floor(t / 36e5) * 36e5] = v; });
+    const btNow = num('bt1'); if (btNow !== null) toutH[Math.floor(Date.now() / 36e5) * 36e5] = btNow;
     const outDays = new Set(Object.keys(toutH).filter((h) => h >= startMs).map((h) => new Date(Number(h)).toDateString()));
     Object.keys(W).forEach((h) => { if (h >= startMs && h <= Date.now()) outDays.add(new Date(Number(h)).toDateString()); });
     const S = [];
@@ -591,22 +654,26 @@ class HaKartaPompaCiepla extends HTMLElement {
       h = Number(h); if (h < startMs) return;
       const hr = new Date(h).getHours(); if (hr < 8 || hr > 21) return;    // noc pomijam (obnizenie nocne psuje obraz)
       const w = W[h] || {};
-      const to = toutH[h] !== undefined ? toutH[h] : w.temp;
+      const meas = toutH[h] !== undefined;
+      const to = meas ? toutH[h] : w.temp;
       if (to === undefined || to === null) return;
       const ti = tinH[h].reduce((a, x) => a + x, 0) / tinH[h].length;
-      S.push({ h, to, ti, sun: isFinite(w.sun) ? w.sun : null, wind: isFinite(w.wind) ? w.wind : null });
+      S.push({ h, to, ti, meas, sun: isFinite(w.sun) ? w.sun : null, wind: isFinite(w.wind) ? w.wind : null });
     });
     const dayCnt = {}; S.forEach((s) => { const d = new Date(s.h).toDateString(); dayCnt[d] = (dayCnt[d] || 0) + 1; });
     const days = Object.keys(dayCnt).filter((d) => dayCnt[d] >= 4).length;
     const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : null; };
+    const own = this._nau && this._nau.src && Number(this._nau.src.cel);
     let target = Number(c.cel);
-    let tsrc = 'ustawiony w karcie';
-    if (!isFinite(target) || !c.cel) { target = med(S.map((s) => s.ti)); tsrc = 'mediana temperatury w domu z historii'; }
+    let tsrc = 'ustawiony w konfiguracji karty';
+    if (own && isFinite(own)) { target = own; tsrc = 'ustawione przez Ciebie: „Chcę w domu”'; }
+    else if (!isFinite(target) || !c.cel) { target = med(S.map((s) => s.ti)); tsrc = 'mediana temperatury w domu z historii'; }
+    const devAll = S.length ? S.reduce((a, x) => a + x.ti, 0) / S.length - target : 0;
     const sunMean = (() => { const a = S.filter((s) => s.sun !== null); return a.length ? a.reduce((x, s) => x + s.sun, 0) / a.length : 100; })();
     const windMean = (() => { const a = S.filter((s) => s.wind !== null); return a.length ? a.reduce((x, s) => x + s.wind, 0) / a.length : 3; })();
     // regresja: odchylka w domu = b_k (punkt krzywej, wagi trojkatne) + cs*slonce/100 + cw*wiatr
     const phi = (to) => T.map((tk) => Math.max(0, 1 - Math.abs(Math.max(-30, Math.min(30, to)) - tk) / 10));
-    const n = 9, lam = [3, 3, 3, 3, 3, 3, 3, 30, 30], prior = [0, 0, 0, 0, 0, 0, 0, 0.3, -0.05];
+    const n = 9, lam = [6, 6, 6, 6, 6, 6, 6, 30, 30], prior = [devAll, devAll, devAll, devAll, devAll, devAll, devAll, 0.3, -0.05];
     const A = Array.from({ length: n }, () => new Array(n).fill(0)), bb = new Array(n).fill(0), wsum = new Array(7).fill(0), dsum = new Array(7).fill(0);
     S.forEach((s) => {
       const x = phi(s.to).concat([((s.sun !== null ? s.sun : sunMean) - sunMean) / 100, (s.wind !== null ? s.wind : windMean) - windMean]);
@@ -621,13 +688,19 @@ class HaKartaPompaCiepla extends HTMLElement {
     const rnd = (v) => Math.round(v / stp) * stp;
     const why = [];
     const delta = T.map((tk, k) => {
-      if (S.length < 24 || wsum[k] < 6 || tk >= 20) return { d: 0, nd: true };
+      if (S.length < 24 || tk >= 20) return { d: 0, nd: true };
+      if (wsum[k] < 12) {
+        // brak godzin przy tej temperaturze: przesuwam o srednia odchylke z calej historii (np. po zmianie „Chcę w domu”)
+        const g = gainAt(tk, P[k] + off), d = Math.max(-6, Math.min(6, rnd(-devAll * g)));
+        return { d, dev: devAll, g, nd: false, all: true, h: Math.round(wsum[k]) };
+      }
       const dev = beta[k], g = gainAt(tk, P[k] + off);
       const d = Math.max(-6, Math.min(6, rnd(-dev * g)));
       return { d, dev, g, nd: false, h: Math.round(wsum[k]) };
     });
     delta.forEach((x, k) => {
-      if (!x.nd && x.d) why.push({ t: 'Przy ' + T[k] + ' °C w domu było ' + (x.dev > 0 ? 'za ciepło' : 'za zimno') + ' o ' + Math.abs(x.dev).toFixed(1) + ' °C (' + x.h + ' h danych)', v: 'P' + (k + 1) + ' ' + (x.d > 0 ? '+' : '−') + Math.abs(x.d) + ' °C' });
+      if (!x.nd && x.d && x.all) why.push({ t: 'Przy ' + T[k] + ' °C brak godzin w historii, średnio w domu było ' + (x.dev > 0 ? 'cieplej' : 'zimniej') + ' od celu o ' + Math.abs(x.dev).toFixed(1) + ' °C', v: 'P' + (k + 1) + ' ' + (x.d > 0 ? '+' : '−') + Math.abs(x.d) + ' °C' });
+      else if (!x.nd && x.d) why.push({ t: 'Przy ' + T[k] + ' °C w domu było ' + (x.dev > 0 ? 'za ciepło' : 'za zimno') + ' o ' + Math.abs(x.dev).toFixed(1) + ' °C (' + x.h + ' h danych)', v: 'P' + (k + 1) + ' ' + (x.d > 0 ? '+' : '−') + Math.abs(x.d) + ' °C' });
     });
     // pogoda na najblizsze 12 h vs srednia z historii
     const now = Date.now(), h0 = Math.floor(now / 36e5) * 36e5;
@@ -650,7 +723,8 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (mx !== null) y = Math.min(mx, y);      // min. zasilania pompa i tak pilnuje sama, nie przycinam (zeby nie mylilo)
       return y;
     });
-    return { T, cur: P.map((v) => v + off), prop, delta, ws, why, target, tsrc, days, outDays: outDays.size, samples: S.length, tin, cs, cw, fc, sunMean, windMean };
+    const measDays = new Set(Object.keys(toutH).filter((h) => h >= startMs).map((h) => new Date(Number(h)).toDateString())).size;
+    return { T, cur: P.map((v) => v + off), prop, delta, ws, why, target, tsrc, days, outDays: outDays.size, measDays, samples: S.length, sMeas: S.filter((x) => x.meas).length, tin, cs, cw, fc, sunMean, windMean, toutH, ownHist: (stats[E.t_out_hist] || []).length };
   }
   async _nauCyrkLoad(startMs) {
     const hass = this._hass, now = Date.now();
@@ -758,7 +832,9 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
   _nauSrcDefs() {
     return [
-      { k: 't_dom', n: 'Temperatura w domu', d: 'do krzywej', cur: () => this._nauIndoor(),
+      { k: 'salon', n: 'Czujnik salonu (temp. w domu)', d: 'jedna encja, z niej krzywa i „Chcę w domu”', one: true, cur: () => this._nauSalon(),
+        ok: (i, a) => i.startsWith('sensor.') && a.device_class === 'temperature' },
+      { k: 't_dom', n: 'Temperatura w domu (inne)', d: 'do krzywej, gdy nie ma czujnika salonu', cur: () => (this._nauSrc('t_dom') || []).length ? this._nauSrc('t_dom') : (this._nauCfg().t_dom ? [].concat(this._nauCfg().t_dom) : []),
         ok: (i, a) => i.startsWith('sensor.') && a.device_class === 'temperature' },
       { k: 'osoby', n: 'Obecność (osoby / telefony)', d: 'do cyrkulacji', cur: () => this._nauPersons(),
         ok: (i) => /^(person|device_tracker)\./.test(i) },
@@ -773,7 +849,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (op === 'auto') delete N.src[k];
     else {
       const cur = Array.isArray(N.src[k]) ? N.src[k].slice() : def.cur().slice();
-      if (op === 'add') { if (!id || !this._hass.states[id] || cur.includes(id)) { N.srcMsg = id ? 'Nie ma takiej encji albo już jest na liście: ' + id : ''; this._nauRender(); return; } cur.push(id); }
+      if (op === 'add') { if (!id || !this._hass.states[id] || cur.includes(id)) { N.srcMsg = id ? 'Nie ma takiej encji albo już jest na liście: ' + id : ''; this._nauRender(); return; } if (def.one) cur.length = 0; cur.push(id); }
       if (op === 'del') { const j = cur.indexOf(id); if (j >= 0) cur.splice(j, 1); }
       N.src[k] = cur;
     }
@@ -795,8 +871,96 @@ class HaKartaPompaCiepla extends HTMLElement {
         (cur.length ? cur.map((i) => '<span class="chip" title="' + esc(i) + '">' + nm(i) + '<button data-a="sdel" data-k="' + d.k + '" data-e="' + esc(i) + '" title="Usuń z listy nauki">×</button></span>').join('') : '<i style="opacity:.6">brak</i>') +
         '</div><div class="sa"><input list="dl_' + d.k + '" data-k="' + d.k + '" placeholder="dodaj encję (wpisz lub wybierz)…"><datalist id="dl_' + d.k + '">' +
         cand.slice(0, 400).map((i) => '<option value="' + esc(i) + '">' + nm(i) + '</option>').join('') + '</datalist>' +
-        '<button data-a="sadd" data-k="' + d.k + '">Dodaj</button>' + (own ? '<button data-a="sauto" data-k="' + d.k + '" title="Wróć do wykrywania automatycznego">Auto</button>' : '') + '</div></div>';
+        '<button data-a="sadd" data-k="' + d.k + '">' + (d.one ? 'Ustaw' : 'Dodaj') + '</button>' + (own ? '<button data-a="sauto" data-k="' + d.k + '" title="Wróć do wykrywania automatycznego">Auto</button>' : '') + '</div></div>';
     });
+    return h + '</div>';
+  }
+  _nauRecalc() {
+    const N = this._nau;
+    if (N.cargs && N.res) { try { N.res.curve = this._nauCurve(...N.cargs); } catch (e) { /* brak */ } this._nauRender(); } else this._nauLoad();
+  }
+  _nauEdit() {
+    const N = this._nau;
+    if (!N.edit) N.edit = JSON.parse(JSON.stringify((N.res && N.res.cyrk && N.res.cyrk.blocks) || [null, null, null, null, null, null, null]));
+    for (let k = 0; k < 7; k++) if (!N.edit[k]) N.edit[k] = [];
+    return N.edit;
+  }
+  _nauOutHtml(C, W) {
+    // temp. zewnetrzna: 7 dni wstecz + 2 dni prognozy; pomiar pompy (BT1) vs symulacja Open-Meteo
+    const now = Date.now(), t0 = now - 7 * 864e5, t1 = now + 48 * 36e5;
+    const meas = Object.keys(C.toutH).map(Number).filter((t) => t >= t0 && t <= now).sort((a, b) => a - b).map((t) => [t, C.toutH[t]]);
+    const sim = Object.keys(W).map(Number).filter((t) => t >= t0 && t <= t1 && isFinite(W[t].temp)).sort((a, b) => a - b).map((t) => [t, W[t].temp]);
+    const all = meas.concat(sim).map((p) => p[1]);
+    if (!all.length) return '';
+    const lo = Math.floor((Math.min(...all) - 1) / 5) * 5, hi = Math.ceil((Math.max(...all) + 1) / 5) * 5;
+    const X0 = 46, X1 = 590, Y0 = 26, Y1 = 150;
+    const sx = (t) => X0 + (t - t0) / (t1 - t0) * (X1 - X0), sy = (v) => Y1 - (v - lo) / ((hi - lo) || 1) * (Y1 - Y0);
+    let g = '';
+    for (let v = lo; v <= hi; v += 5) g += '<line x1="' + X0 + '" y1="' + sy(v) + '" x2="' + X1 + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + ' °C</text>';
+    const DL = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'];
+    const d = new Date(t0); d.setHours(0, 0, 0, 0);
+    for (d.setDate(d.getDate() + 1); d.getTime() <= t1; d.setDate(d.getDate() + 1)) { const x = sx(d.getTime()); g += '<line x1="' + x + '" y1="' + Y0 + '" x2="' + x + '" y2="' + Y1 + '" stroke="rgba(255,255,255,.07)"/><text x="' + (x + 18) + '" y="' + (Y1 + 15) + '" text-anchor="middle">' + DL[d.getDay()] + '</text>'; }
+    // linia ciagla tylko dla kolejnych godzin (przerwy w pomiarze = przerwy w linii)
+    const line = (pts, col, dash, w) => { let out = '', seg = [];
+      const flush = () => { if (seg.length > 1) out += '<polyline points="' + seg.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="5 4"' : '') + ' stroke-linejoin="round"/>'; seg = []; };
+      pts.forEach((p, k) => { if (k && p[0] - pts[k - 1][0] > 3 * 36e5) flush(); seg.push(sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)); }); flush(); return out; };
+    const nx = sx(now);
+    const leg = '<line x1="50" y1="10" x2="74" y2="10" stroke="#ffab1a" stroke-width="2.4"/><text x="80" y="14" fill="#e3e8ee">Pomiar pompy (BT1)</text>' +
+      '<line x1="230" y1="10" x2="254" y2="10" stroke="#8fb8ff" stroke-width="1.8" stroke-dasharray="5 4"/><text x="260" y="14" fill="#e3e8ee">Symulacja Open-Meteo (było / będzie)</text>';
+    return '<div class="sec"><div class="st2">Temperatura zewnętrzna: pomiar pompy i symulacja<small> – 7 dni wstecz i 2 dni prognozy. Do nauki idzie pomiar z pompy, Open-Meteo tylko tam, gdzie pomiaru brak.</small></div>' +
+      '<svg viewBox="0 0 600 170" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + '</g>' +
+      '<rect x="' + nx + '" y="' + Y0 + '" width="' + (X1 - nx) + '" height="' + (Y1 - Y0) + '" fill="rgba(143,184,255,.06)"/>' +
+      line(sim, '#8fb8ff', true, 1.8) + line(meas, '#ffab1a', false, 2.4) +
+      '<line x1="' + nx + '" y1="' + Y0 + '" x2="' + nx + '" y2="' + Y1 + '" stroke="#ff5a4a" stroke-width="1.5"/><text x="' + nx + '" y="' + (Y0 - 3) + '" text-anchor="middle" font-size="11" fill="#ff8a80">teraz</text></svg>' +
+      '<div class="wn">Własna historia z pompy: ' + (C.ownHist ? C.ownHist + ' h zapisanych w sensor.hp_temperatura_zewnetrzna_bt1' : 'brak sensor.hp_temperatura_zewnetrzna_bt1 (dodaj pakiet v1.15), na razie biorę historię BT1 z recordera') + '. Dni z pomiarem pompy: ' + C.measDays + '.</div></div>';
+  }
+  _nauCyrkHtml(Y, esc, fmt) {
+    const hass = this._hass, st = hass.states, E = this._E, N = this._nau;
+    let h = '<div class="sec"><div class="st2">Cyrkulacja CWU: harmonogram z obecności (Pn–Nd)</div>';
+    // --- automatyzacja + stan teraz ---
+    const au = st[E.auto_cyrk], auOn = au && au.state === 'on';
+    const run = parseFloat((st[E.hwc_run] || {}).state), still = parseFloat((st[E.hwc_still] || {}).state);
+    const isOn = !isNaN(run) && !(run <= 1 && still >= 60);
+    const zh = st['zone.home'] ? parseInt(st['zone.home'].state, 10) : null;
+    const pers = Y ? Y.pers : this._nauPersons(), homeN = pers.filter((i) => st[i] && st[i].state === 'home').length;
+    const ktos = zh !== null && !isNaN(zh) ? zh > 0 : homeN > 0;
+    const inWin = st[E.pl_cyrk] && st[E.pl_cyrk].state === 'on';
+    const now = new Date(), wd = (now.getDay() + 6) % 7, slot = now.getHours() * 4 + Math.floor(now.getMinutes() / 15);
+    const sleepNow = Y && Y.ps[wd] && Y.ps[wd][slot] !== null && Y.ps[wd][slot] >= 0.5;
+    let why;
+    if (!auOn) why = 'automatyzacja wyłączona, cyrkulacją sterujesz ręcznie albo przez harmonogram na głównej';
+    else if (!ktos) why = 'pusty dom (nikogo z telefonem w domu), po 10 min cyrkulacja się wyłącza';
+    else if (inWin) why = 'ktoś jest w domu i trwa okno harmonogramu';
+    else if (sleepNow) why = 'pora snu (poza oknem harmonogramu)';
+    else why = 'ktoś jest, ale teraz nie ma okna w harmonogramie';
+    h += '<div class="lh"><button class="tg' + (auOn ? ' on' : '') + '" data-a="auto"' + (au ? '' : ' disabled') + ' title="Automatyzacja cyrkulacji"><i></i></button><b>Automatyzacja cyrkulacji: ' + (au ? (auOn ? 'włączona' : 'wyłączona') : 'brak') + '</b>' +
+      '<span>Teraz: <b style="color:' + (isOn ? '#7ee04a' : '#b0bac5') + '">' + (isNaN(run) ? '–' : isOn ? 'pracuje' : 'wyłączona') + '</b>' + (isNaN(run) ? '' : ' (praca ' + run + ' min / postój ' + still + ' min)') + ' · powód: ' + esc(why) + '</span></div>';
+    if (!au) h += '<div class="info">Brak przełącznika <code>' + E.auto_cyrk + '</code>. Dodaj pakiet <code>packages/hydrolution_karta.yaml</code> z wersji v1.15 i przeładuj konfigurację HA.</div>';
+    else h += '<div class="wn" style="margin:-.3em 0 .8em">Włączona: harmonogram „Cyrkulacja CWU” z głównej zakładki + obecność telefonów. Wszyscy wyszli (10 min) = wyłączona, ktoś wrócił = od razu wg harmonogramu, sen blokuje (okna omijają sen). Zastępuje wtedy przełącznik „Aktywne” cyrkulacji z harmonogramu.</div>';
+    if (!Y) return h + '<div class="info">Brak danych obecności (encje person.* z telefonami).</div></div>';
+    h += '<div class="lh"><span>W domu: <b>' + homeN + ' z ' + pers.length + '</b> (' + pers.map((i) => esc(((st[i] && st[i].attributes.friendly_name) || i) + ': ' + (st[i] ? (st[i].state === 'home' ? 'w domu' : st[i].state === 'not_home' ? 'poza' : st[i].state) : '?'))).join(', ') + ')</span>' +
+      '<span class="ds">Sen: ' + (Y.actN ? 'wykryty z ' + Y.nights + ' nocy, zwykle ok. ' + (Y.sleepFrom !== null ? fmt(Y.sleepFrom) + '–' + fmt(Y.sleepTo) : '–') : 'brak encji aktywności, przyjęty 23:00–6:00') + '.</span></div>';
+    const DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'], days = this._schDays();
+    const bl = N.edit || Y.blocks;
+    const S = this._sch, main = S && S.data && S.data.cyrk ? this._schFromItem(S.data.cyrk) : null;
+    const grad = (arr, rgb, mx) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(' + rgb + ',' + (v === null ? 0 : (v * mx).toFixed(2)) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
+    h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
+    DL.forEach((dn, i) => {
+      h += '<div class="dr"><span class="dn' + (i === wd ? ' td' : '') + '">' + dn + '</span><div class="tl ne" data-d="' + i + '" style="--c:#43c25a;--c2:#2a8a3c">' +
+        '<div class="lay" style="background:' + grad(Y.ph[i], '67,194,90', 0.45) + '"></div><div class="lay" style="background:' + grad(Y.ps[i], '90,120,255', 0.6) + '"></div>';
+      if (main) main[days[i]].forEach((b) => { h += '<div class="mn" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%"></div>'; });
+      if (bl[i]) bl[i].forEach((b, j) => { const sel = N.sel && N.sel.i === i && N.sel.j === j; h += '<div class="bk pr2' + (sel ? ' sel' : '') + '" data-a="nbk" data-d="' + i + '" data-i="' + j + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + fmt(b.f) + '–' + fmt(b.t) + '</div>'; });
+      else h += '<div class="nd">za mało danych (przeciągnij, żeby dodać)</div>';
+      if (i === wd) h += '<div class="nw" style="left:' + (slot * 15 / 14.4 + (now.getMinutes() % 15) / 14.4) + '%"></div>';
+      h += '</div><button class="cp" data-a="ncp" data-d="' + i + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button></div>';
+    });
+    if (N.sel && bl[N.sel.i] && bl[N.sel.i][N.sel.j]) {
+      const b = bl[N.sel.i][N.sel.j];
+      h += '<div class="ed">Okno <b>' + DL[N.sel.i] + '</b>: od <input type="time" data-a="ntf" value="' + fmt(b.f) + '"> do <input type="time" data-a="ntt" value="' + fmt(b.t) + '"> <button data-a="ndel">Usuń okno</button><span style="opacity:.6">(koniec 00:00 = do północy)</span></div>';
+    }
+    h += '<div class="lg"><span><i style="background:rgba(67,194,90,.45)"></i>ktoś w domu (im mocniej, tym częściej)</span><span><i style="background:rgba(90,120,255,.6)"></i>sen</span><span><i class="pb"></i>okna do wysłania' + (N.edit ? ' (poprawione ręcznie)' : ' (propozycja)') + '</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span><span><i style="background:#ff5a4a;width:2px"></i>teraz</span></div>';
+    h += '<div class="ft"><span class="hint">Przeciągnij po osi, żeby dodać okno, kliknij okno, żeby zmienić godziny albo usunąć, ⧉ kopiuje dzień. „Wyślij na główną” wpisze okna do harmonogramu Cyrkulacja CWU (zapisujesz tam „Zapisz harmonogram”).</span>' +
+      (N.edit ? '<button data-a="nrst">Przywróć propozycję</button>' : '') + '<button class="sv" data-a="send">Wyślij na główną</button></div>';
     return h + '</div>';
   }
   _nauSend() {
@@ -805,7 +969,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     const S = this._sch, lane = this._schLanes().find((l) => l.k === 'cyrk');
     const dr = this._schDraft(lane);
     let n = 0;
-    this._schDays().forEach((d, i) => { if (r.blocks[i]) { dr[d] = this._schNorm(JSON.parse(JSON.stringify(r.blocks[i]))); n++; } });
+    const bl = N.edit || r.blocks;
+    this._schDays().forEach((d, i) => { if (bl[i]) { dr[d] = this._schNorm(JSON.parse(JSON.stringify(bl[i]))); n++; } });
     S.dirty.cyrk = true; S.lane = 'cyrk'; S.sel = null;
     S.note = { k: 'cyrk', t: 'Wpisano propozycję z zakładki Nauka (' + n + ' z 7 dni). Sprawdź i kliknij „Zapisz harmonogram”, albo „Cofnij zmiany”. Przełącznik Aktywne nie był ruszany.' };
     this._tab('sch', true);
@@ -821,13 +986,53 @@ class HaKartaPompaCiepla extends HTMLElement {
         const t = ev.target.closest && ev.target.closest('[data-a]'); if (!t) return;
         const a = t.getAttribute('data-a');
         if (a === 'send') this._nauSend();
+        else if (a === 'celx') { delete N.src.cel; this._nauSrcSave(); this._nauRecalc(); }
+        else if (a === 'auto') { const id = this._E.auto_cyrk; if (this._hass.states[id]) this._hass.callService('input_boolean', 'toggle', { entity_id: id }); }
+        else if (a === 'nbk') { N.sel = { i: Number(t.getAttribute('data-d')), j: Number(t.getAttribute('data-i')) }; this._nauRender(); }
+        else if (a === 'ndel') { const e = this._nauEdit(); if (N.sel && e[N.sel.i]) { e[N.sel.i].splice(N.sel.j, 1); N.sel = null; this._nauRender(); } }
+        else if (a === 'nrst') { N.edit = null; N.sel = null; this._nauRender(); }
+        else if (a === 'ncp') { const e = this._nauEdit(), d = Number(t.getAttribute('data-d')); if (e[d]) { for (let k = 0; k < 7; k++) if (e[k]) e[k] = JSON.parse(JSON.stringify(e[d])); N.sel = null; this._nauRender(); } }
         else if (a === 'reload' && !N.loading) this._nauLoad();
         else if (a === 'more') this._more(t.getAttribute('data-e'));
         else if (a === 'sdel') this._nauSrcEdit(t.getAttribute('data-k'), 'del', t.getAttribute('data-e'));
         else if (a === 'sauto') this._nauSrcEdit(t.getAttribute('data-k'), 'auto');
         else if (a === 'sadd') { const inp = el.querySelector('input[data-k="' + t.getAttribute('data-k') + '"]'); this._nauSrcEdit(t.getAttribute('data-k'), 'add', inp && inp.value.trim()); }
       });
+      // reczna korekta okien propozycji (przeciagnij = dodaj, klik = edytuj)
+      const snap = (ev, tl) => { const r = tl.getBoundingClientRect(); return Math.round(Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * 96) * 15; };
+      el.addEventListener('pointerdown', (ev) => {
+        const tl = ev.target.closest && ev.target.closest('.tl.ne'); if (!tl || ev.target.closest('.bk')) return;
+        ev.preventDefault(); const a = snap(ev, tl);
+        N.drag = { tl, d: Number(tl.getAttribute('data-d')), a, b: a, tmp: null };
+        try { tl.setPointerCapture(ev.pointerId); } catch (e) { /* brak */ }
+      });
+      el.addEventListener('pointermove', (ev) => {
+        const g = N.drag; if (!g) return; g.b = snap(ev, g.tl);
+        if (!g.tmp) { g.tmp = document.createElement('div'); g.tmp.className = 'bk pr2 tmp'; g.tl.appendChild(g.tmp); }
+        const f = Math.min(g.a, g.b), t2 = Math.max(g.a, g.b);
+        g.tmp.style.left = (f / 14.4) + '%'; g.tmp.style.width = ((t2 - f) / 14.4) + '%'; g.tmp.textContent = this._schFmt(f) + '–' + this._schFmt(t2);
+      });
+      el.addEventListener('pointerup', () => {
+        const g = N.drag; if (!g) return; N.drag = null;
+        let f = Math.min(g.a, g.b), t2 = Math.max(g.a, g.b);
+        if (t2 - f < 15) { f = Math.min(g.a, 1380); t2 = f + 60; }
+        const e = this._nauEdit(); e[g.d] = this._schNorm((e[g.d] || []).concat([{ f, t: t2 }]));
+        N.sel = { i: g.d, j: e[g.d].findIndex((b) => b.f <= f && b.t >= t2) }; this._nauRender();
+      });
+      el.addEventListener('pointercancel', () => { const g = N.drag; if (g && g.tmp) g.tmp.remove(); N.drag = null; });
+      el.addEventListener('change', (ev) => {
+        const t = ev.target, a = t.getAttribute && t.getAttribute('data-a');
+        if (a === 'cel') { const v = parseFloat(String(t.value).replace(',', '.')); if (isFinite(v) && v >= 10 && v <= 30) N.src.cel = v; else delete N.src.cel; this._nauSrcSave(); this._nauRecalc(); return; }
+        if ((a !== 'ntf' && a !== 'ntt') || !N.sel) return;
+        const e = this._nauEdit(), b = e[N.sel.i] && e[N.sel.i][N.sel.j]; if (!b) return;
+        let m = this._schMin(t.value); if (a === 'ntt' && m === 0) m = 1440;
+        if (a === 'ntf') b.f = m; else b.t = m;
+        if (b.t <= b.f) { if (a === 'ntf') b.f = Math.max(0, b.t - 15); else b.t = Math.min(1440, b.f + 15); }
+        e[N.sel.i] = this._schNorm(e[N.sel.i]); N.sel = { i: N.sel.i, j: Math.max(0, e[N.sel.i].findIndex((x) => x.f <= b.f && x.t >= b.t)) };
+        this._nauRender();
+      });
       el.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' && ev.target.getAttribute && ev.target.getAttribute('data-a') === 'cel') { ev.target.blur(); return; }
         const t = ev.target; if (ev.key !== 'Enter' || !t.getAttribute || !t.getAttribute('data-k') || t.tagName !== 'INPUT') return;
         this._nauSrcEdit(t.getAttribute('data-k'), 'add', t.value.trim());
       });
@@ -836,7 +1041,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const fmt = (m) => this._schFmt(m);
     const R = N.res;
-    let h = '<div class="sh"><div class="sht">Nauka<small>tylko podgląd: nic tu nie zmienia ustawień pompy</small><span style="flex:1"></span>' +
+    let h = '<div class="sh"><div class="sht">Nauka<small>podgląd: ustawień pompy nie zmienia (poza suwakiem automatyzacji cyrkulacji)</small><span style="flex:1"></span>' +
       '<button data-a="reload"' + (N.loading ? ' disabled' : '') + '>' + (N.loading ? 'Liczę…' : 'Przelicz') + '</button></div>';
     if (!R) { el.innerHTML = h + '<div class="info">' + (N.loading ? 'Pobieram historię z Home Assistant i pogodę z Open-Meteo…' : 'Brak danych.') + '</div></div>'; return; }
     (R.errs || []).forEach((e) => { h += '<div class="warn">' + esc(e) + '</div>'; });
@@ -844,12 +1049,18 @@ class HaKartaPompaCiepla extends HTMLElement {
     // ---- kafle ----
     const h0 = Math.floor(Date.now() / 36e5) * 36e5, w0 = R.wx && R.wx[h0];
     h += '<div class="kt">' +
-      '<div class="k"><span>Krzywa grzewcza</span><b>' + (C ? C.days : 0) + ' dni</b><i>historii użytej do nauki' + (C ? ' (' + C.samples + ' h, temp. zewn. ' + C.outDays + ' dni)' : '') + '</i></div>' +
+      '<div class="k"><span>Krzywa grzewcza</span><b>' + (C ? C.days : 0) + ' dni</b><i>historii użytej do nauki' + (C ? ' (' + C.samples + ' h, z tego ' + C.sMeas + ' h z pomiaru pompy BT1, ' + (C.samples - C.sMeas) + ' h z symulacji Open-Meteo)' : '') + '</i></div>' +
       '<div class="k"><span>Cyrkulacja CWU</span><b>' + (Y ? Y.days : 0) + ' dni</b><i>historii obecności telefonów' + (Y ? ' (' + Y.pers.length + ' os.)' : '') + '</i></div>' +
-      '<div class="k"><span>Pogoda teraz (Open-Meteo)</span><b>' + (w0 ? w0.temp.toFixed(1) + ' °C' : '–') + '</b><i>' + (w0 ? 'wiatr ' + w0.wind.toFixed(1) + ' m/s · chmury ' + Math.round(w0.cloud) + ' % · słońce ' + Math.round(w0.sun) + ' W/m²' : 'brak danych pogody') + '</i></div>' +
+      '<div class="k"><span>Na zewnątrz teraz (pompa BT1)</span><b>' + (isNaN(parseFloat((st[E.bt1] || {}).state)) ? '–' : parseFloat(st[E.bt1].state).toFixed(1) + ' °C') + '</b><i>' + (w0 ? 'symulacja Open-Meteo: ' + w0.temp.toFixed(1) + ' °C · wiatr ' + w0.wind.toFixed(1) + ' m/s · chmury ' + Math.round(w0.cloud) + ' % · słońce ' + Math.round(w0.sun) + ' W/m²' : 'brak symulacji Open-Meteo') + '</i></div>' +
       '</div>';
     // ---- krzywa ----
-    h += '<div class="sec"><div class="st2">Krzywa grzewcza: obecna i proponowana</div>';
+    const cel = N.src && Number(N.src.cel);
+    const sal = this._nauSalon()[0], salV = sal ? parseFloat(st[sal].state) : NaN;
+    h += '<div class="sec"><div class="st2">Krzywa grzewcza: obecna i proponowana</div>' +
+      '<div class="lh"><label>Chcę w domu: <input class="cel" type="number" step="0.5" min="15" max="26" data-a="cel" value="' + (cel && isFinite(cel) ? cel : '') + '" placeholder="' + (C && C.target !== null ? C.target.toFixed(1) : '21') + '"> °C</label>' +
+      (cel ? '<button data-a="celx" title="Wróć do mediany z historii">Wyczyść</button>' : '') +
+      '<span>Salon teraz: <b>' + (isNaN(salV) ? '–' : salV.toFixed(1) + ' °C') + '</b>' + (sal ? ' (' + esc((st[sal].attributes.friendly_name) || sal) + ')' : ' (brak czujnika salonu, ustaw w „Źródłach nauki”)') + '</span>' +
+      '<span class="ds">Wpisz temperaturę i Enter: proponowana krzywa przeliczy się dla tej temperatury w domu. Nic nie zmienia w pompie.</span></div>';
     if (C) {
       const all = C.cur.concat(C.prop);
       const lo = Math.min(20, Math.floor((Math.min(...all) - 2) / 10) * 10), hi = Math.max(50, Math.ceil((Math.max(...all) + 2) / 10) * 10);
@@ -873,29 +1084,9 @@ class HaKartaPompaCiepla extends HTMLElement {
         '. Liczone z godzin 8–22 (nocne obniżenie pomijam). Wykres nic nie zmienia, punkty P1–P7 ustawiasz sam w panelu „Własna krzywa”.</div></div>';
     } else h += '<div class="info">Nie da się policzyć krzywej (brak danych).</div>';
     h += '</div>';
-    // ---- cyrkulacja ----
-    h += '<div class="sec"><div class="st2">Cyrkulacja CWU: proponowany harmonogram (Pn–Nd)</div>';
-    if (Y) {
-      const pers = Y.pers, homeN = pers.filter((i) => st[i] && st[i].state === 'home').length;
-      h += '<div class="lh"><span>Teraz w domu: <b>' + homeN + ' z ' + pers.length + '</b> (' + pers.map((i) => esc(((st[i] && st[i].attributes.friendly_name) || i) + ': ' + (st[i] ? (st[i].state === 'home' ? 'w domu' : st[i].state === 'not_home' ? 'poza' : st[i].state) : '?'))).join(', ') + ')' +
-        (homeN ? '' : ' → dom pusty, cyrkulacja niepotrzebna') + '</span>' +
-        '<span class="ds">Zasady: dom pusty = wyłączona, jesteście i nie śpicie = włączona, sen = wyłączona. ' +
-        (Y.actN ? 'Sen wykryty z ' + Y.nights + ' nocy (brak aktywności świateł/mediów/telefonów przy obecności): zwykle ok. ' + (Y.sleepFrom !== null ? fmt(Y.sleepFrom) + '–' + fmt(Y.sleepTo) : '–') + '.' : 'Brak encji aktywności, sen przyjęty 23:00–6:00.') + '</span></div>';
-      const DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'], wd = (new Date().getDay() + 6) % 7;
-      const grad = (arr, rgb, mx) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(' + rgb + ',' + (v === null ? 0 : (v * mx).toFixed(2)) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
-      h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
-      DL.forEach((dn, i) => {
-        h += '<div class="dr"><span class="dn' + (i === wd ? ' td' : '') + '">' + dn + '</span><div class="tl ro" style="--c:#43c25a;--c2:#2a8a3c">' +
-          '<div class="lay" style="background:' + grad(Y.ph[i], '67,194,90', 0.45) + '"></div><div class="lay" style="background:' + grad(Y.ps[i], '90,120,255', 0.6) + '"></div>';
-        if (Y.blocks[i]) Y.blocks[i].forEach((b) => { h += '<div class="bk pr2" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + fmt(b.f) + '–' + fmt(b.t) + '</div>'; });
-        else h += '<div class="nd">za mało danych</div>';
-        h += '</div><span class="cp" style="visibility:hidden">⧉</span></div>';
-      });
-      h += '<div class="lg"><span><i style="background:rgba(67,194,90,.45)"></i>ktoś w domu (im mocniej, tym częściej)</span><span><i style="background:rgba(90,120,255,.6)"></i>sen</span><span><i class="pb"></i>proponowane okna cyrkulacji</span></div>';
-      h += '<div class="ft"><span class="hint">„Wyślij na główną” wpisze te okna do harmonogramu Cyrkulacja CWU w zakładce Harmonogram (dni bez danych zostają bez zmian). Zapisujesz sam przyciskiem „Zapisz harmonogram”. Przełącznik „Aktywne” zostaje jak jest.</span>' +
-        '<button class="sv" data-a="send">Wyślij na główną</button></div>';
-    } else h += '<div class="info">Brak danych obecności (encje person.* z telefonami).</div>';
-    h += '</div>';
+    if (C) h += this._nauOutHtml(C, R.wx || {});
+    if (C) h += this._nauFcHtml(C, R.prev);
+    h += this._nauCyrkHtml(Y, esc, fmt);
     if (N.srcLoaded) h += this._nauSrcHtml(esc);
     if (N.at) h += '<div class="wn" style="margin-top:.8em">Policzone ' + new Date(N.at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ', odświeżane co 30 min. Pogoda: Open-Meteo (api.open-meteo.com, położenie domu z HA).</div>';
     el.innerHTML = h + '</div>';

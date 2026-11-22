@@ -139,3 +139,11 @@ dopasuj_ekran: true  # false = stare zachowanie (karta na całą szerokość)
 ```
 
 **Dopasowanie do ekranu:** na komputerze mapa razem z całym dolnym rzędem paneli (krzywa grzewcza, P1–P7, przyciski) mieści się w oknie bez przewijania. Karta skaluje się z szerokości i wysokości okna z zachowaniem proporcji. Harmonogram i Nauka są niżej, po przewinięciu. Telefon (do 700 px) działa jak w v1.13.
+
+## v1.15: automatyczna cyrkulacja, pomiar pompy, prognoza vs rzeczywistość, „Chcę w domu”
+
+- **Automatyzacja cyrkulacji** (suwak w Nauce, `input_boolean.hp_auto_cyrk`, domyślnie wyłączony). Włączona: cyrkulacja CWU idzie wg harmonogramu „Cyrkulacja CWU” i obecności telefonów (`zone.home`). Wszyscy wyszli na 10 min = wyłączona, ktoś wrócił = od razu wg harmonogramu, pora snu blokuje (okna z Nauki omijają sen). Gdy jest włączona, stara automatyzacja `hp_plan_cyrk` czeka. Wymaga pakietu z tej wersji.
+- W Nauce przy cyrkulacji: stan teraz i powód (pusty dom / ktoś jest / sen / poza oknem), czerwona kreska „teraz”, żółta kreska = obecny harmonogram na głównej, okna można poprawić ręcznie (przeciągnij = dodaj, klik = zmień/usuń, ⧉ = kopiuj dzień) przed „Wyślij na główną”.
+- **Temperatura zewnętrzna z pompy (BT1)** idzie do nauki. Pakiet dodaje `sensor.hp_temperatura_zewnetrzna_bt1` (statystyki długoterminowe, własna historia). Open-Meteo jest tylko symulacją tam, gdzie pomiaru brak, i prognozą. Wykres: pomiar pompy vs symulacja, 7 dni wstecz + 2 dni do przodu.
+- **Prognoza vs rzeczywistość:** prognoza Open-Meteo wydana dobę wcześniej (archiwum `previous-runs-api.open-meteo.com`) na tle pomiaru BT1, średni błąd, przechył i największa pomyłka.
+- **„Chcę w domu: __ °C”** przy wykresie krzywej: proponowana krzywa liczy się dla tej temperatury w domu. Temperatura w domu z czujnika salonu (osobna pozycja w „Źródłach nauki”, wykrywany po nazwie „salon”, można zmienić).

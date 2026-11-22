@@ -9,6 +9,15 @@
 
 template:
   - sensor:
+      # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
+      # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
+      - name: "HP temperatura zewnetrzna BT1"
+        unique_id: hp_temperatura_zewnetrzna_bt1
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        availability: "{{ has_value('sensor.hydrolution_temperatura_zewnetrzna_bt1') }}"
+        state: "{{ states('sensor.hydrolution_temperatura_zewnetrzna_bt1') | float(0) | round(1) }}"
       # Moc grzewcza: z przeplywu BF1 i dT (BT12-BT3); gdy brak przeplywu -> 44706 z ESP (calkowite kW)
       - name: "HP moc grzewcza"
         unique_id: hp_moc_grzewcza
@@ -220,6 +229,10 @@ input_boolean:
   hp_plan_boost:
     name: "HP plan: podgrzanie CWU aktywne"
     icon: mdi:water-thermometer
+  # v1.15: suwak "Automatyzacja cyrkulacji" w zakladce Nauka. Domyslnie wylaczony (bez `initial`).
+  hp_auto_cyrk:
+    name: "HP auto: cyrkulacja wg harmonogramu i obecnosci"
+    icon: mdi:home-account
 
 input_number:
   hp_noc_przesuniecie:
@@ -320,7 +333,7 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_plan_cyrk]
+        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_plan_cyrk, input_boolean.hp_auto_cyrk]
       - trigger: state
         entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy
         from: unavailable
@@ -330,6 +343,12 @@ automation:
       - condition: state
         entity_id: input_boolean.hp_plan_cyrk
         state: "on"
+      # v1.15: gdy wlaczona automatyzacja cyrkulacji (hp_auto_cyrk), steruje ona, a ta czeka
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_boolean.hp_auto_cyrk
+            state: "on"
       - condition: template
         value_template: "{{ has_value('number.hydrolution_cyrkulacja_cwu_czas_pracy') and has_value('number.hydrolution_cyrkulacja_cwu_czas_postoju') }}"
     actions:
@@ -337,6 +356,53 @@ automation:
           w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if w_oknie else 1 }}"
           postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if w_oknie else 60 }}"
+      - condition: template
+        value_template: "{{ (states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0)) != praca or (states('number.hydrolution_cyrkulacja_cwu_czas_postoju') | float(0)) != postoj }}"
+      - action: number.set_value
+        target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy}
+        data: {value: "{{ praca }}"}
+      - action: number.set_value
+        target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
+        data: {value: "{{ postoj }}"}
+
+  # 3b) v1.15 Automatyzacja cyrkulacji (suwak w zakladce Nauka): harmonogram + obecnosc telefonow.
+  #     Wszyscy poza domem (zone.home = 0 przez 10 min) = wylaczona, ktos wrocil = od razu wg harmonogramu.
+  #     Pora snu blokuje wlaczanie, bo okna harmonogramu z Nauki omijaja sen.
+  #     "Wylaczona" = praca 1 min / postoj 60 min (SMO40 nie ma wl/wyl). Dziala tylko przy hp_auto_cyrk = on.
+  - id: hp_auto_cyrk
+    alias: "HP auto: cyrkulacja CWU wg harmonogramu i obecnosci"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk]
+      - trigger: state
+        entity_id: zone.home
+        to: "0"
+        for: {minutes: 10}
+      - trigger: state
+        entity_id: zone.home
+        from: "0"
+      - trigger: state
+        entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy
+        from: unavailable
+      - trigger: homeassistant
+        event: start
+      - trigger: time_pattern
+        minutes: "/15"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_auto_cyrk
+        state: "on"
+      - condition: template
+        value_template: "{{ has_value('number.hydrolution_cyrkulacja_cwu_czas_pracy') and has_value('number.hydrolution_cyrkulacja_cwu_czas_postoju') }}"
+    actions:
+      - variables:
+          ktos: "{{ states('zone.home') | int(0) > 0 }}"
+          pusto_dlugo: "{{ not ktos and (now() - states.zone.home.last_changed).total_seconds() >= 600 }}"
+          w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
+          wl: "{{ w_oknie and not pusto_dlugo }}"
+          praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if wl else 1 }}"
+          postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if wl else 60 }}"
       - condition: template
         value_template: "{{ (states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0)) != praca or (states('number.hydrolution_cyrkulacja_cwu_czas_postoju') | float(0)) != postoj }}"
       - action: number.set_value

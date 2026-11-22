@@ -67,6 +67,8 @@ E = dict(
     t_co='sensor.hp_czas_pracy_co_dzis',
     t_cwu='sensor.hp_czas_pracy_cwu_dzis',
     starts='sensor.hp_starty_dzis',
+    t_out_hist='sensor.hp_temperatura_zewnetrzna_bt1',
+    auto_cyrk='input_boolean.hp_auto_cyrk',
 )
 
 # cyrkulacja CWU "wlaczona" = nie jest w stanie praca 1 min / postoj 60 min (brak rejestru wl/wyl w SMO40)
