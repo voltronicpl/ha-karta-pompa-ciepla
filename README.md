@@ -175,3 +175,10 @@ Uwaga: jeśli jakieś światło świeci całą noc, sensor aktywności już jest
 ## v1.20: po wstaniu cyrkulacja chodzi, dopóki jesteście w domu
 
 Propozycja w Nauce to jedno okno na dzień: od „X min przed wstaniem” aż do pory snu (pora snu z historii, osobno dla każdego dnia tygodnia). W tym oknie automatyzacja trzyma cyrkulację włączoną cały czas, dopóki ktoś jest w domu. Wyłącza się, gdy wszyscy wyjdą (po czasie „po wyjściu”, domyślnie 5 min) albo gdy kończy się okno, czyli zaczyna się pora snu. Gdy ktoś wróci, od razu się włącza. W weekend rusza od wykrytego wstania i chodzi tak samo. Pole „min. __ min pracy po wstaniu” (domyślnie 30) to teraz minimalny czas pracy od startu okna rano albo od wykrycia wstania, nawet jeśli wszyscy wyjdą wcześniej. Automatyzacja sprawdza stan co 5 min. Wymaga wklejenia nowego pakietu.
+
+## v1.21: weekend też z poboru ciepłej wody, bez „min. pracy po wstaniu”
+
+- **Usunięte:** pole „min. __ min pracy po wstaniu” i `input_number.hp_cyrk_po_wstaniu` (opisy przy v1.19 i v1.20 wyżej są już nieaktualne w tym punkcie). Po wstaniu cyrkulacja chodzi do wyjścia ostatniego telefonu (+ „po wyjściu”, domyślnie 5 min) albo do pory snu.
+- **Dodane:** drugi sygnał wstania w weekend (5:00–11:00): pobór ciepłej wody. Pakiet liczy tempo zmiany temperatury środka zasobnika CWU (`sensor.hp_cwu_srodek_zmiana`, pochodna BT6). Spadek szybszy niż 0,06 °C/min przez 30 s = ktoś odkręcił ciepłą wodę → zapis godziny wstania i start cyrkulacji (przy włączonej automatyzacji). Który sygnał zadziałał, zapisuje `input_text.hp_wstalismy_zrodlo` (woda / aktywnosc), a karta to pokazuje.
+- Czujnik przepływu BF1 pompy mierzy przepływ w obiegu pompy, nie w kranie, więc nie nadaje się do wykrycia odkręcenia wody. Dlatego sygnałem jest spadek BT6.
+- Wymaga wklejenia nowego pakietu (przeładuj też Pomocników tekstowych i liczbowych). Stary `input_number.hp_cyrk_po_wstaniu` po wklejeniu zniknie z HA sam.

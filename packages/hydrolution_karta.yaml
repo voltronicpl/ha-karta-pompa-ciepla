@@ -172,6 +172,14 @@ sensor:
     type: time
     start: "{{ today_at() }}"
     end: "{{ now() }}"
+  # v1.21: tempo zmiany temp. srodka zasobnika CWU (BT6), °C/min - szybki spadek = ktos odkrecil ciepla wode
+  - platform: derivative
+    name: "HP CWU srodek zmiana"
+    unique_id: hp_cwu_srodek_zmiana
+    source: sensor.hydrolution_cwu_srodek_bt6
+    unit_time: min
+    time_window: "00:03:00"
+    round: 3
 
 # Przyciski "Tryb systemu" (moja interpretacja, sprawdz na sterowniku):
 #   Auto  = tryb pracy Auto, urlop wyl.
@@ -255,19 +263,12 @@ input_datetime:
     icon: mdi:alarm
 
 input_number:
-  # v1.19: ustawiane z zakladki Nauka (karta przy pierwszym uruchomieniu wpisuje 5 i 30)
+  # v1.19: ustawiane z zakladki Nauka (karta przy pierwszym uruchomieniu wpisuje 5)
   hp_cyrk_po_wyjsciu:
     name: "HP auto: cyrkulacja off po wyjsciu wszystkich"
     min: 0
     max: 60
     step: 1
-    mode: box
-    unit_of_measurement: "min"
-  hp_cyrk_po_wstaniu:
-    name: "HP auto: cyrkulacja min. czas pracy po wstaniu"
-    min: 0
-    max: 180
-    step: 5
     mode: box
     unit_of_measurement: "min"
   hp_noc_przesuniecie:
@@ -298,6 +299,12 @@ input_number:
     step: 1
     mode: box
     unit_of_measurement: "min"
+
+input_text:
+  # v1.21: ktory sygnal wykryl weekendowe wstanie: aktywnosc / woda
+  hp_wstalismy_zrodlo:
+    name: "HP auto: weekend - sygnal wstania"
+    max: 20
 
 input_select:
   hp_cwu_tryb_w_oknie:
@@ -409,7 +416,7 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk, input_datetime.hp_wstalismy, input_number.hp_cyrk_po_wyjsciu, input_number.hp_cyrk_po_wstaniu]
+        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk, input_datetime.hp_wstalismy, input_number.hp_cyrk_po_wyjsciu]
       - trigger: state
         entity_id: zone.home
         to: "0"
@@ -437,15 +444,11 @@ automation:
           w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
           # v1.20: po wstaniu cyrkulacja chodzi caly czas, dopoki ktos jest w domu i nie spimy
           #        (okno w harmonogramie: od wstania do pory snu). Wylacza: wszyscy wyszli (po hp_cyrk_po_wyjsciu min) albo koniec okna (sen).
-          #        hp_cyrk_po_wstaniu = MINIMALNY czas pracy od startu okna rano / od wykrycia wstania (nawet gdy wszyscy wyjda).
-          min_s: "{{ (states('input_number.hp_cyrk_po_wstaniu') | int(30)) * 60 }}"
-          okno_od: "{{ (now() - states.schedule.hp_plan_cyrkulacja_cwu.last_changed).total_seconds() if w_oknie else 999999 }}"
           # weekend: od pierwszej aktywnosci rano (input_datetime.hp_wstalismy) do poludnia, potem przejmuje okno z harmonogramu
           wst: "{{ states('input_datetime.hp_wstalismy') | as_datetime(none) }}"
           od_wst: "{{ (now() - (wst | as_local)).total_seconds() if wst is not none and (wst | as_local).date() == now().date() else -1 }}"
           rano: "{{ now().isoweekday() >= 6 and od_wst >= 0 and now().hour < 12 }}"
-          min_bieg: "{{ okno_od < min_s or (rano and od_wst < min_s) }}"
-          wl: "{{ (w_oknie or rano) and (not pusto_dlugo or min_bieg) }}"
+          wl: "{{ (w_oknie or rano) and not pusto_dlugo }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if wl else 1 }}"
           postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if wl else 60 }}"
       - condition: template
@@ -457,7 +460,8 @@ automation:
         target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
         data: {value: "{{ postoj }}"}
 
-  # 3c) v1.18 Weekend: pierwsza aktywnosc rano (5:00-11:00, ktos w domu) = wstalismy -> cyrkulacja (v1.20: dopoki ktos w domu, min. hp_cyrk_po_wstaniu min).
+  # 3c) v1.18 Weekend: pierwsza aktywnosc rano (5:00-11:00, ktos w domu) = wstalismy -> cyrkulacja (v1.20: dopoki ktos w domu).
+  #     v1.21: drugi sygnal = pobor cieplej wody (szybki spadek BT6 w zasobniku CWU), zapisuje zrodlo w input_text.hp_wstalismy_zrodlo.
   #     Raz na dzien. Dziala tylko przy wlaczonej automatyzacji cyrkulacji (hp_auto_cyrk).
   #     Bez sygnalu zostaje okno z harmonogramu (sugestia z Nauki, ok. 8:00).
   - id: hp_auto_wstali
@@ -468,6 +472,14 @@ automation:
         entity_id: binary_sensor.hp_aktywnosc_w_domu
         from: "off"
         to: "on"
+        id: aktywnosc
+      # v1.21: pobor CWU = temperatura srodka zasobnika (BT6) spada szybciej niz 0,06 °C/min przez 30 s
+      #        (straty postojowe to ok. 0,01 °C/min). BF1 to przeplyw obiegu pompy, nie kranu, wiec sie nie nadaje.
+      - trigger: numeric_state
+        entity_id: sensor.hp_cwu_srodek_zmiana
+        below: -0.06
+        for: {seconds: 30}
+        id: woda
     conditions:
       - condition: state
         entity_id: input_boolean.hp_auto_cyrk
@@ -484,6 +496,9 @@ automation:
       - action: input_datetime.set_datetime
         target: {entity_id: input_datetime.hp_wstalismy}
         data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+      - action: input_text.set_value
+        target: {entity_id: input_text.hp_wstalismy_zrodlo}
+        data: {value: "{{ trigger.id }}"}
 
   # 4) Grzalka dozwolona tylko w oknach
   - id: hp_plan_grz

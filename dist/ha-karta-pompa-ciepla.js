@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.20
+ * ha-karta-pompa-ciepla  v1.21
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,7 +9,7 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.20';
+const VERSION = 'v1.21';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -1168,11 +1168,10 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!N || !this._hass || this._tabCur !== 'nau') return;
     if (!N.loading && (!N.res || Date.now() - N.at > 30 * 60000)) { this._nauLoad(); return; }
     if (N.srcLoaded && N.src && !N.src.initV119) {
-      // jednorazowo: domyslne 5 min po wyjsciu i 30 min po wstaniu (pomocnicy HA startuja od 0)
-      const a = this._hass.states['input_number.hp_cyrk_po_wyjsciu'], b = this._hass.states['input_number.hp_cyrk_po_wstaniu'];
-      if (a && b) {
+      // jednorazowo: domyslne 5 min po wyjsciu (pomocnik HA startuje od 0)
+      const a = this._hass.states['input_number.hp_cyrk_po_wyjsciu'];
+      if (a) {
         if (Number(a.state) === 0) this._hass.callService('input_number', 'set_value', { entity_id: 'input_number.hp_cyrk_po_wyjsciu', value: 5 });
-        if (Number(b.state) === 0) this._hass.callService('input_number', 'set_value', { entity_id: 'input_number.hp_cyrk_po_wstaniu', value: (N.src.wake && N.src.wake.post !== undefined) ? N.src.wake.post : 30 });
         N.src.initV119 = true; this._nauSrcSave();
       }
     }
@@ -1590,7 +1589,7 @@ class HaKartaPompaCiepla extends HTMLElement {
   _nauSnap() {
     const N = this._nau, R = N.res; if (!R) return null;
     return { at: N.at, prop: R.curve ? R.curve.prop.slice() : null, cur: R.curve ? R.curve.cur.slice() : null,
-      blocks: R.cyrk ? JSON.parse(JSON.stringify(N.edit || this._nauBase(R.cyrk))) : null, wake: R.cyrk ? (() => { const w = this._nauWake(R.cyrk); return [w.wd.m, w.we.m, w.pre, w.post]; })() : null };
+      blocks: R.cyrk ? JSON.parse(JSON.stringify(N.edit || this._nauBase(R.cyrk))) : null, wake: R.cyrk ? (() => { const w = this._nauWake(R.cyrk); return [w.wd.m, w.we.m, w.pre]; })() : null };
   }
   _nauDiff(a, b) {
     const out = [], f = (m) => this._schFmt(m), DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'];
@@ -1599,7 +1598,6 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (a.wake[0] !== b.wake[0]) out.push('Wstawanie Pn–Pt: ' + f(a.wake[0]) + ' → ' + f(b.wake[0]));
       if (a.wake[1] !== b.wake[1]) out.push('Wstawanie So–Nd: ' + f(a.wake[1]) + ' → ' + f(b.wake[1]));
       if (a.wake[2] !== b.wake[2]) out.push('Przed wstaniem: ' + a.wake[2] + ' → ' + b.wake[2] + ' min');
-      if (a.wake[3] !== b.wake[3]) out.push('Min. czas pracy po wstaniu: ' + a.wake[3] + ' → ' + b.wake[3] + ' min');
     }
     const txt = (d) => (d && d.length ? d.map((x) => f(x.f) + '–' + f(x.t)).join(', ') : 'brak');
     if (a.blocks && b.blocks) for (let i = 0; i < 7; i++) { const x = txt(a.blocks[i]), y = txt(b.blocks[i]); if (x !== y) out.push('Cyrkulacja ' + DL[i] + ': ' + x + ' → ' + y); }
@@ -1616,8 +1614,11 @@ class HaKartaPompaCiepla extends HTMLElement {
     const aWd = Y ? med(Y.wakeWd || []) : null, aWe = Y ? med(Y.wakeWe || []) : null;
     const pick = (v, auto, def) => (v && /^\d{1,2}:\d{2}$/.test(v) ? { m: this._schMin(v), src: 'ręcznie' } : auto !== null ? { m: auto, src: 'auto z historii' } : { m: def, src: 'auto, brak historii: domyślnie' });
     const pre = Math.max(0, Math.min(120, Number(w.pre !== undefined ? w.pre : 20)));
-    const post = Math.max(0, Math.min(180, Number(w.post !== undefined ? w.post : 30)));
-    return { wd: pick(w.wd, aWd, 390), we: pick(w.we, aWe, 480), pre, post, on: w.on !== false, aWd, aWe, nWd: Y ? (Y.wakeWd || []).length : 0, nWe: Y ? (Y.wakeWe || []).length : 0 };
+    return { wd: pick(w.wd, aWd, 390), we: pick(w.we, aWe, 480), pre, on: w.on !== false, aWd, aWe, nWd: Y ? (Y.wakeWd || []).length : 0, nWe: Y ? (Y.wakeWe || []).length : 0 };
+  }
+  _nauSig() {
+    const z = this._hass.states['input_text.hp_wstalismy_zrodlo'], v = z ? z.state : '';
+    return v === 'woda' ? 'pobór ciepłej wody' : v === 'aktywnosc' ? 'aktywność w domu' : 'czujniki';
   }
   _nauSleepStart(Y) {
     // pora snu na kazdy dzien: pierwszy kwadrans po 18:00 z sen >= 50 %, albo po polnocy (nastepny dzien do 6:00)
@@ -1696,12 +1697,12 @@ class HaKartaPompaCiepla extends HTMLElement {
     const now = new Date(), wd = (now.getDay() + 6) % 7, slot = now.getHours() * 4 + Math.floor(now.getMinutes() / 15);
     const sleepNow = Y && Y.ps[wd] && Y.ps[wd][slot] !== null && Y.ps[wd][slot] >= 0.5;
     const wsS = st[E.wstali], wsD = wsS ? new Date(String(wsS.state).replace(' ', 'T')) : null;
-    const rano = wsD && !isNaN(wsD) && (now.getDay() === 0 || now.getDay() === 6) && now - wsD >= 0 && now - wsD < 3600000;
+    const rano = wsD && !isNaN(wsD) && (now.getDay() === 0 || now.getDay() === 6) && now - wsD >= 0 && wsD.toDateString() === now.toDateString() && now.getHours() < 12;
     let why;
     if (!auOn) why = 'automatyzacja wyłączona, cyrkulacją sterujesz ręcznie albo przez harmonogram na głównej';
     else if (!ktos) why = 'pusty dom (nikogo z telefonem w domu), po ' + (st['input_number.hp_cyrk_po_wyjsciu'] ? Math.round(Number(st['input_number.hp_cyrk_po_wyjsciu'].state)) : 10) + ' min cyrkulacja się wyłącza';
     else if (inWin) why = 'ktoś jest w domu i trwa okno harmonogramu';
-    else if (rano) why = 'weekend: wstaliście o ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ' (czujniki)';
+    else if (rano) why = 'weekend: wstaliście o ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ' (sygnał: ' + this._nauSig() + ')';
     else if (sleepNow) why = 'pora snu (poza oknem harmonogramu)';
     else why = 'ktoś jest, ale teraz nie ma okna w harmonogramie';
     h += '<div class="lh"><button class="tg' + (auOn ? ' on' : '') + '" data-a="auto"' + (au ? '' : ' disabled') + ' title="Automatyzacja cyrkulacji"><i></i></button><b>Automatyzacja cyrkulacji: ' + (au ? (auOn ? 'włączona' : 'wyłączona') : 'brak') + '</b>' +
@@ -1723,10 +1724,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     const wsToday = wsD && !isNaN(wsD) && wsD.toDateString() === new Date().toDateString();
     h += '<div class="lh wk"><b>Pora wstawania</b>' + wOpt('wd', 'Pn–Pt (stała):', ws.wd, W.aWd) + wOpt('we', 'So–Nd (sugestia):', ws.we, W.aWe) +
       '<label>cyrkulacja <input type="number" min="0" max="120" step="5" data-a="wp" value="' + W.pre + '"> min przed</label>' +
-      '<label>min. <input type="number" min="0" max="180" step="5" data-a="wpo" value="' + W.post + '"> min pracy po wstaniu</label>' +
       '<label><input type="checkbox" data-a="won"' + (W.on ? ' checked' : '') + '> dodaj do propozycji</label>' +
-      '<span class="ds">Auto: Pn–Pt ' + (W.aWd !== null ? fmt(W.aWd) + ' (z ' + W.nWd + ' poranków)' : 'brak historii, przyjęte 6:30') + ', So–Nd ' + (W.aWe !== null ? fmt(W.aWe) + ' (z ' + W.nWe + ' poranków)' : 'brak historii, przyjęte 8:00') + '. Okno cyrkulacji: od ' + W.pre + ' min przed wstaniem aż do pory snu. W tym czasie cyrkulacja chodzi cały czas, dopóki ktoś jest w domu; gdy wszyscy wyjdą, wyłącza się po czasie „po wyjściu” (automatyzacja), po powrocie wraca. Przez pierwsze ' + W.post + ' min od startu okna / od wstania chodzi zawsze (minimum). Wstanie = koniec wykrytego snu (telefony + aktywność). W weekend godzina to tylko sugestia: przy włączonej automatyzacji cyrkulacja rusza od pierwszej aktywności rano i chodzi, dopóki ktoś jest w domu (min. ' + W.post + ' min) (światła, ruch, ekran telefonu, media; 5:00–11:00), a bez sygnału zostaje okno z sugestii.' +
-      (wsS ? ' Weekend, ostatnio wstaliście: <b>' + (wsToday ? 'dziś ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : (isNaN(wsD) || wsD.getFullYear() < 2000 ? '–' : wsD.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }))) + '</b> (z czujników).' : ' Brak <code>' + E.wstali + '</code>: dodaj pakiet v1.18.') + (N.edit ? ' Masz ręczne poprawki okien: zmiana pory wstawania zadziała po „Przywróć propozycję”.' : '') + '</span></div>';
+      '<span class="ds">Auto: Pn–Pt ' + (W.aWd !== null ? fmt(W.aWd) + ' (z ' + W.nWd + ' poranków)' : 'brak historii, przyjęte 6:30') + ', So–Nd ' + (W.aWe !== null ? fmt(W.aWe) + ' (z ' + W.nWe + ' poranków)' : 'brak historii, przyjęte 8:00') + '. Okno cyrkulacji: od ' + W.pre + ' min przed wstaniem aż do pory snu. W tym czasie cyrkulacja chodzi cały czas, dopóki ktoś jest w domu; gdy wszyscy wyjdą, wyłącza się po czasie „po wyjściu” (automatyzacja), po powrocie wraca. Wstanie = koniec wykrytego snu (telefony + aktywność). W weekend godzina to tylko sugestia: przy włączonej automatyzacji cyrkulacja rusza od pierwszego sygnału rano (pobór ciepłej wody: szybki spadek BT6 w zasobniku, albo aktywność: światła, ruch, ekran telefonu, media; 5:00–11:00) i chodzi, dopóki ktoś jest w domu, a bez sygnału zostaje okno z sugestii.' +
+      (wsS ? ' Weekend, ostatnio wstaliście: <b>' + (wsToday ? 'dziś ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : (isNaN(wsD) || wsD.getFullYear() < 2000 ? '–' : wsD.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }))) + '</b> (sygnał: ' + esc(this._nauSig()) + ').' : ' Brak <code>' + E.wstali + '</code>: dodaj pakiet v1.18.') + (N.edit ? ' Masz ręczne poprawki okien: zmiana pory wstawania zadziała po „Przywróć propozycję”.' : '') + '</span></div>';
     const S = this._sch, main = S && S.data && S.data.cyrk ? this._schFromItem(S.data.cyrk) : null;
     const grad = (arr, rgb, mx) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(' + rgb + ',' + (v === null ? 0 : (v * mx).toFixed(2)) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
     h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
@@ -1811,13 +1811,12 @@ class HaKartaPompaCiepla extends HTMLElement {
       el.addEventListener('change', (ev) => {
         const t = ev.target, a = t.getAttribute && t.getAttribute('data-a');
         if (a === 'pwy') { const v = parseInt(t.value, 10), id = 'input_number.hp_cyrk_po_wyjsciu'; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(0, Math.min(60, v)) }); return; }
-        if (a === 'wk' || a === 'wt' || a === 'wp' || a === 'won' || a === 'wpo') {
+        if (a === 'wk' || a === 'wt' || a === 'wp' || a === 'won') {
           const w = N.src.wake = Object.assign({}, N.src.wake || {}), k = t.getAttribute('data-k');
           if (a === 'wk') { if (t.value === 'auto') delete w[k]; else w[k] = this._schFmt((k === 'wd' ? this._nauWake(N.res && N.res.cyrk).wd : this._nauWake(N.res && N.res.cyrk).we).m); }
           else if (a === 'wt') { if (/^\d{1,2}:\d{2}/.test(t.value)) w[k] = t.value.slice(0, 5); }
           else if (a === 'wp') { const v = parseInt(t.value, 10); if (!isNaN(v)) w.pre = Math.max(0, Math.min(120, v)); }
           else if (a === 'won') w.on = !!t.checked;
-          else if (a === 'wpo') { const v = parseInt(t.value, 10); if (!isNaN(v)) { w.post = Math.max(0, Math.min(180, v)); const id = 'input_number.hp_cyrk_po_wstaniu'; if (this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: w.post }); } }
           this._nauSrcSave(); this._nauRender(); return;
         }
         if (a === 'cel') { const v = parseFloat(String(t.value).replace(',', '.')); if (isFinite(v) && v >= 10 && v <= 30) N.src.cel = v; else delete N.src.cel; this._nauSrcSave(); this._nauRecalc(); return; }
