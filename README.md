@@ -211,3 +211,9 @@ Jeśli czegoś brakuje albo wersja jest starsza, na górze karty pojawia się ż
 ## v1.24: poprawka nazwy encji taryfy G12
 
 W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_strefa` (HA bierze ID z nazwy „HP G12 tania strefa”), a pakiet i karta szukały `binary_sensor.hp_g12_tania`. Przez to „do taniej” liczyło źle w taniej strefie i karta pokazywała stary pakiet. Teraz wszędzie jest `binary_sensor.hp_g12_tania_strefa`. **Wersja pakietu: 1.24.** Po wklejeniu wystarczy przeładować „Encje szablonów” i „Automatyzacje” (pełny restart też jest OK).
+
+## v1.25: suwaki w Nauce przełączają się od razu, CWU przy małej historii
+
+- **Poprawka:** po kliknięciu suwaka w Nauce (Automatyzacja cyrkulacji / CWU) przycisk zostawał z focusem i karta wstrzymywała odświeżanie, więc suwak wyglądał na martwy, a drugi klik wyłączał z powrotem. Teraz odświeżanie wstrzymuje się tylko przy pisaniu w polu.
+- **Poprawka:** przy mniej niż 7 dniach historii zużycia wody (albo bez każdego dnia tygodnia) propozycja CWU = wszystkie tanie strefy (wcześniej przy pustej historii zostawała tylko 13–15, bez nocy). Liczenie dni historii obejmuje też bieżący dzień. Przy remisie wybierana jest dłuższa strefa (noc).
+- Pakiet HA bez zmian (1.24).

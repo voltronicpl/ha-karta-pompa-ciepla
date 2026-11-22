@@ -580,7 +580,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
     const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu]);
     const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|') + '|' + Math.floor(Date.now() / 300000);
-    const busy = N.drag || (this._nauEl && this._nauEl.contains(this.shadowRoot && this.shadowRoot.activeElement));
+    // v1.25: wstrzymaj odswiezanie tylko przy pisaniu w polu (klikniety suwak ma focus i blokowal odswiezenie, przelacznik wygladal na martwy)
+    const ae = this.shadowRoot && this.shadowRoot.activeElement;
+    const busy = N.drag || (this._nauEl && ae && this._nauEl.contains(ae) && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName));
     if (sig !== N.sig && !busy) { N.sig = sig; this._nauRender(); }
   }
   async _nauStats(ids, startMs) {
@@ -1209,7 +1211,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     const use = [], cnt = [0, 0, 0, 0, 0, 0, 0];
     for (let i = 0; i < 7; i++) use.push(new Array(96).fill(0));
     const t0 = pts[0][0], seen = {};
-    for (let d = new Date(t0); d.getTime() < now; d.setDate(d.getDate() + 1)) { const k = d.toDateString(); if (!seen[k]) { seen[k] = 1; cnt[(d.getDay() + 6) % 7]++; } }
+    const dd0 = new Date(t0); dd0.setHours(0, 0, 0, 0);
+    for (let d = dd0; d.getTime() < now; d.setDate(d.getDate() + 1)) { const k = d.toDateString(); if (!seen[k]) { seen[k] = 1; cnt[(d.getDay() + 6) % 7]++; } }
     let tot = 0;
     for (let k = 1; k < pts.length; k++) {
       const [ta, va] = pts[k - 1], [tb, vb] = pts[k], dt = (tb - ta) / 60000, dv = va - vb;
@@ -1239,7 +1242,8 @@ class HaKartaPompaCiepla extends HTMLElement {
       for (let k = 0, i = s0; k < n; k++, i = (i + 1) % n) {
         if (mark[i] && !mark[(i - 1 + n) % n]) { let j = i; while (mark[j % n] && j - i < n) j++; segs.push({ a: i, b: j }); }
       }
-      const has = R && R.use && R.perDay > 0.05;
+      // v1.25: za malo historii (< 7 dni) = grzej we wszystkich tanich strefach
+      const has = R && R.use && R.perDay > 0.05 && R.days >= 7 && R.cnt.every((x) => x > 0);
       segs.forEach((s, k) => {
         const nx = segs[(k + 1) % segs.length]; let after = 0;
         const st0 = s.b % n, end = nx.a >= st0 ? nx.a : nx.a + n;
@@ -1249,7 +1253,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       // co najmniej jeden odcinek na dobe: ten z najwiekszym zuzyciem po nim
       if (has) for (let d = 0; d < 7; d++) {
         const mine = segs.filter((s) => Math.floor((s.a % n) / 96) === d);
-        if (mine.length && !mine.some((s) => s.inc)) mine.reduce((x, y) => (y.after > x.after ? y : x)).inc = true;
+        if (mine.length && !mine.some((s) => s.inc)) mine.reduce((x, y) => (y.after > x.after || (y.after === x.after && y.b - y.a > x.b - x.a) ? y : x)).inc = true;
       }
     }
     const blocks = []; for (let i = 0; i < 7; i++) blocks.push([]);
@@ -1288,6 +1292,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       (st[E.auto_cwu] ? '' : ' Brak encji automatyzacji CWU: wklej pakiet v1.23 i zrób pełny restart HA.') + '</span></div>';
     if (!R) return h + '<div class="info">Brak historii temperatury CWU (BT6), propozycja = wszystkie tanie strefy.</div>' + this._nauCwuRows(P, null, esc, fmt) + '</div>';
     h += '<div class="lh"><span>Zużycie ciepłej wody: średnio <b>' + R.perDay.toFixed(1) + ' °C</b> spadku BT6 na dobę (z ' + R.days + ' dni)</span>' + this._nauCwuStat(R, G) + '</div>';
+    if (R.days < 7 || !R.cnt.every((x) => x > 0)) h += '<div class="info">Mało historii zużycia wody (' + R.days + ' dni, potrzeba min. 7, każdy dzień tygodnia). Na razie propozycja = wszystkie tanie strefy; potem zacznie pomijać strefy, po których nie zużywacie wody.</div>';
     h += this._nauCwuRows(P, R, esc, fmt);
     return h + '</div>';
   }
