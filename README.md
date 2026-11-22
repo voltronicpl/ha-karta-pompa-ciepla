@@ -118,3 +118,24 @@ Wymagania:
 3. Każdą funkcję włączasz jej przełącznikiem w bloku (domyślnie wyłączone, nic nie rusza ustawień pompy).
 
 Poza oknem cyrkulacja ma pracę 1 min / postój 60 min, bo sterownik SMO40 nie ma pełnego wyłączenia.
+
+## Zakładka Nauka i dopasowanie do ekranu (od v1.14)
+
+Pod kartą są dwie zakładki: **Harmonogram** i **Nauka**. Nauka jest tylko do podglądu i nic nie zmienia w pompie.
+
+- **Krzywa grzewcza: obecna i proponowana.** Karta bierze z historii HA (statystyki godzinowe recordera) temperaturę zewnętrzną BT1 i temperaturę w domu, a z Open-Meteo (`api.open-meteo.com`, położenie domu z ustawień HA) wiatr, zachmurzenie i nasłonecznienie z tych samych godzin. Liczy, przy jakich temperaturach zewnętrznych w domu było za ciepło lub za zimno (godziny 8–22), i ile trzeba przesunąć punkty P1–P7, żeby było równo. Do tego dokłada poprawkę na prognozę słońca i wiatru na najbliższe 12 h. Pod wykresem jest lista, co przesunęło propozycję. Punkty ustawiasz sam w panelu „Własna krzywa”.
+- **Cyrkulacja CWU: proponowany harmonogram Pn–Nd** z historii obecności telefonów (`person.*`). Zasady: dom pusty = wyłączona, jesteście i nie śpicie = włączona, sen = wyłączona. Sen wykrywa z nocnych okien obecności bez aktywności (światła, media, ładowanie/ekran telefonów). Przycisk **Wyślij na główną** wpisuje okna do harmonogramu „Cyrkulacja CWU” w zakładce Harmonogram jako niezapisane zmiany. Zapisujesz sam przyciskiem „Zapisz harmonogram” (albo „Cofnij zmiany”). Przełącznik „Aktywne” nie jest ruszany.
+- **Kafle** pokazują, ile dni historii faktycznie użyto do krzywej i do cyrkulacji.
+- **Źródła nauki:** własna lista encji (temperatura w domu, osoby/telefony, aktywność, czujniki pogody). Dodajesz i usuwasz w zakładce Nauka. Lista jest zapisywana w HA (dane użytkownika frontendu) i nie zmienia samych encji. „Auto” wraca do wykrywania automatycznego.
+
+Opcjonalnie w konfiguracji karty:
+```yaml
+nauka:
+  cel: 21.5          # docelowa temp. w domu (domyślnie mediana z historii)
+  dni_krzywa: 60     # max dni historii do krzywej (max 92)
+  dni_cyrkulacja: 28 # max dni historii do cyrkulacji
+dopasuj_ekran: true  # false = stare zachowanie (karta na całą szerokość)
+# ekran_gora: 64     # ile px zajmuje pasek HA nad kartą (domyślnie mierzone)
+```
+
+**Dopasowanie do ekranu:** na komputerze mapa razem z całym dolnym rzędem paneli (krzywa grzewcza, P1–P7, przyciski) mieści się w oknie bez przewijania. Karta skaluje się z szerokości i wysokości okna z zachowaniem proporcji. Harmonogram i Nauka są niżej, po przewinięciu. Telefon (do 700 px) działa jak w v1.13.

@@ -77,6 +77,24 @@ const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '.sw .tg{position:relative;width:58px;height:30px;border-radius:999px;background:#4a525e;border:none;padding:0}' +
   '.sw .tg i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}' +
   '.sw .tg.on{background:linear-gradient(180deg,#36a3ff,#1a7fe0);box-shadow:0 0 10px rgba(33,150,243,.6)}.sw .tg.on i{left:31px}';
+const NAU_CSS = '#tb{display:flex;gap:.5em;padding-top:.8em;background:#0e1013}#tb button{font:inherit;font-size:1.05em;color:#eef2f6;cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(62,70,82,.85);border-radius:8px 8px 0 0;padding:.5em 1.4em}' +
+  '#tb button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
+  '#nau{box-sizing:border-box;padding:12px;color:#eef2f6;font-family:' + FONT + ';font-size:13px;background:#0e1013}#nau[hidden],#sch[hidden]{display:none}' +
+  '#nau .kt{display:grid;grid-template-columns:repeat(auto-fit,minmax(14em,1fr));gap:.8em;margin-bottom:1em}#nau .k{display:flex;flex-direction:column;gap:.2em;padding:.8em 1em;border-radius:10px;background:rgba(10,12,16,.55);border:1px solid rgba(110,193,255,.3)}' +
+  '#nau .k span{opacity:.8}#nau .k b{font-size:1.7em;color:#7ec8ff}#nau .k i{font-style:normal;opacity:.65;font-size:.9em}' +
+  '#nau .sec{margin-top:1.1em;padding-top:.9em;border-top:1px solid rgba(255,255,255,.1)}#nau .st2{font-size:1.15em;font-weight:600;margin-bottom:.7em}#nau .st2 small{font-weight:400;opacity:.65;font-size:.8em}' +
+  '#nau .cv{display:flex;flex-wrap:wrap;gap:1em;align-items:flex-start}#nau .cv svg{flex:1 1 30em;max-width:60em}' +
+  '#nau .pv{display:grid;grid-template-columns:repeat(7,1fr);gap:.3em;flex:1 1 26em;font-size:.92em}#nau .pv div{display:flex;flex-direction:column;align-items:center;gap:.15em;padding:.45em .2em;border-radius:7px;background:rgba(10,12,16,.55);border:1px solid rgba(255,255,255,.08)}' +
+  '#nau .pv em{font-style:normal;font-weight:700}#nau .pv em.u{color:#ff9e80}#nau .pv em.d{color:#7ee04a}' +
+  '#nau .why{margin-top:.8em}#nau .wt{opacity:.8;margin-bottom:.3em}#nau .wr{display:flex;justify-content:space-between;gap:1em;padding:.35em .7em;border-radius:6px;background:rgba(255,255,255,.04);margin:.2em 0}#nau .wr b{white-space:nowrap;color:#7ee04a}' +
+  '#nau .wn{opacity:.6;font-size:.88em;margin-top:.5em}' +
+  '#nau .tl.ro{cursor:default}#nau .lay{position:absolute;inset:0;border-radius:6px;pointer-events:none}#nau .bk.pr2{background:rgba(67,194,90,.25);border:2px solid #43d343;cursor:default}' +
+  '#nau .nd{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.5;font-size:.85em}' +
+  '#nau .lg{display:flex;flex-wrap:wrap;gap:.4em 1.4em;margin:.6em 0 0 3.2em;opacity:.8;font-size:.9em}#nau .lg i{display:inline-block;width:1.4em;height:.8em;border-radius:3px;margin-right:.4em;vertical-align:middle}#nau .lg i.pb{border:2px solid #43d343;background:rgba(67,194,90,.25);box-sizing:border-box}' +
+  '#nau .src{display:flex;flex-wrap:wrap;align-items:center;gap:.5em 1em;padding:.55em 0;border-bottom:1px solid rgba(255,255,255,.06)}#nau .sn{flex:0 0 15em;display:flex;flex-direction:column}#nau .sn small{opacity:.6}' +
+  '#nau .chips{flex:1 1 20em;display:flex;flex-wrap:wrap;gap:.35em}#nau .chip{display:inline-flex;align-items:center;gap:.3em;padding:.2em .3em .2em .7em;border-radius:999px;background:rgba(41,182,246,.15);border:1px solid rgba(41,182,246,.45)}' +
+  '#nau .chip button{padding:0 .45em;border:none;background:none;font-size:1.1em;line-height:1}#nau .chip button:hover{color:#ff8a80}' +
+  '#nau .sa{display:flex;gap:.4em;flex:0 1 26em}#nau .sa input{flex:1;min-width:10em;height:2.1em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);padding:0 .5em;color:#fff;font:inherit}';
 const ELS = [
 __ELEMENTS__
 ];
@@ -103,12 +121,14 @@ class HaKartaPompaCiepla extends HTMLElement {
     const root = this.attachShadow ? (this.shadowRoot || this.attachShadow({ mode: 'open' })) : this;
     const img = this._config.image || BG;
     root.innerHTML = '<style>:host{display:block}' +
-      'ha-card{overflow:hidden;border-radius:var(--ha-card-border-radius,12px);background:#111}' +
+      'ha-card{overflow:hidden;border-radius:var(--ha-card-border-radius,12px);background:#0e1013}#fw{margin:0 auto;background:#111}' +
       '#mw{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}#c{position:relative;width:100%;line-height:1.15;color:#eef2f6;font-family:' + FONT + '}' +
       '@media (max-width:700px){#c{min-width:860px}}' +
       '#c>img{display:block;width:100%;height:auto;user-select:none;pointer-events:none}' +
       '.el{position:absolute}.el.t{cursor:pointer}' + EXTRA.replace(':host { --u: calc(100cqw / 1672); }', '').replace(':host', '.el') + POP_CSS +
-      '</style><ha-card><div id="mw"><div id="c"><img alt="" src="' + img + '"></div></div><div id="sch"></div></ha-card>';
+      NAU_CSS + POP_CSS.replace(/#sch\b/g, '#nau') +
+      '</style><ha-card><div id="fw"><div id="mw"><div id="c"><img alt="" src="' + img + '"></div></div>' +
+      '<div id="tb"><button data-t="sch">Harmonogram</button><button data-t="nau">Nauka</button></div><div id="sch"></div><div id="nau" hidden></div></div></ha-card>';
     const c = root.getElementById('c');
     this._nodes = ELS.map((el) => {
       const d = document.createElement('div');
@@ -126,11 +146,30 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._c = c;
     this._sch = this._sch || { lane: 'noc', data: {}, draft: {}, dirty: {}, sel: null, loaded: false, sig: '' };
     this._schEl = root.getElementById('sch');
+    this._fw = root.getElementById('fw');
+    this._nauEl = root.getElementById('nau');
+    this._tbEl = root.getElementById('tb');
+    this._nau = this._nau || { res: null, loading: false, at: 0, err: '', sig: '' };
+    let tab = 'sch'; try { tab = localStorage.getItem('hkpc_tab') === 'nau' ? 'nau' : 'sch'; } catch (e) { /* brak */ }
+    this._tbEl.addEventListener('click', (ev) => { const b = ev.target.closest && ev.target.closest('[data-t]'); if (b) this._tab(b.getAttribute('data-t'), true); });
+    this._tab(tab);
     this._fit = () => {
+      // v1.14: karta (mapa + caly rzad paneli z krzywa) miesci sie na jednym ekranie: szerokosc ograniczona wysokoscia okna.
+      // Telefon (<= 700 px) bez zmian jak w v1.13 (przewijanie w poziomie).
+      const fw = this._fw, card = fw.parentElement;
+      if (window.innerWidth > 700 && this._config.dopasuj_ekran !== false) {
+        const cr = card.getBoundingClientRect();
+        if (cr.top >= 0 && cr.top < 260) this._top = cr.top;
+        const top = this._config.ekran_gora !== undefined ? Number(this._config.ekran_gora) : (this._top !== undefined ? this._top : 64);
+        const mx = Math.max(480, (window.innerHeight - top - 6) * 1672 / 941);
+        fw.style.maxWidth = mx < cr.width ? Math.floor(mx) + 'px' : '';
+      } else fw.style.maxWidth = '';
       const w = c.getBoundingClientRect().width;
       if (w) c.style.setProperty('--u', (w / 1672) + 'px');
       const sw = this._schEl.getBoundingClientRect().width;
       if (sw) { this._schEl.style.fontSize = Math.max(11, Math.min(15, sw * 0.0105)) + 'px'; this._schEl.style.padding = Math.max(8, Math.min(30, sw * 0.02)) + 'px'; }
+      const nw = (this._schEl.hidden ? this._nauEl : this._schEl).parentElement.getBoundingClientRect().width;
+      if (nw) { [this._nauEl, this._tbEl].forEach((x) => { x.style.fontSize = Math.max(11, Math.min(15, nw * 0.0105)) + 'px'; }); this._nauEl.style.padding = Math.max(8, Math.min(30, nw * 0.02)) + 'px'; this._tbEl.style.paddingLeft = this._tbEl.style.paddingRight = Math.max(8, Math.min(30, nw * 0.02)) + 'px'; }
     };
     this._fit();
     try { if (window.ResizeObserver) { this._ro = new ResizeObserver(() => this._fit()); this._ro.observe(c); this._ro.observe(this._schEl); } } catch (e) { /* brak */ }
@@ -158,6 +197,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._checkPend();
     if (this._pop && this._pop._upd) this._pop._upd();
     this._schTick();
+    this._nauTick();
   }
 
 
@@ -240,6 +280,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       return '<button class="tab' + (l.k === lane.k ? ' on' : '') + '" data-a="lane" data-k="' + l.k + '"><span class="dot' + (on ? (inw ? ' w' : ' a') : '') + '"></span>' + esc(l.n) + (S.dirty[l.k] ? ' •' : '') + '</button>';
     }).join('') + '</div>';
     if (S.err) h += '<div class="info">' + esc(S.err) + '</div>';
+    if (S.note && S.note.k === lane.k) h += '<div class="info">' + esc(S.note.t) + '</div>';
     if (missing.length) {
       h += '<div class="info">Brakuje harmonogramów w Home Assistant (' + missing.length + ' z 5). ' +
         (hass.user && hass.user.is_admin ? '<button data-a="mk">Utwórz harmonogramy</button>' : 'Poproś administratora o ich utworzenie.') +
@@ -320,7 +361,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     el.addEventListener('click', (ev) => {
       const t = ev.target.closest && ev.target.closest('[data-a]'); if (!t) return;
       const a = t.getAttribute('data-a'), hass = this._hass, l = lane(), dr = this._schDraft(l);
-      if (a === 'lane') { S().lane = t.getAttribute('data-k'); S().sel = null; this._schRender(); }
+      if (a === 'lane') { S().lane = t.getAttribute('data-k'); S().sel = null; S().note = null; this._schRender(); }
       else if (a === 'more') this._more(t.getAttribute('data-e'));
       else if (a === 'bk') { S().sel = { d: t.getAttribute('data-d'), i: Number(t.getAttribute('data-i')) }; this._schRender(); }
       else if (a === 'cp') {
@@ -329,7 +370,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         S().sel = null; mark(); this._schRender();
       }
       else if (a === 'del') { const s = S().sel; if (s) { dr[s.d].splice(s.i, 1); S().sel = null; mark(); this._schRender(); } }
-      else if (a === 'undo') { delete S().draft[l.k]; delete S().dirty[l.k]; S().sel = null; this._schRender(); }
+      else if (a === 'undo') { delete S().draft[l.k]; delete S().dirty[l.k]; S().sel = null; S().note = null; this._schRender(); }
       else if (a === 'save') this._schSave(l);
       else if (a === 'en') hass.callService('input_boolean', 'toggle', { entity_id: l.en });
       else if (a === 'mk') this._schCreate();
@@ -359,7 +400,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     try {
       if (S.data[l.k]) await this._hass.callWS(Object.assign({ type: 'schedule/update', schedule_id: S.data[l.k].id }, body));
       else await this._hass.callWS(Object.assign({ type: 'schedule/create' }, body));
-      delete S.dirty[l.k]; delete S.draft[l.k]; S.sel = null; S.err = '';
+      delete S.dirty[l.k]; delete S.draft[l.k]; S.sel = null; S.err = ''; S.note = null;
       await this._schLoad();
     } catch (e) { S.err = 'Nie udało się zapisać harmonogramu: ' + (e && (e.message || e.code) || e); this._schRender(); }
   }
@@ -380,6 +421,484 @@ class HaKartaPompaCiepla extends HTMLElement {
       S.err = '';
     } catch (e) { S.err = 'Nie udało się utworzyć harmonogramów: ' + (e && (e.message || e.code) || e); }
     setTimeout(() => this._schLoad(), 1500);
+  }
+
+  // ====================== ZAKLADKI POD KARTA ======================
+  _tab(t, user) {
+    if (!this._schEl || !this._nauEl) return;
+    this._tabCur = t === 'nau' ? 'nau' : 'sch';
+    this._schEl.hidden = this._tabCur !== 'sch';
+    this._nauEl.hidden = this._tabCur !== 'nau';
+    this._tbEl.querySelectorAll('[data-t]').forEach((b) => b.classList.toggle('on', b.getAttribute('data-t') === this._tabCur));
+    if (user) { try { localStorage.setItem('hkpc_tab', this._tabCur); } catch (e) { /* brak */ } }
+    if (this._tabCur === 'nau') { this._nauRender(); this._nauTick(); } else if (this._hass) this._schRender();
+    if (this._fit) setTimeout(this._fit, 0);
+  }
+
+  // ====================== NAUKA (tylko podglad, nic nie zmienia w pompie) ======================
+  // Konfiguracja (opcjonalna) w karcie:
+  //   nauka:
+  //     t_dom: [sensor.salon_temperatura]   # czujniki temperatury w domu (domyslnie wykrywane po nazwie)
+  //     cel: 21.5                           # docelowa temp. w domu (domyslnie mediana z historii)
+  //     osoby: [person.misiek]              # obecnosc (domyslnie wszystkie person.*)
+  //     aktywnosc: [light.salon]            # aktywnosc do wykrywania snu (domyslnie light.*, media_player.*, ladowanie telefonow)
+  //     dni_krzywa: 60                      # max dni historii do krzywej (max 92)
+  //     dni_cyrkulacja: 28                  # max dni historii do cyrkulacji
+  _nauCfg() { return (this._config && this._config.nauka) || {}; }
+  _nauSrc(k) { const s = this._nau && this._nau.src; return s && Array.isArray(s[k]) ? s[k].filter((i) => this._hass.states[i]) : null; }
+  _nauIndoor() {
+    const c = this._nauCfg(), st = this._hass.states;
+    if (this._nauSrc('t_dom')) return this._nauSrc('t_dom');
+    if (c.t_dom) return [].concat(c.t_dom).filter((i) => st[i]);
+    const good = /(salon|pok[oó]j|pokoj|sypialn|kuchn|biuro|gabinet|parter|pi[eę]tr|pietr|wewn|indoor|living|bedroom|lazienk|łazienk|dzieci|korytarz|hol\b|w domu)/i;
+    const bad = /(hydrolution|hp_|zewn|outdoor|outside|cwu|bufor|zasil|powr|lod[oó]w|zamra|freezer|fridge|cpu|procesor|bateri|battery|router|serwer|server|esp|piec|kocio|gara|piwnic|strych|szklarn|akwar|podłog|podlog|wylewk|rura)/i;
+    return Object.keys(st).filter((i) => {
+      if (!i.startsWith('sensor.')) return false;
+      const a = st[i].attributes || {}, txt = i + ' ' + (a.friendly_name || '');
+      return a.device_class === 'temperature' && /C/.test(a.unit_of_measurement || '') && !isNaN(parseFloat(st[i].state)) && good.test(txt) && !bad.test(txt);
+    }).slice(0, 8);
+  }
+  _nauPersons() {
+    const c = this._nauCfg(), st = this._hass.states;
+    if (this._nauSrc('osoby')) return this._nauSrc('osoby');
+    if (c.osoby) return [].concat(c.osoby).filter((i) => st[i]);
+    const p = Object.keys(st).filter((i) => i.startsWith('person.'));
+    return p.length ? p : Object.keys(st).filter((i) => i.startsWith('device_tracker.') && (st[i].attributes || {}).source_type !== 'bluetooth_le').slice(0, 10);
+  }
+  _nauActivity() {
+    const c = this._nauCfg(), st = this._hass.states;
+    if (this._nauSrc('aktywnosc')) return this._nauSrc('aktywnosc');
+    if (c.aktywnosc) return [].concat(c.aktywnosc).filter((i) => st[i]);
+    return Object.keys(st).filter((i) => /^(light|media_player)\./.test(i) ||
+      /^binary_sensor\..*(interactive|is_charging|ladowan)/.test(i) || /^sensor\..*(battery_state|charger_type)/.test(i)).slice(0, 40);
+  }
+  _nauTick() {
+    const N = this._nau;
+    if (!N || !this._hass || this._tabCur !== 'nau') return;
+    if (!N.loading && (!N.res || Date.now() - N.at > 30 * 60000)) { this._nauLoad(); return; }
+    // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
+    const st = this._hass.states, ids = this._nauPersons().concat([this._E.bt1]);
+    const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|');
+    if (sig !== N.sig) { N.sig = sig; this._nauRender(); }
+  }
+  async _nauStats(ids, startMs) {
+    const out = {};
+    if (!ids.length) return out;
+    try {
+      const r = await this._hass.callWS({ type: 'recorder/statistics_during_period', start_time: new Date(startMs).toISOString(), statistic_ids: ids, period: 'hour', types: ['mean'] });
+      ids.forEach((id) => {
+        out[id] = ((r && r[id]) || []).filter((p) => p.mean !== null && p.mean !== undefined).map((p) => [typeof p.start === 'number' ? p.start : Date.parse(p.start), Number(p.mean)]).filter((p) => !isNaN(p[0]) && isFinite(p[1]));
+      });
+    } catch (e) { /* brak statystyk */ }
+    const miss = ids.filter((i) => !out[i] || out[i].length < 48);
+    if (miss.length) {
+      try {
+        const from = new Date(Math.max(startMs, Date.now() - 30 * 864e5)).toISOString();
+        const r = await this._hass.callApi('GET', 'history/period/' + from + '?filter_entity_id=' + miss.join(',') + '&end_time=' + encodeURIComponent(new Date().toISOString()) + '&minimal_response&no_attributes');
+        (r || []).forEach((arr) => {
+          if (!arr || !arr.length) return;
+          const id = arr[0].entity_id, b = {};
+          arr.forEach((p) => {
+            const t = Date.parse(p.last_changed || p.last_updated), v = parseFloat(p.state);
+            if (isNaN(t) || isNaN(v)) return;
+            const h = Math.floor(t / 36e5) * 36e5; (b[h] = b[h] || []).push(v);
+          });
+          const hs = Object.keys(b).map((h) => [Number(h), b[h].reduce((a, x) => a + x, 0) / b[h].length]).sort((x, y) => x[0] - y[0]);
+          if (!out[id] || hs.length > out[id].length) out[id] = hs;
+        });
+      } catch (e) { /* brak historii */ }
+    }
+    return out;
+  }
+  async _nauWeather(pastDays) {
+    const c = this._nauCfg(), hc = this._hass.config || {};
+    const lat = Number(c.lat !== undefined ? c.lat : hc.latitude), lon = Number(c.lon !== undefined ? c.lon : hc.longitude);
+    if (!isFinite(lat) || !isFinite(lon)) throw new Error('brak położenia domu w HA');
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(2) + '&longitude=' + lon.toFixed(2) +
+      '&hourly=temperature_2m,wind_speed_10m,cloud_cover,shortwave_radiation&wind_speed_unit=ms&timeformat=unixtime&timezone=auto' +
+      '&past_days=' + Math.max(1, Math.min(92, pastDays)) + '&forecast_days=2';
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('Open-Meteo HTTP ' + r.status);
+    const j = await r.json(), H = j.hourly || {}, out = {};
+    (H.time || []).forEach((t, i) => {
+      out[t * 1000] = { t: t * 1000, temp: H.temperature_2m[i], wind: H.wind_speed_10m[i], cloud: H.cloud_cover[i], sun: H.shortwave_radiation[i] };
+    });
+    return out;
+  }
+  async _nauLoad() {
+    const N = this._nau, hass = this._hass, E = this._E, c = this._nauCfg();
+    N.loading = true; N.err = ''; this._nauRender();
+    if (!N.srcLoaded) await this._nauSrcLoad();
+    const now = Date.now();
+    const res = { curve: null, cyrk: null, wx: null, errs: [] };
+    try {
+      const dk = Math.max(3, Math.min(92, Number(c.dni_krzywa) || 60));
+      const tin = this._nauIndoor();
+      const stats = await this._nauStats([E.bt1].concat(tin), now - dk * 864e5);
+      let W = {};
+      try { W = await this._nauWeather(dk); } catch (e) { res.errs.push('Pogoda Open-Meteo niedostępna (' + (e && e.message || e) + '), liczę bez wiatru i słońca.'); }
+      res.wx = W;
+      const pg = this._nauSrc('pogoda') || [].concat(c.pogoda || []).filter((i) => hass.states[i]);
+      if (pg.length) {
+        const ps = await this._nauStats(pg, now - dk * 864e5);
+        pg.forEach((id) => {
+          const a = hass.states[id].attributes || {}, u = String(a.unit_of_measurement || ''), txt = id + ' ' + (a.friendly_name || '');
+          let k = null, f = 1;
+          if (/^m\/s$/.test(u)) k = 'wind'; else if (/km\/h/.test(u)) { k = 'wind'; f = 1 / 3.6; }
+          else if (/W\/m/.test(u)) k = 'sun'; else if (/^lx$/.test(u)) { k = 'sun'; f = 1 / 120; }
+          else if (u === '%' && /(cloud|chmur|zachm)/i.test(txt)) k = 'cloud';
+          if (!k) return;
+          (ps[id] || []).forEach(([t, v]) => { const h = Math.floor(t / 36e5) * 36e5; if (h > now) return; W[h] = W[h] || { t: h }; W[h][k] = v * f; });
+        });
+      }
+      res.curve = this._nauCurve(stats, tin, W, now - dk * 864e5);
+    } catch (e) { res.errs.push('Krzywa: ' + (e && e.message || e)); }
+    try {
+      const dc = Math.max(3, Math.min(60, Number(c.dni_cyrkulacja) || 28));
+      res.cyrk = await this._nauCyrkLoad(now - dc * 864e5);
+    } catch (e) { res.errs.push('Cyrkulacja: ' + (e && e.message || e)); }
+    N.res = res; N.at = Date.now(); N.loading = false;
+    this._nauRender();
+  }
+  _nauSolve(A, b) {
+    const n = b.length, M = A.map((r, i) => r.concat([b[i]]));
+    for (let i = 0; i < n; i++) {
+      let p = i; for (let k = i + 1; k < n; k++) if (Math.abs(M[k][i]) > Math.abs(M[p][i])) p = k;
+      [M[i], M[p]] = [M[p], M[i]];
+      const d = M[i][i]; if (Math.abs(d) < 1e-12) return null;
+      for (let k = i; k <= n; k++) M[i][k] /= d;
+      for (let r = 0; r < n; r++) if (r !== i) { const f = M[r][i]; for (let k = i; k <= n; k++) M[r][k] -= f * M[i][k]; }
+    }
+    return M.map((r) => r[n]);
+  }
+  _nauCurve(stats, tin, W, startMs) {
+    const E = this._E, st = this._hass.states, c = this._nauCfg();
+    const T = [-30, -20, -10, 0, 10, 20, 30];
+    const num = (k) => { const s = st[E[k]]; const v = s ? parseFloat(s.state) : NaN; return isNaN(v) ? null : v; };
+    const P = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7'].map(num);
+    if (P.some((v) => v === null)) throw new Error('brak punktów P1–P7');
+    const off = num('offset') || 0, mn = num('minsup'), mx = num('maxsup');
+    const stp = Number(((st[E.p1] || {}).attributes || {}).step) || 1;
+    // srednia godzinowa z czujnikow w domu
+    const tinH = {};
+    tin.forEach((id) => (stats[id] || []).forEach(([t, v]) => { const h = Math.floor(t / 36e5) * 36e5; (tinH[h] = tinH[h] || []).push(v); }));
+    const toutH = {};
+    (stats[E.bt1] || []).forEach(([t, v]) => { toutH[Math.floor(t / 36e5) * 36e5] = v; });
+    const outDays = new Set(Object.keys(toutH).filter((h) => h >= startMs).map((h) => new Date(Number(h)).toDateString()));
+    Object.keys(W).forEach((h) => { if (h >= startMs && h <= Date.now()) outDays.add(new Date(Number(h)).toDateString()); });
+    const S = [];
+    Object.keys(tinH).forEach((h) => {
+      h = Number(h); if (h < startMs) return;
+      const hr = new Date(h).getHours(); if (hr < 8 || hr > 21) return;    // noc pomijam (obnizenie nocne psuje obraz)
+      const w = W[h] || {};
+      const to = toutH[h] !== undefined ? toutH[h] : w.temp;
+      if (to === undefined || to === null) return;
+      const ti = tinH[h].reduce((a, x) => a + x, 0) / tinH[h].length;
+      S.push({ h, to, ti, sun: isFinite(w.sun) ? w.sun : null, wind: isFinite(w.wind) ? w.wind : null });
+    });
+    const dayCnt = {}; S.forEach((s) => { const d = new Date(s.h).toDateString(); dayCnt[d] = (dayCnt[d] || 0) + 1; });
+    const days = Object.keys(dayCnt).filter((d) => dayCnt[d] >= 4).length;
+    const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : null; };
+    let target = Number(c.cel);
+    let tsrc = 'ustawiony w karcie';
+    if (!isFinite(target) || !c.cel) { target = med(S.map((s) => s.ti)); tsrc = 'mediana temperatury w domu z historii'; }
+    const sunMean = (() => { const a = S.filter((s) => s.sun !== null); return a.length ? a.reduce((x, s) => x + s.sun, 0) / a.length : 100; })();
+    const windMean = (() => { const a = S.filter((s) => s.wind !== null); return a.length ? a.reduce((x, s) => x + s.wind, 0) / a.length : 3; })();
+    // regresja: odchylka w domu = b_k (punkt krzywej, wagi trojkatne) + cs*slonce/100 + cw*wiatr
+    const phi = (to) => T.map((tk) => Math.max(0, 1 - Math.abs(Math.max(-30, Math.min(30, to)) - tk) / 10));
+    const n = 9, lam = [3, 3, 3, 3, 3, 3, 3, 30, 30], prior = [0, 0, 0, 0, 0, 0, 0, 0.3, -0.05];
+    const A = Array.from({ length: n }, () => new Array(n).fill(0)), bb = new Array(n).fill(0), wsum = new Array(7).fill(0), dsum = new Array(7).fill(0);
+    S.forEach((s) => {
+      const x = phi(s.to).concat([((s.sun !== null ? s.sun : sunMean) - sunMean) / 100, (s.wind !== null ? s.wind : windMean) - windMean]);
+      const y = s.ti - target;
+      for (let i = 0; i < n; i++) { bb[i] += x[i] * y; for (let j = 0; j < n; j++) A[i][j] += x[i] * x[j]; }
+      for (let k = 0; k < 7; k++) { wsum[k] += x[k]; dsum[k] += x[k] * y; }
+    });
+    for (let i = 0; i < n; i++) { A[i][i] += lam[i]; bb[i] += lam[i] * prior[i]; }
+    const beta = (S.length >= 24 && this._nauSolve(A, bb)) || prior.slice();
+    const cs = beta[7], cw = beta[8];
+    const gainAt = (tk, ts) => { const d = target - tk; return d >= 3 ? Math.max(1.2, Math.min(4, (ts - tk) / d)) : 2; };
+    const rnd = (v) => Math.round(v / stp) * stp;
+    const why = [];
+    const delta = T.map((tk, k) => {
+      if (S.length < 24 || wsum[k] < 6 || tk >= 20) return { d: 0, nd: true };
+      const dev = beta[k], g = gainAt(tk, P[k] + off);
+      const d = Math.max(-6, Math.min(6, rnd(-dev * g)));
+      return { d, dev, g, nd: false, h: Math.round(wsum[k]) };
+    });
+    delta.forEach((x, k) => {
+      if (!x.nd && x.d) why.push({ t: 'Przy ' + T[k] + ' °C w domu było ' + (x.dev > 0 ? 'za ciepło' : 'za zimno') + ' o ' + Math.abs(x.dev).toFixed(1) + ' °C (' + x.h + ' h danych)', v: 'P' + (k + 1) + ' ' + (x.d > 0 ? '+' : '−') + Math.abs(x.d) + ' °C' });
+    });
+    // pogoda na najblizsze 12 h vs srednia z historii
+    const now = Date.now(), h0 = Math.floor(now / 36e5) * 36e5;
+    const F = []; for (let i = 0; i < 12; i++) if (W[h0 + i * 36e5]) F.push(W[h0 + i * 36e5]);
+    const avg = (k) => F.length ? F.reduce((a, x) => a + (isFinite(x[k]) ? x[k] : 0), 0) / F.length : null;
+    const fc = { sun: avg('sun'), wind: avg('wind'), cloud: avg('cloud'), temp: avg('temp'), n: F.length };
+    const toNow = num('bt1') !== null ? num('bt1') : (W[h0] ? W[h0].temp : 0);
+    const phN = phi(toNow), tsNow = phN.reduce((a, w, k) => a + w * (P[k] + off), 0);
+    const gNow = gainAt(toNow, tsNow);
+    let ws = 0;
+    if (fc.n) {
+      const dSun = cs * (fc.sun - sunMean) / 100, dWind = cw * (fc.wind - windMean);
+      const sSun = Math.round(-dSun * gNow * 2) / 2, sWind = Math.round(-dWind * gNow * 2) / 2;
+      ws = Math.max(-4, Math.min(4, sSun + sWind));
+      if (sSun) why.push({ t: 'Słońce: prognoza 12 h śr. ' + Math.round(fc.sun) + ' W/m² (zachmurzenie ' + Math.round(fc.cloud) + ' %), zwykle ' + Math.round(sunMean) + ' W/m²', v: (sSun > 0 ? '+' : '−') + Math.abs(sSun) + ' °C' });
+      if (sWind) why.push({ t: 'Wiatr: prognoza 12 h śr. ' + fc.wind.toFixed(1) + ' m/s, zwykle ' + windMean.toFixed(1) + ' m/s', v: (sWind > 0 ? '+' : '−') + Math.abs(sWind) + ' °C' });
+    }
+    const prop = P.map((v, k) => {
+      let y = v + off + delta[k].d + ws;
+      if (mx !== null) y = Math.min(mx, y);      // min. zasilania pompa i tak pilnuje sama, nie przycinam (zeby nie mylilo)
+      return y;
+    });
+    return { T, cur: P.map((v) => v + off), prop, delta, ws, why, target, tsrc, days, outDays: outDays.size, samples: S.length, tin, cs, cw, fc, sunMean, windMean };
+  }
+  async _nauCyrkLoad(startMs) {
+    const hass = this._hass, now = Date.now();
+    const pers = this._nauPersons(), act = this._nauActivity();
+    if (!pers.length) throw new Error('brak encji person.* / device_tracker.* (telefony)');
+    const q = async (ids) => {
+      if (!ids.length) return [];
+      return (await hass.callApi('GET', 'history/period/' + new Date(startMs).toISOString() + '?filter_entity_id=' + ids.join(',') +
+        '&end_time=' + encodeURIComponent(new Date(now).toISOString()) + '&minimal_response&no_attributes')) || [];
+    };
+    const hp = await q(pers);
+    let ha = []; try { ha = await q(act); } catch (e) { ha = []; }
+    const SL = 15 * 60000;
+    let t0 = now;
+    const series = hp.filter((a) => a && a.length).map((a) => a.map((p) => [Date.parse(p.last_changed || p.last_updated), p.state]).filter((p) => !isNaN(p[0])).sort((x, y) => x[0] - y[0]));
+    series.forEach((s) => { if (s.length) t0 = Math.min(t0, s[0][0]); });
+    t0 = Math.max(t0, startMs);
+    t0 = Math.ceil(t0 / SL) * SL;
+    const n = Math.max(0, Math.floor((now - t0) / SL));
+    if (n < 96) throw new Error('za mało historii obecności (mniej niż doba)');
+    const home = new Uint8Array(n), known = new Uint8Array(n);
+    series.forEach((s) => {
+      let j = 0;
+      for (let i = 0; i < n; i++) {
+        const t = t0 + i * SL + SL / 2;
+        while (j + 1 < s.length && s[j + 1][0] <= t) j++;
+        if (s[j][0] > t) continue;
+        const v = s[j][1];
+        if (v === 'unavailable' || v === 'unknown') continue;
+        known[i] = 1;
+        if (v === 'home') home[i] = 1;
+      }
+    });
+    const actv = new Uint8Array(n);
+    let actN = 0;
+    ha.forEach((a) => {
+      if (!a || a.length < 2) return;
+      actN++;
+      for (let k = 1; k < a.length; k++) {
+        const p = a[k], t = Date.parse(p.last_changed || p.last_updated);
+        if (isNaN(t) || p.state === 'unavailable' || p.state === 'unknown') continue;
+        const pv = a[k - 1].state; if (pv === 'unavailable' || pv === 'unknown') continue;
+        const i = Math.floor((t - t0) / SL); if (i >= 0 && i < n) actv[i] = 1;
+      }
+    });
+    // sen: najdluzsze okno "w domu i brak aktywnosci" w nocy (18:00 -> 12:00), obejmujace 1:00-5:00, min. 4 h
+    const sleep = new Uint8Array(n);
+    const nights = [];
+    const d0 = new Date(t0); d0.setHours(18, 0, 0, 0); if (d0.getTime() > t0) d0.setDate(d0.getDate() - 1);
+    for (let d = new Date(d0); d.getTime() < now; d.setDate(d.getDate() + 1)) {
+      const a = Math.max(0, Math.round((d.getTime() - t0) / SL)), b = Math.min(n, Math.round((d.getTime() + 18 * 36e5 - t0) / SL));
+      if (b - a < 40) continue;
+      let best = null;
+      if (actN) {
+        let i = a;
+        while (i < b) {
+          if (!home[i] || actv[i]) { i++; continue; }
+          let j = i; while (j < b && home[j] && !actv[j]) j++;
+          let core = false; for (let k = i; k < j; k++) { const hr = new Date(t0 + k * SL).getHours(); if (hr >= 1 && hr < 5) { core = true; break; } }
+          if (core && j - i >= 16 && (!best || j - i > best[1] - best[0])) best = [i, j];
+          i = j;
+        }
+      } else {
+        // brak encji aktywnosci: przyjmuje 23:00-6:00, gdy ktos jest w domu
+        const s = Math.round((d.getTime() + 5 * 36e5 - t0) / SL), e = Math.round((d.getTime() + 12 * 36e5 - t0) / SL);
+        let any = false; for (let k = Math.max(a, s); k < Math.min(b, e); k++) if (home[k]) any = true;
+        if (any) best = [Math.max(a, s), Math.min(b, e)];
+      }
+      if (best) { for (let k = best[0]; k < best[1]; k++) if (home[k]) sleep[k] = 1; nights.push(best); }
+    }
+    const cnt = Array.from({ length: 7 }, () => new Array(96).fill(0)), ph = cnt.map((r) => r.slice()), ps = cnt.map((r) => r.slice());
+    for (let i = 0; i < n; i++) {
+      if (!known[i]) continue;
+      const dt = new Date(t0 + i * SL + SL / 2), wd = (dt.getDay() + 6) % 7, k = dt.getHours() * 4 + Math.floor(dt.getMinutes() / 15);
+      cnt[wd][k]++; ph[wd][k] += home[i]; ps[wd][k] += sleep[i];
+    }
+    const blocks = cnt.map((row, wd) => {
+      if (row.reduce((a, x) => a + x, 0) < 48) return null;    // brak danych dla tego dnia tygodnia
+      const on = row.map((c, k) => c > 0 && ph[wd][k] / c >= 0.5 && ps[wd][k] / c < 0.5);
+      // zalataj dziury <= 30 min, wyrzuc okna < 30 min
+      for (let k = 0; k < 96; k++) if (!on[k]) { let j = k; while (j < 96 && !on[j]) j++; if (k > 0 && j < 96 && j - k <= 2) for (let x = k; x < j; x++) on[x] = true; k = j; }
+      const out = []; let k = 0;
+      while (k < 96) { if (!on[k]) { k++; continue; } let j = k; while (j < 96 && on[j]) j++; if (j - k >= 2) out.push({ f: k * 15, t: j * 15 }); k = j; }
+      return out;
+    });
+    const mins = (k) => { const dt = new Date(t0 + k * SL); return dt.getHours() * 60 + dt.getMinutes(); };
+    const circ = (arr) => { if (!arr.length) return null; const a = arr.map((m) => m / 1440 * 2 * Math.PI); const x = a.reduce((s, v) => s + Math.cos(v), 0), y = a.reduce((s, v) => s + Math.sin(v), 0); let m = Math.atan2(y, x) / 2 / Math.PI * 1440; if (m < 0) m += 1440; return Math.round(m / 15) * 15; };
+    return {
+      blocks, ph: ph.map((r, wd) => r.map((v, k) => (cnt[wd][k] ? v / cnt[wd][k] : null))), ps: ps.map((r, wd) => r.map((v, k) => (cnt[wd][k] ? v / cnt[wd][k] : null))),
+      days: Math.floor((now - t0) / 864e5), pers, actN, sleepFrom: circ(nights.map((b) => mins(b[0]))), sleepTo: circ(nights.map((b) => mins(b[1]))), nights: nights.length,
+    };
+  }
+  async _nauSrcLoad() {
+    const N = this._nau; let v = null;
+    try { const r = await this._hass.callWS({ type: 'frontend/get_user_data', key: 'hkpc_nauka_zrodla' }); v = r && r.value; } catch (e) { v = null; }
+    if (!v) { try { v = JSON.parse(localStorage.getItem('hkpc_nauka_zrodla') || 'null'); } catch (e) { v = null; } }
+    N.src = v && typeof v === 'object' ? v : {};
+    N.srcLoaded = true;
+  }
+  async _nauSrcSave() {
+    const N = this._nau;
+    try { localStorage.setItem('hkpc_nauka_zrodla', JSON.stringify(N.src)); } catch (e) { /* brak */ }
+    try { await this._hass.callWS({ type: 'frontend/set_user_data', key: 'hkpc_nauka_zrodla', value: N.src }); N.srcErr = ''; }
+    catch (e) { N.srcErr = 'Zapisane tylko w tej przeglądarce (HA nie przyjął: ' + (e && (e.message || e.code) || e) + ').'; }
+  }
+  _nauSrcDefs() {
+    return [
+      { k: 't_dom', n: 'Temperatura w domu', d: 'do krzywej', cur: () => this._nauIndoor(),
+        ok: (i, a) => i.startsWith('sensor.') && a.device_class === 'temperature' },
+      { k: 'osoby', n: 'Obecność (osoby / telefony)', d: 'do cyrkulacji', cur: () => this._nauPersons(),
+        ok: (i) => /^(person|device_tracker)\./.test(i) },
+      { k: 'aktywnosc', n: 'Aktywność (wykrywanie snu)', d: 'do cyrkulacji', cur: () => this._nauActivity(),
+        ok: (i) => /^(light|media_player|binary_sensor|sensor|switch|input_boolean)\./.test(i) },
+      { k: 'pogoda', n: 'Czujniki pogody (wiatr, słońce, chmury)', d: 'do krzywej, zastępują Open-Meteo w historii', cur: () => this._nauSrc('pogoda') || [].concat(this._nauCfg().pogoda || []).filter((i) => this._hass.states[i]),
+        ok: (i, a) => i.startsWith('sensor.') && /^(m\/s|km\/h|W\/m²|W\/m2|lx|%)$/.test(String(a.unit_of_measurement || '')) },
+    ];
+  }
+  _nauSrcEdit(k, op, id) {
+    const N = this._nau, def = this._nauSrcDefs().find((d) => d.k === k); if (!def) return;
+    if (op === 'auto') delete N.src[k];
+    else {
+      const cur = Array.isArray(N.src[k]) ? N.src[k].slice() : def.cur().slice();
+      if (op === 'add') { if (!id || !this._hass.states[id] || cur.includes(id)) { N.srcMsg = id ? 'Nie ma takiej encji albo już jest na liście: ' + id : ''; this._nauRender(); return; } cur.push(id); }
+      if (op === 'del') { const j = cur.indexOf(id); if (j >= 0) cur.splice(j, 1); }
+      N.src[k] = cur;
+    }
+    N.srcMsg = '';
+    this._nauSrcSave().then(() => { this._nauRender(); this._nauLoad(); });
+    this._nauRender();
+  }
+  _nauSrcHtml(esc) {
+    const N = this._nau, st = this._hass.states;
+    const nm = (i) => esc((st[i] && st[i].attributes.friendly_name) || i);
+    let h = '<div class="sec"><div class="st2">Źródła nauki<small> – Twoja lista encji, z których karta się uczy. Dodanie/usunięcie zmienia tylko tę listę, nie rusza encji w HA.</small></div>';
+    if (N.srcErr) h += '<div class="warn">' + esc(N.srcErr) + '</div>';
+    if (N.srcMsg) h += '<div class="warn">' + esc(N.srcMsg) + '</div>';
+    this._nauSrcDefs().forEach((d) => {
+      const own = N.src && Array.isArray(N.src[d.k]);
+      const cur = d.cur();
+      const cand = Object.keys(st).filter((i) => !cur.includes(i) && d.ok(i, st[i].attributes || {})).sort();
+      h += '<div class="src"><div class="sn"><b>' + esc(d.n) + '</b><small>' + esc(d.d) + (own ? ' · Twoja lista' : ' · wykryte automatycznie') + '</small></div><div class="chips">' +
+        (cur.length ? cur.map((i) => '<span class="chip" title="' + esc(i) + '">' + nm(i) + '<button data-a="sdel" data-k="' + d.k + '" data-e="' + esc(i) + '" title="Usuń z listy nauki">×</button></span>').join('') : '<i style="opacity:.6">brak</i>') +
+        '</div><div class="sa"><input list="dl_' + d.k + '" data-k="' + d.k + '" placeholder="dodaj encję (wpisz lub wybierz)…"><datalist id="dl_' + d.k + '">' +
+        cand.slice(0, 400).map((i) => '<option value="' + esc(i) + '">' + nm(i) + '</option>').join('') + '</datalist>' +
+        '<button data-a="sadd" data-k="' + d.k + '">Dodaj</button>' + (own ? '<button data-a="sauto" data-k="' + d.k + '" title="Wróć do wykrywania automatycznego">Auto</button>' : '') + '</div></div>';
+    });
+    return h + '</div>';
+  }
+  _nauSend() {
+    const N = this._nau, r = N.res && N.res.cyrk;
+    if (!r) return;
+    const S = this._sch, lane = this._schLanes().find((l) => l.k === 'cyrk');
+    const dr = this._schDraft(lane);
+    let n = 0;
+    this._schDays().forEach((d, i) => { if (r.blocks[i]) { dr[d] = this._schNorm(JSON.parse(JSON.stringify(r.blocks[i]))); n++; } });
+    S.dirty.cyrk = true; S.lane = 'cyrk'; S.sel = null;
+    S.note = { k: 'cyrk', t: 'Wpisano propozycję z zakładki Nauka (' + n + ' z 7 dni). Sprawdź i kliknij „Zapisz harmonogram”, albo „Cofnij zmiany”. Przełącznik Aktywne nie był ruszany.' };
+    this._tab('sch', true);
+    this._schRender();
+    if (this._schEl.scrollIntoView) this._schEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  _nauRender() {
+    const el = this._nauEl, hass = this._hass, N = this._nau;
+    if (!el || !hass || el.hidden) return;
+    if (!el._bound) {
+      el._bound = true;
+      el.addEventListener('click', (ev) => {
+        const t = ev.target.closest && ev.target.closest('[data-a]'); if (!t) return;
+        const a = t.getAttribute('data-a');
+        if (a === 'send') this._nauSend();
+        else if (a === 'reload' && !N.loading) this._nauLoad();
+        else if (a === 'more') this._more(t.getAttribute('data-e'));
+        else if (a === 'sdel') this._nauSrcEdit(t.getAttribute('data-k'), 'del', t.getAttribute('data-e'));
+        else if (a === 'sauto') this._nauSrcEdit(t.getAttribute('data-k'), 'auto');
+        else if (a === 'sadd') { const inp = el.querySelector('input[data-k="' + t.getAttribute('data-k') + '"]'); this._nauSrcEdit(t.getAttribute('data-k'), 'add', inp && inp.value.trim()); }
+      });
+      el.addEventListener('keydown', (ev) => {
+        const t = ev.target; if (ev.key !== 'Enter' || !t.getAttribute || !t.getAttribute('data-k') || t.tagName !== 'INPUT') return;
+        this._nauSrcEdit(t.getAttribute('data-k'), 'add', t.value.trim());
+      });
+    }
+    const st = hass.states, E = this._E;
+    const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const fmt = (m) => this._schFmt(m);
+    const R = N.res;
+    let h = '<div class="sh"><div class="sht">Nauka<small>tylko podgląd: nic tu nie zmienia ustawień pompy</small><span style="flex:1"></span>' +
+      '<button data-a="reload"' + (N.loading ? ' disabled' : '') + '>' + (N.loading ? 'Liczę…' : 'Przelicz') + '</button></div>';
+    if (!R) { el.innerHTML = h + '<div class="info">' + (N.loading ? 'Pobieram historię z Home Assistant i pogodę z Open-Meteo…' : 'Brak danych.') + '</div></div>'; return; }
+    (R.errs || []).forEach((e) => { h += '<div class="warn">' + esc(e) + '</div>'; });
+    const C = R.curve, Y = R.cyrk;
+    // ---- kafle ----
+    const h0 = Math.floor(Date.now() / 36e5) * 36e5, w0 = R.wx && R.wx[h0];
+    h += '<div class="kt">' +
+      '<div class="k"><span>Krzywa grzewcza</span><b>' + (C ? C.days : 0) + ' dni</b><i>historii użytej do nauki' + (C ? ' (' + C.samples + ' h, temp. zewn. ' + C.outDays + ' dni)' : '') + '</i></div>' +
+      '<div class="k"><span>Cyrkulacja CWU</span><b>' + (Y ? Y.days : 0) + ' dni</b><i>historii obecności telefonów' + (Y ? ' (' + Y.pers.length + ' os.)' : '') + '</i></div>' +
+      '<div class="k"><span>Pogoda teraz (Open-Meteo)</span><b>' + (w0 ? w0.temp.toFixed(1) + ' °C' : '–') + '</b><i>' + (w0 ? 'wiatr ' + w0.wind.toFixed(1) + ' m/s · chmury ' + Math.round(w0.cloud) + ' % · słońce ' + Math.round(w0.sun) + ' W/m²' : 'brak danych pogody') + '</i></div>' +
+      '</div>';
+    // ---- krzywa ----
+    h += '<div class="sec"><div class="st2">Krzywa grzewcza: obecna i proponowana</div>';
+    if (C) {
+      const all = C.cur.concat(C.prop);
+      const lo = Math.min(20, Math.floor((Math.min(...all) - 2) / 10) * 10), hi = Math.max(50, Math.ceil((Math.max(...all) + 2) / 10) * 10);
+      const X0 = 46, X1 = 590, Y0 = 34, Y1 = 196;
+      const sx = (t) => X0 + (30 - t) / 60 * (X1 - X0), sy = (v) => Y1 - (v - lo) / (hi - lo) * (Y1 - Y0);
+      let g = '';
+      for (let t = -30; t <= 30; t += 10) g += '<line x1="' + sx(t) + '" y1="' + Y0 + '" x2="' + sx(t) + '" y2="' + Y1 + '" stroke="rgba(255,255,255,.08)"/><text x="' + sx(t) + '" y="' + (Y1 + 16) + '" text-anchor="middle">' + t + ' °C</text>';
+      for (let v = lo; v <= hi; v += 10) g += '<line x1="' + X0 + '" y1="' + sy(v) + '" x2="' + X1 + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + ' °C</text>';
+      const pl = (ys, col, dash) => '<polyline points="' + C.T.map((t, i) => sx(t) + ',' + sy(ys[i])).join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.6"' + (dash ? ' stroke-dasharray="7 5"' : '') + ' stroke-linejoin="round"/>' +
+        C.T.map((t, i) => '<circle cx="' + sx(t) + '" cy="' + sy(ys[i]) + '" r="3" fill="' + col + '"/>').join('');
+      const ox = parseFloat((st[E.bt1] || {}).state);
+      const nowl = isNaN(ox) ? '' : '<line x1="' + sx(Math.max(-30, Math.min(30, ox))) + '" y1="' + Y0 + '" x2="' + sx(Math.max(-30, Math.min(30, ox))) + '" y2="' + Y1 + '" stroke="#ffb300" stroke-dasharray="3 4"/><text x="' + sx(Math.max(-30, Math.min(30, ox))) + '" y="' + (Y0 - 4) + '" text-anchor="middle" fill="#ffb300">teraz ' + ox.toFixed(1) + ' °C</text>';
+      const leg = '<line x1="50" y1="12" x2="74" y2="12" stroke="#29b6f6" stroke-width="2.6"/><text x="80" y="16" fill="#e3e8ee">Obecna (P1–P7 + przesunięcie)</text>' +
+        '<line x1="300" y1="12" x2="324" y2="12" stroke="#43d343" stroke-width="2.6" stroke-dasharray="7 5"/><text x="330" y="16" fill="#e3e8ee">Proponowana</text>';
+      h += '<div class="cv"><svg viewBox="0 0 600 220" style="width:100%;height:auto;display:block;font-family:inherit"><g font-size="11.5" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + nowl + '</g>' + pl(C.cur, '#29b6f6') + pl(C.prop, '#43d343', true) + '</svg>' +
+        '<div class="pv">' + C.T.map((t, i) => i).reverse().map((i) => { const d = Math.round((C.prop[i] - C.cur[i]) * 10) / 10;
+          return '<div><b>P' + (i + 1) + '</b><span>' + C.T[i] + ' °C</span><span>' + C.cur[i].toFixed(0) + ' → <em class="' + (d > 0 ? 'u' : d < 0 ? 'd' : '') + '">' + (Math.round(C.prop[i] * 10) / 10) + '</em> °C</span></div>'; }).join('') + '</div></div>';
+      h += '<div class="why"><div class="wt">Co przesunęło propozycję:</div>' + (C.why.length ? C.why.map((w) => '<div class="wr"><span>' + esc(w.t) + '</span><b>' + esc(w.v) + '</b></div>').join('')
+        : '<div class="wr"><span>Nic wyraźnego: obecna krzywa trzyma temperaturę w domu, a pogoda jest typowa.</span><b>0 °C</b></div>') +
+        '<div class="wn">Cel w domu: ' + (C.target !== null ? C.target.toFixed(1) + ' °C (' + esc(C.tsrc) + ')' : 'brak') + '. Czujniki w domu: ' + (C.tin.length ? C.tin.map((i) => esc((st[i] && st[i].attributes.friendly_name) || i)).join(', ') : '<b>nie znalazłem</b> (ustaw w karcie: nauka: t_dom: sensor.…)') +
+        '. Liczone z godzin 8–22 (nocne obniżenie pomijam). Wykres nic nie zmienia, punkty P1–P7 ustawiasz sam w panelu „Własna krzywa”.</div></div>';
+    } else h += '<div class="info">Nie da się policzyć krzywej (brak danych).</div>';
+    h += '</div>';
+    // ---- cyrkulacja ----
+    h += '<div class="sec"><div class="st2">Cyrkulacja CWU: proponowany harmonogram (Pn–Nd)</div>';
+    if (Y) {
+      const pers = Y.pers, homeN = pers.filter((i) => st[i] && st[i].state === 'home').length;
+      h += '<div class="lh"><span>Teraz w domu: <b>' + homeN + ' z ' + pers.length + '</b> (' + pers.map((i) => esc(((st[i] && st[i].attributes.friendly_name) || i) + ': ' + (st[i] ? (st[i].state === 'home' ? 'w domu' : st[i].state === 'not_home' ? 'poza' : st[i].state) : '?'))).join(', ') + ')' +
+        (homeN ? '' : ' → dom pusty, cyrkulacja niepotrzebna') + '</span>' +
+        '<span class="ds">Zasady: dom pusty = wyłączona, jesteście i nie śpicie = włączona, sen = wyłączona. ' +
+        (Y.actN ? 'Sen wykryty z ' + Y.nights + ' nocy (brak aktywności świateł/mediów/telefonów przy obecności): zwykle ok. ' + (Y.sleepFrom !== null ? fmt(Y.sleepFrom) + '–' + fmt(Y.sleepTo) : '–') + '.' : 'Brak encji aktywności, sen przyjęty 23:00–6:00.') + '</span></div>';
+      const DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'], wd = (new Date().getDay() + 6) % 7;
+      const grad = (arr, rgb, mx) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(' + rgb + ',' + (v === null ? 0 : (v * mx).toFixed(2)) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
+      h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
+      DL.forEach((dn, i) => {
+        h += '<div class="dr"><span class="dn' + (i === wd ? ' td' : '') + '">' + dn + '</span><div class="tl ro" style="--c:#43c25a;--c2:#2a8a3c">' +
+          '<div class="lay" style="background:' + grad(Y.ph[i], '67,194,90', 0.45) + '"></div><div class="lay" style="background:' + grad(Y.ps[i], '90,120,255', 0.6) + '"></div>';
+        if (Y.blocks[i]) Y.blocks[i].forEach((b) => { h += '<div class="bk pr2" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + fmt(b.f) + '–' + fmt(b.t) + '</div>'; });
+        else h += '<div class="nd">za mało danych</div>';
+        h += '</div><span class="cp" style="visibility:hidden">⧉</span></div>';
+      });
+      h += '<div class="lg"><span><i style="background:rgba(67,194,90,.45)"></i>ktoś w domu (im mocniej, tym częściej)</span><span><i style="background:rgba(90,120,255,.6)"></i>sen</span><span><i class="pb"></i>proponowane okna cyrkulacji</span></div>';
+      h += '<div class="ft"><span class="hint">„Wyślij na główną” wpisze te okna do harmonogramu Cyrkulacja CWU w zakładce Harmonogram (dni bez danych zostają bez zmian). Zapisujesz sam przyciskiem „Zapisz harmonogram”. Przełącznik „Aktywne” zostaje jak jest.</span>' +
+        '<button class="sv" data-a="send">Wyślij na główną</button></div>';
+    } else h += '<div class="info">Brak danych obecności (encje person.* z telefonami).</div>';
+    h += '</div>';
+    if (N.srcLoaded) h += this._nauSrcHtml(esc);
+    if (N.at) h += '<div class="wn" style="margin-top:.8em">Policzone ' + new Date(N.at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ', odświeżane co 30 min. Pogoda: Open-Meteo (api.open-meteo.com, położenie domu z HA).</div>';
+    el.innerHTML = h + '</div>';
   }
 
   // ---------- interakcja: okienka edycji ----------
