@@ -207,6 +207,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!this._built) { this._build(); force = true; }
     const st = this._hass.states;
     const E = this._E;
+    // v1.30: temp. w domu przy rozdzielaczu = czujnik salonu ze Zrodel nauki (odswiezane co 30 s)
+    if (!(this._config.entities || {}).dom && (!this._domAt || Date.now() - this._domAt > 30000)) { this._domAt = Date.now(); try { E.dom = this._nauSalon()[0] || DEFAULT_E.dom; } catch (e) { E.dom = DEFAULT_E.dom; } }
     ELS.forEach((el, i) => {
       const sig = el.keys.map((k) => { const s = st[E[k]]; return s ? s.state : '?'; }).join('|') + (el.hist ? '#' + this._histAt : '');
       if (!force && this._nodes[i]._sig === sig) return;

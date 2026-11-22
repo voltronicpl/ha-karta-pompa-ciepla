@@ -252,3 +252,8 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 
 - Instalacja / aktualizacja pakietu przez kartę ma teraz blokadę wspólną dla wszystkich przeglądarek i telefonów admina (w danych użytkownika HA). Wcześniej, gdy karta była otwarta naraz np. na komputerze i telefonie, oba urządzenia zakładały to samo i powstawały duplikaty czujników z „_2” albo „hydrolution_hp_…”.
 - Przed założeniem czujnika karta jeszcze raz sprawdza, czy ktoś go w międzyczasie nie założył.
+
+## v1.30: dane przy kropce krzywej, temperatura domu przy rozdzielaczu
+
+- **Krzywa grzewcza:** przy żółtej kropce jest teraz opis: temperatura powietrza (BT1) → zadana temperatura wody (S1) oraz aktualne zasilanie CO (BT25). Po najechaniu na kropkę to samo w podpowiedzi.
+- **Mapa:** obok rozdzielacza (ogrzewanie podłogowe) zielony znacznik **„W domu (salon)”** z temperaturą z czujnika salonu ustawionego w Nauce → „Źródła nauki” (albo wykrytego automatycznie). Kliknięcie otwiera encję. Można nadpisać w konfiguracji karty: `entities: {dom: sensor.twoj_czujnik}`.

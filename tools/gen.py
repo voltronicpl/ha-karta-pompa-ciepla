@@ -82,6 +82,7 @@ E = dict(
     heat_ok='switch.hydrolution_ogrzewanie_dozwolone',
     hw_prod='switch.hydrolution_produkcja_cwu',
     cwu_boost='input_text.hp_cwu_boost',
+    dom='sensor.hp_dom_salon',  # v1.30: temp. w domu = czujnik salonu ze Zrodel nauki (karta podstawia sama; mozna nadpisac w entities: dom)
     cwu_lux_max='input_number.hp_cwu_lux_max',
     tmp_lux='select.hydrolution_podgrzanie_cwu_jednorazowe',
 )
@@ -283,6 +284,12 @@ el(1320, 348, 208, 44, """
 return %s + C(1424,360,'Rozdzielacz',F(16.5,700,'#fff')) + C(1424,380,'Ogrzewanie podłogowe',F(14,400,'#e3e8ee'));
 """ % glass())
 
+# v1.30: temperatura w domu (czujnik salonu ze Zrodel nauki) obok rozdzielacza
+el(1536, 348, 124, 44, """
+return '<div class="g" style="background:linear-gradient(180deg,rgba(32,58,36,.92),rgba(18,36,22,.92));border:1px solid rgba(120,220,130,.7);box-shadow:0 0 calc(var(--u)*10) rgba(80,200,100,.3);border-radius:'+u(6)+'"></div>'
+ + C(1598,362,f(@dom)+' °C',F(17,600,'#fff')) + C(1598,382,'W domu (salon)',F(11.5,400,'#e9eef3'));
+""", template='hp_hit', tap=more('dom'))
+
 # pompy (wskaznik pracy)
 def pump(cx, cy, cond, ent, jstap=None):
     el(cx - 16, cy - 16, 32, 32, """
@@ -357,7 +364,13 @@ if(ok){line='<polyline points="'+T.map((t,i)=>sx(t)+','+sy(ys[i])).join(' ')+'" 
  + T.map((t,i)=>'<circle cx="'+sx(t)+'" cy="'+sy(ys[i])+'" r="2.6" fill="#29b6f6"/>').join('');}
 const ox=n(@bt1), oy=n(@s1);
 let dot='';
-if(ox!==null&&oy!==null){const cx=sx(Math.max(-30,Math.min(30,ox)));dot='<circle cx="'+cx+'" cy="'+sy(oy)+'" r="6.5" fill="#ffb300" stroke="#ffe082" stroke-width="1.5" style="filter:drop-shadow(0 0 4px rgba(255,179,0,.9))"/>';}
+if(ox!==null&&oy!==null){const cx=sx(Math.max(-30,Math.min(30,ox)));const cy=sy(oy), wv=n(@bt25), W2=176, H2=40;
+ const lx=cx+12+W2<=X1?cx+12:cx-12-W2, ly=Math.max(Y0-8,Math.min(Y1-H2+6,cy-H2/2));
+ const tip='Powietrze (BT1): '+ox.toFixed(1)+' °C · zadana woda (S1): '+oy.toFixed(1)+' °C'+(wv!==null?' · zasilanie CO (BT25): '+wv.toFixed(1)+' °C':'');
+ dot='<rect x="'+lx+'" y="'+ly+'" width="'+W2+'" height="'+H2+'" rx="5" fill="rgba(20,24,30,.88)" stroke="rgba(255,179,0,.7)"/>'
+  + '<text x="'+(lx+8)+'" y="'+(ly+16)+'" font-size="12" fill="#ffe0a0">Powietrze '+ox.toFixed(1)+' °C → woda '+oy.toFixed(1)+' °C</text>'
+  + '<text x="'+(lx+8)+'" y="'+(ly+32)+'" font-size="11.5" fill="#dfe5ec">zasilanie CO (BT25): '+(wv!==null?wv.toFixed(1)+' °C':'–')+'</text>'
+  + '<circle cx="'+cx+'" cy="'+cy+'" r="6.5" fill="#ffb300" stroke="#ffe082" stroke-width="1.5" style="filter:drop-shadow(0 0 4px rgba(255,179,0,.9))"><title>'+tip+'</title></circle>';}
 const leg='<line x1="160" y1="44" x2="186" y2="44" stroke="#29b6f6" stroke-width="2.6"/><circle cx="173" cy="44" r="3.5" fill="#29b6f6"/><text x="192" y="48" font-size="12.5" fill="#e3e8ee">Krzywa (P1–P7'+(off?(off>0?' +':' ')+off:'')+')</text>'
  + '<line x1="318" y1="44" x2="344" y2="44" stroke="#ffb300" stroke-width="2.6"/><circle cx="331" cy="44" r="3.5" fill="#ffb300"/><text x="350" y="48" font-size="12.5" fill="#e3e8ee">Zadane teraz (S1)</text>';
 const svg='<svg viewBox="0 0 505 362" style="position:absolute;inset:0;width:100%;height:100%;font-family:inherit"><g font-size="12" fill="#dfe5ec">'+g+'</g>'+leg+line+dot+'</svg>';
