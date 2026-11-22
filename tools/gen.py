@@ -84,6 +84,9 @@ E = dict(
     cwu_boost='input_text.hp_cwu_boost',
     dom='sensor.hp_dom_salon',  # v1.30: temp. w domu = czujnik salonu ze Zrodel nauki (karta podstawia sama; mozna nadpisac w entities: dom)
     cwu_lux_max='input_number.hp_cwu_lux_max',
+    cwu_tania='input_select.hp_cwu_tryb_tania',  # v1.31: tryb CWU w taniej strefie (automatyzacja CWU)
+    cwu_poza='input_select.hp_cwu_tryb_poza',  # v1.31: tryb CWU w drogiej strefie
+    cwu_lux_on='input_boolean.hp_cwu_lux_tania',  # v1.31: luksus jednorazowy w taniej (domyslnie wyl.)
     tmp_lux='select.hydrolution_podgrzanie_cwu_jednorazowe',
 )
 

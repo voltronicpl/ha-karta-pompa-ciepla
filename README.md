@@ -257,3 +257,9 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 
 - **Krzywa grzewcza:** przy żółtej kropce jest teraz opis: temperatura powietrza (BT1) → zadana temperatura wody (S1) oraz aktualne zasilanie CO (BT25). Po najechaniu na kropkę to samo w podpowiedzi.
 - **Mapa:** obok rozdzielacza (ogrzewanie podłogowe) zielony znacznik **„W domu (salon)”** z temperaturą z czujnika salonu ustawionego w Nauce → „Źródła nauki” (albo wykrytego automatycznie). Kliknięcie otwiera encję. Można nadpisać w konfiguracji karty: `entities: {dom: sensor.twoj_czujnik}`.
+
+## v1.31: wybór trybu CWU dla taniej i drogiej strefy (pakiet 1.31)
+
+- **Nauka → CWU:** dwa nowe wybory: **„tryb w taniej strefie”** (domyślnie **Ekonomiczny**) i **„tryb w drogiej strefie”** (domyślnie **Normalny**), opcje Ekonomiczny / Normalny / Luksus / Smart. Automatyzacja CWU ustawia w taniej strefie wybrany tryb, w drogiej drugi, a gdy do taniej zostało ≤ „czekaj” minut, dalej Ekonomiczny (czeka).
+- **Luksus jednorazowy z v1.27** (tryb pracy Ręczny + CO wstrzymane, aż woda dojdzie do celu luksusu) jest teraz osobną opcją **„luksus jednorazowy w taniej (CO wstrzymane)”**, **domyślnie WYŁĄCZONĄ**. Wyłączenie jej w trakcie luksusu z automatu od razu wraca na Auto z CO.
+- Pakiet HA **1.31**: nowe `input_select.hp_cwu_tryb_tania` i `input_boolean.hp_cwu_lux_tania`; zmienione automatyzacje `hp_auto_cwu` i `hp_cwu_boost_koniec`. Tryb w drogiej strefie to istniejący `input_select.hp_cwu_tryb_poza` (ten sam, co w harmonogramie „Tryb CWU”). Pakiet z karty: karta sama dołoży i zaktualizuje te elementy (konto admina, zakładka Nauka). Pakiet w pliku YAML: wklej nowy `packages/hydrolution_karta.yaml` i zrób **pełny restart HA**.

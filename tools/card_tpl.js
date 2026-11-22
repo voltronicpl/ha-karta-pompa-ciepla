@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.25';
+const PKG_VER = '1.31';
 const PKG = __PKG__;   // v1.28: spis pakietu HA (tools/pkgspec.py) - karta zaklada brakujace elementy przez API
 const DEFAULT_E = __ENTITIES__;
 const BG = 'data:image/jpeg;base64,__BG__';
@@ -489,7 +489,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const st = this._hass.states, E = this._E;
     const need = [E.auto_cyrk, 'input_number.hp_cyrk_po_wyjsciu', E.wstali, 'input_text.hp_wstalismy_zrodlo',
       'sensor.hp_cwu_srodek_zmiana', E.aktyw, 'sensor.hp_temperatura_zewnetrzna_bt1', 'sensor.hp_pakiet_wersja',
-      E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.g12_do, E.cwu_wait, E.cwu_boost, E.cwu_lux_max, 'input_datetime.hp_cwu_boost_ostatnio'];
+      E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.g12_do, E.cwu_wait, E.cwu_boost, E.cwu_lux_max, 'input_datetime.hp_cwu_boost_ostatnio', E.cwu_tania, E.cwu_lux_on, E.cwu_poza];
     const miss = need.filter((i) => !st[i]);
     const autoIds = {};
     Object.keys(st).forEach((k) => { if (k.startsWith('automation.') && st[k].attributes && st[k].attributes.id) autoIds[st[k].attributes.id] = 1; });
@@ -813,7 +813,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       }
     }
     // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
-    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja']);
+    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja', E.cwu_tania, E.cwu_lux_on, E.cwu_poza]);
     const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|') + '|' + Math.floor(Date.now() / 300000);
     // v1.25: wstrzymaj odswiezanie tylko przy pisaniu w polu (klikniety suwak ma focus i blokowal odswiezenie, przelacznik wygladal na martwy)
     const ae = this.shadowRoot && this.shadowRoot.activeElement;
@@ -1509,7 +1509,12 @@ class HaKartaPompaCiepla extends HTMLElement {
     const ne = st[E.pl_cwu] && st[E.pl_cwu].attributes && st[E.pl_cwu].attributes.next_event;
     const toWin = plOn ? 0 : (ne ? Math.round((new Date(ne) - now) / 60000) : (isNaN(doT) ? null : doT));
     const mode = st[E.hwmode] ? st[E.hwmode].state : '–';
-    const tw = (st['input_select.hp_cwu_tryb_w_oknie'] || {}).state || 'Luksus', tp = (st['input_select.hp_cwu_tryb_poza'] || {}).state || 'Normalny';
+    // v1.31: tryb CWU w taniej strefie (domyslnie Ekonomiczny) i w drogiej (domyslnie Normalny); luksus jednorazowy w taniej = osobna opcja, domyslnie wylaczona
+    const okS = (x) => x && x.state && x.state !== 'unknown' && x.state !== 'unavailable';
+    const sT = st[E.cwu_tania], sP = st[E.cwu_poza], sL = st[E.cwu_lux_on];
+    const tt = okS(sT) ? sT.state : 'Ekonomiczny', tp = okS(sP) ? sP.state : 'Normalny', luxOn = !!(sL && sL.state === 'on');
+    const MODES = ['Ekonomiczny', 'Normalny', 'Luksus', 'Smart'];
+    const sel = (a, s0, cur) => '<select data-a="' + a + '"' + (s0 ? '' : ' disabled') + '>' + ((s0 && s0.attributes && s0.attributes.options) || MODES).map((o) => '<option' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>';
     const bs = st[E.cwu_boost], boost = bs && bs.state && bs.state !== 'unknown' && bs.state !== 'unavailable' ? bs.state : '';
     const lm = st[E.cwu_lux_max], luxMax = lm ? Math.round(Number(lm.state)) || 60 : 60;
     const bMin = boost && bs.last_changed ? Math.round((now - new Date(bs.last_changed)) / 60000) : 0;
@@ -1517,9 +1522,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     let why;
     if (boost) why = 'luksus jednorazowy (' + (boost === 'auto' ? 'automat' : 'przycisk CWU') + '), CO wstrzymane od ' + bMin + ' min, max ' + luxMax + ' min; potem Auto';
     else if (!auOn) why = 'automatyzacja wyłączona, trybem CWU sterujesz ręcznie albo harmonogramem „Tryb CWU” na głównej';
-    else if (plOn) why = 'okno w taniej strefie: ' + tp + ', a gdy BT7 poniżej celu luksusu: luksus jednorazowy (CO wstrzymane do zagrzania, max ' + luxMax + ' min)';
+    else if (plOn) why = 'okno w taniej strefie: ' + tt + (luxOn ? ', a gdy BT7 poniżej celu luksusu: luksus jednorazowy (CO wstrzymane do zagrzania, max ' + luxMax + ' min)' : '');
     else if (toWin !== null && toWin <= wait) why = 'do okna w taniej strefie zostało ' + toWin + ' min (≤ ' + wait + '): Ekonomiczny, czekam';
-    else why = 'droga strefa: zawsze ' + tp + ' (dogrzeje tylko, gdy woda spadnie poniżej progu trybu ' + tp + ')';
+    else why = 'droga strefa: ' + tp + ' (dogrzeje tylko, gdy woda spadnie poniżej progu trybu ' + tp + ')';
     const bt6 = parseFloat((st[E.bt6] || {}).state), bt7 = parseFloat((st[E.bt7] || {}).state);
     h += '<div class="lh"><button class="tg' + (auOn ? ' on' : '') + '" data-a="autocwu"' + (au ? '' : ' disabled') + ' title="Automatyzacja CWU"><i></i></button><b>Automatyzacja CWU: ' + (au ? (auOn ? 'włączona' : 'wyłączona') : 'brak') + '</b>' +
       '<span>Teraz: <b style="color:' + (cheapNow ? '#7ee04a' : '#ffb74d') + '">' + (cheapNow ? 'tania strefa' : 'droga strefa') + '</b>' + (!cheapNow && !isNaN(doT) && doT < 9999 ? ' (tania za ' + (doT >= 60 ? Math.floor(doT / 60) + ' h ' : '') + Math.round(doT % 60) + ' min)' : '') +
@@ -1528,10 +1533,15 @@ class HaKartaPompaCiepla extends HTMLElement {
     h += '<div class="lh wk"><label>Tanie strefy G12: <input class="g12" type="text" data-a="g12" value="' + esc(G.txt) + '"' + (st[E.g12] ? '' : ' disabled') + '></label>' +
       '<label><input type="checkbox" data-a="g12we"' + (G.we ? ' checked' : '') + (st[E.g12_we] ? '' : ' disabled') + '> So–Nd cała doba tania</label>' +
       '<label>czekaj na tanią, gdy zostało ≤ <input type="number" min="0" max="180" step="5" data-a="cwait" value="' + wait + '"' + (st[E.cwu_wait] ? '' : ' disabled') + '> min</label>' +
-      '<label>maks. czas luksusu (CO wstrzymane) <input type="number" min="15" max="240" step="5" data-a="cluxmax" value="' + luxMax + '"' + (lm ? '' : ' disabled') + '> min</label>' +
+      '<label>tryb w taniej strefie ' + sel('ctania', sT, tt) + '</label>' +
+      '<label>tryb w drogiej strefie ' + sel('cpoza', sP, tp) + '</label>' +
+      '<label><input type="checkbox" data-a="cluxon"' + (luxOn ? ' checked' : '') + (sL ? '' : ' disabled') + '> luksus jednorazowy w taniej (CO wstrzymane)</label>' +
+      '<label>maks. czas luksusu (CO wstrzymane) <input type="number" min="15" max="240" step="5" data-a="cluxmax" value="' + luxMax + '"' + (lm && luxOn ? '' : ' disabled') + '> min</label>' +
       '<label>grzej w strefie, gdy potem zużycie ≥ <input type="number" min="0" max="20" step="0.1" data-a="cprog" value="' + P.prog + '"> °C</label>' +
-      '<span class="ds">PGE G12 standard: tanio 22:00–6:00 i 13:00–15:00 codziennie, cały rok (format: 22:00-06:00,13:00-15:00). Logika automatyzacji (v1.27): tryb CWU zawsze „' + esc(tp) + '”. Na wejściu w okno (tania strefa), gdy BT7 jest poniżej celu luksusu: luksus jednorazowy (SMO40: tymczasowy luksus Jednorazowo), tryb pracy Ręczny i ogrzewanie CO wyłączone, żeby cała moc szła w wodę. Gdy BT7 dojdzie do celu albo luksus się skończy: tryb pracy Auto i CO z powrotem. Bezpieczniki: max ' + luxMax + ' min, po restarcie HA, po wyjściu z taniej strefy albo wyłączeniu automatyzacji też wraca na Auto. Gdy do taniej zostało ≤ ' + wait + ' min, ustawia „Ekonomiczny” i czeka.' +
-      (st[E.auto_cwu] && st[E.cwu_boost] ? '' : ' Brak encji automatyzacji CWU: wklej pakiet ' + PKG_VER + ' i zrób pełny restart HA.') + '</span></div>';
+      '<span class="ds">PGE G12 standard: tanio 22:00–6:00 i 13:00–15:00 codziennie, cały rok (format: 22:00-06:00,13:00-15:00). Logika automatyzacji (v1.31): w taniej strefie tryb CWU „' + esc(tt) + '”, w drogiej „' + esc(tp) + '”, a gdy do taniej zostało ≤ ' + wait + ' min, ustawia „Ekonomiczny” i czeka. ' +
+      (luxOn ? 'Luksus jednorazowy w taniej WŁĄCZONY: na wejściu w okno (tania strefa), gdy BT7 jest poniżej celu luksusu: luksus jednorazowy (SMO40: tymczasowy luksus Jednorazowo), tryb pracy Ręczny i ogrzewanie CO wyłączone, żeby cała moc szła w wodę. Gdy BT7 dojdzie do celu albo luksus się skończy: tryb pracy Auto i CO z powrotem. Bezpieczniki: max ' + luxMax + ' min, po restarcie HA, po wyjściu z taniej strefy, wyłączeniu automatyzacji albo tej opcji też wraca na Auto.'
+        : 'Luksus jednorazowy w taniej (tryb Ręczny + CO wstrzymane, jak w v1.27) jest wyłączony: zaznacz go, jeśli chcesz.') +
+      (st[E.auto_cwu] && st[E.cwu_boost] && sT && sL ? '' : ' Brak encji automatyzacji CWU: wklej pakiet ' + PKG_VER + ' i zrób pełny restart HA.') + '</span></div>';
     if (!R) return h + '<div class="info">Brak historii temperatury CWU (BT6), propozycja = wszystkie tanie strefy.</div>' + this._nauCwuRows(P, null, esc, fmt) + '</div>';
     h += '<div class="lh"><span>Zużycie ciepłej wody: średnio <b>' + R.perDay.toFixed(1) + ' °C</b> spadku BT6 na dobę (z ' + R.days + ' dni)</span>' + this._nauCwuStat(R, G) + '</div>';
     if (R.days < 7 || !R.cnt.every((x) => x > 0)) h += '<div class="info">Mało historii zużycia wody (' + R.days + ' dni, potrzeba min. 7, każdy dzień tygodnia). Na razie propozycja = wszystkie tanie strefy; potem zacznie pomijać strefy, po których nie zużywacie wody.</div>';
@@ -1568,7 +1578,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       h += '</div><span class="cp"></span></div>';
     });
     const skip = P.segs.filter((s) => !s.inc);
-    h += '<div class="lg"><span><i style="background:rgba(67,194,90,.35)"></i>tania strefa G12</span><span><i style="background:rgba(255,152,0,.7)"></i>zużycie ciepłej wody (im mocniej, tym więcej)</span><span><i class="L"></i>' + esc(NM.L) + ': tania strefa, grzeje do celu luksusu, CO wstrzymane (max ' + Math.round(Number((this._hass.states[this._E.cwu_lux_max] || {}).state) || 60) + ' min), potem Auto</span><span><i class="E"></i>' + esc(NM.E) + ': ' + Math.round(wait) + ' min przed tanią, czeka</span><span><i class="N"></i>' + esc(NM.N) + ': droga strefa, dogrzewa tylko poniżej progu</span><span><i style="background:#ff5a4a;height:.3em"></i>grzało CWU (ostatni tydzień)</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span></div>';
+    h += '<div class="lg"><span><i style="background:rgba(67,194,90,.35)"></i>tania strefa G12</span><span><i style="background:rgba(255,152,0,.7)"></i>zużycie ciepłej wody (im mocniej, tym więcej)</span><span><i class="L"></i>' + esc(NM.L) + (NM.lux ? ': tania strefa, grzeje do celu luksusu, CO wstrzymane (max ' + Math.round(Number((this._hass.states[this._E.cwu_lux_max] || {}).state) || 60) + ' min), potem Auto' : ': tania strefa') + '</span><span><i class="E"></i>' + esc(NM.E) + ': ' + Math.round(wait) + ' min przed tanią, czeka</span><span><i class="N"></i>' + esc(NM.N) + ': droga strefa, dogrzewa tylko poniżej progu</span><span><i style="background:#ff5a4a;height:.3em"></i>grzało CWU (ostatni tydzień)</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span></div>';
     if (skip.length) h += '<div class="wn sk">Pominięte tanie strefy (po nich do następnej taniej zużycie poniżej ' + P.prog + ' °C): ' + skip.map((s) => { const q = s.a % (7 * 96); return DL[Math.floor(q / 96)] + ' ' + fmt((q % 96) * 15) + ' (' + s.after.toFixed(1) + ' °C)'; }).join(', ') + '.</div>';
     h += '<div class="ft"><span class="hint">Propozycja = tanie strefy, po których zużywacie wodę. „Wyślij na główną” wpisze je do harmonogramu „Tryb CWU” (zapisujesz tam „Zapisz harmonogram”). Przy włączonej automatyzacji CWU harmonogram ustawia się sam.</span><button class="sv" data-a="sendcwu">Wyślij na główną</button></div>';
     return h;
@@ -1590,7 +1600,9 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
   _cwuNames() {
     const st = this._hass.states, g = (id, d) => { const s = st[id]; return s && s.state && s.state !== 'unknown' && s.state !== 'unavailable' ? s.state : d; };
-    return { L: 'Luksus jednorazowy', N: g('input_select.hp_cwu_tryb_poza', 'Normalny'), E: 'Ekonomiczny' };
+    // v1.31: L = tryb w taniej strefie (albo luksus jednorazowy, gdy wlaczony), N = tryb w drogiej
+    const E = this._E, lux = !!(st[E.cwu_lux_on] && st[E.cwu_lux_on].state === 'on');
+    return { L: lux ? 'Luksus jednorazowy' : g(E.cwu_tania, 'Ekonomiczny'), N: g(E.cwu_poza, 'Normalny'), E: 'Ekonomiczny', lux };
   }
   _nauSendCwu() {
     const N = this._nau, P = this._nauCwuPlan(N.res && N.res.cwu);
@@ -1657,6 +1669,8 @@ class HaKartaPompaCiepla extends HTMLElement {
         const t = ev.target, a = t.getAttribute && t.getAttribute('data-a');
         if (a === 'g12') { const v = String(t.value).replace(/\s+/g, ''); if (this._g12Parse(v).length && this._hass.states[this._E.g12]) this._hass.callService('input_text', 'set_value', { entity_id: this._E.g12, value: v }); else this._nauRender(); return; }
         if (a === 'g12we') { const id = this._E.g12_we; if (this._hass.states[id]) this._hass.callService('input_boolean', t.checked ? 'turn_on' : 'turn_off', { entity_id: id }); return; }
+        if (a === 'ctania' || a === 'cpoza') { const id = a === 'ctania' ? this._E.cwu_tania : this._E.cwu_poza; if (this._hass.states[id]) this._hass.callService('input_select', 'select_option', { entity_id: id, option: t.value }); return; }
+        if (a === 'cluxon') { const id = this._E.cwu_lux_on; if (this._hass.states[id]) this._hass.callService('input_boolean', t.checked ? 'turn_on' : 'turn_off', { entity_id: id }); return; }
         if (a === 'cluxmax') { const v = parseInt(t.value, 10), id = this._E.cwu_lux_max; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(15, Math.min(240, v)) }); return; }
         if (a === 'cwait') { const v = parseInt(t.value, 10), id = this._E.cwu_wait; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(0, Math.min(180, v)) }); return; }
         if (a === 'cprog') { const v = parseFloat(String(t.value).replace(',', '.')); if (isFinite(v) && v >= 0 && v <= 20) N.src.cwuProg = v; else delete N.src.cwuProg; this._nauSrcSave(); this._nauRender(); return; }
