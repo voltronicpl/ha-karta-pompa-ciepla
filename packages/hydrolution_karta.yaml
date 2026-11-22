@@ -5,6 +5,8 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...).
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
+# WERSJA PAKIETU: 1.22 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
 template:
@@ -21,6 +23,11 @@ template:
              or (states.binary_sensor | selectattr('entity_id', 'search', 'interactive') | selectattr('state', 'eq', 'on') | list | count > 0)
              or (states.media_player | selectattr('state', 'in', ['on', 'playing']) | list | count > 0) }}
   - sensor:
+      # v1.22: wersja pakietu - karta sprawdza, czy w HA jest aktualny pakiet
+      - name: "HP pakiet wersja"
+        unique_id: hp_pakiet_wersja
+        icon: mdi:package-variant
+        state: "1.22"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"

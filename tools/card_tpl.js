@@ -10,6 +10,8 @@
  */
 (() => {
 const VERSION = '__VERSION__';
+// v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
+const PKG_VER = '1.22';
 const DEFAULT_E = __ENTITIES__;
 const BG = 'data:image/jpeg;base64,__BG__';
 const TREND = __TREND__;          // klucze encji do wykresu trendow
@@ -77,7 +79,9 @@ const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '.sw .tg{position:relative;width:58px;height:30px;border-radius:999px;background:#4a525e;border:none;padding:0}' +
   '.sw .tg i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}' +
   '.sw .tg.on{background:linear-gradient(180deg,#36a3ff,#1a7fe0);box-shadow:0 0 10px rgba(33,150,243,.6)}.sw .tg.on i{left:31px}';
-const NAU_CSS = '#tb{display:flex;gap:.5em;padding-top:.8em;background:#0e1013}#tb button{font:inherit;font-size:1.05em;color:#eef2f6;cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(62,70,82,.85);border-radius:8px 8px 0 0;padding:.5em 1.4em}' +
+const NAU_CSS = '#pk{margin:0;padding:.55em 1em;background:rgba(255,160,0,.16);border-top:1px solid rgba(255,180,0,.6);border-bottom:1px solid rgba(255,180,0,.6);color:#ffd9a0;font-size:14px;cursor:pointer}#pk b{color:#ffe2b0}' +
+  '#nau .pkw{margin:0 0 1em;padding:.7em 1em;border-radius:8px;background:rgba(255,160,0,.15);border:1px solid rgba(255,180,0,.6);color:#ffd9a0}#nau .pkw code{color:#fff}' +
+  '#tb{display:flex;gap:.5em;padding-top:.8em;background:#0e1013}#tb button{font:inherit;font-size:1.05em;color:#eef2f6;cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(62,70,82,.85);border-radius:8px 8px 0 0;padding:.5em 1.4em}' +
   '#tb button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
   '#nau{box-sizing:border-box;padding:12px;color:#eef2f6;font-family:' + FONT + ';font-size:13px;background:#0e1013}#nau[hidden],#sch[hidden]{display:none}' +
   '#nau .kt{display:grid;grid-template-columns:repeat(auto-fit,minmax(14em,1fr));gap:.8em;margin-bottom:1em}#nau .k{display:flex;flex-direction:column;gap:.2em;padding:.8em 1em;border-radius:10px;background:rgba(10,12,16,.55);border:1px solid rgba(110,193,255,.3)}' +
@@ -133,7 +137,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       '.el{position:absolute}.el.t{cursor:pointer}' + EXTRA.replace(':host { --u: calc(100cqw / 1672); }', '').replace(':host', '.el') + POP_CSS +
       NAU_CSS + POP_CSS.replace(/#sch\b/g, '#nau') +
       '</style><ha-card><div id="fw"><div id="mw"><div id="c"><img alt="" src="' + img + '"></div></div>' +
-      '<div id="tb"><button data-t="sch">Harmonogram</button><button data-t="nau">Nauka</button></div><div id="sch"></div><div id="nau" hidden></div></div></ha-card>';
+      '<div id="pk" hidden></div><div id="tb"><button data-t="sch">Harmonogram</button><button data-t="nau">Nauka</button></div><div id="sch"></div><div id="nau" hidden></div></div></ha-card>';
     const c = root.getElementById('c');
     this._nodes = ELS.map((el) => {
       const d = document.createElement('div');
@@ -154,6 +158,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._fw = root.getElementById('fw');
     this._nauEl = root.getElementById('nau');
     this._tbEl = root.getElementById('tb');
+    this._pkEl = root.getElementById('pk');
+    this._pkEl.addEventListener('click', () => this._tab('nau', true));
     this._nau = this._nau || { res: null, loading: false, at: 0, err: '', sig: '' };
     let tab = 'sch'; try { tab = localStorage.getItem('hkpc_tab') === 'nau' ? 'nau' : 'sch'; } catch (e) { /* brak */ }
     this._tbEl.addEventListener('click', (ev) => { const b = ev.target.closest && ev.target.closest('[data-t]'); if (b) this._tab(b.getAttribute('data-t'), true); });
@@ -201,6 +207,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     });
     this._checkPend();
     if (this._pop && this._pop._upd) this._pop._upd();
+    this._pkBar();
     this._schTick();
     this._nauTick();
   }
@@ -429,6 +436,36 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
 
   // ====================== ZAKLADKI POD KARTA ======================
+  // v1.22: czy w HA jest aktualny pakiet (encje + automatyzacje + wersja)
+  _pkgCheck() {
+    const st = this._hass.states, E = this._E;
+    const need = [E.auto_cyrk, 'input_number.hp_cyrk_po_wyjsciu', E.wstali, 'input_text.hp_wstalismy_zrodlo',
+      'sensor.hp_cwu_srodek_zmiana', E.aktyw, 'sensor.hp_temperatura_zewnetrzna_bt1', 'sensor.hp_pakiet_wersja'];
+    const miss = need.filter((i) => !st[i]);
+    const autoIds = {};
+    Object.keys(st).forEach((k) => { if (k.startsWith('automation.') && st[k].attributes && st[k].attributes.id) autoIds[st[k].attributes.id] = 1; });
+    [['hp_auto_cyrk', 'automatyzacja „HP auto: cyrkulacja CWU wg harmonogramu i obecnosci”'], ['hp_auto_wstali', 'automatyzacja „HP auto: weekend - wstalismy (cyrkulacja)”']]
+      .forEach(([id, n]) => { if (!autoIds[id]) miss.push(n); });
+    const vs = st['sensor.hp_pakiet_wersja'], ver = vs ? String(vs.state) : null;
+    const num = (v) => String(v).split('.').map((x) => parseInt(x, 10) || 0);
+    const a = ver ? num(ver) : [0], b = num(PKG_VER);
+    const old = !ver || a[0] < b[0] || (a[0] === b[0] && (a[1] || 0) < (b[1] || 0));
+    return { miss, ver, want: PKG_VER, old: old || miss.length > 0 };
+  }
+  _pkBar() {
+    const el = this._pkEl; if (!el || !this._hass) return;
+    const P = this._pkgCheck(), sig = P.old + '|' + P.ver + '|' + P.miss.join(',');
+    if (el._sig === sig) return; el._sig = sig;
+    el.hidden = !P.old;
+    if (P.old) el.innerHTML = '⚠ <b>Masz stary pakiet w HA</b> (' + (P.ver ? 'v' + P.ver : 'starszy niż v' + P.want) + ', karta chce v' + P.want + '). Brakuje ' + P.miss.length + ' encji. Kliknij, szczegóły w zakładce Nauka.';
+  }
+  _pkHtml(esc) {
+    const P = this._pkgCheck();
+    if (!P.old) return '';
+    return '<div class="pkw">⚠ <b>Masz stary pakiet w HA</b>: zainstalowany ' + (P.ver ? 'v' + esc(P.ver) : 'starszy niż v' + P.want + ' (brak <code>sensor.hp_pakiet_wersja</code>)') + ', karta oczekuje <b>v' + P.want + '</b>.' +
+      (P.miss.length ? '<br>Brakuje: ' + P.miss.map((m) => m.indexOf('.') > 0 && m.indexOf(' ') < 0 ? '<code>' + esc(m) + '</code>' : esc(m)).join(', ') + '.' : '') +
+      '<br><b>Co zrobić:</b> 1) zrób kopię <code>/config/packages/hydrolution_karta.yaml</code>, 2) wklej tam całą treść pliku <code>packages/hydrolution_karta.yaml</code> z repo (wersja pakietu ' + P.want + ', na górze pliku jest „WERSJA PAKIETU”), 3) Narzędzia deweloperskie → YAML → Sprawdź konfigurację, 4) <b>pełny restart HA</b> (Ustawienia → ⋮ → Uruchom ponownie). Samo przeładowanie nie wystarczy, bo dochodzą nowe pomocniki i sensory szablonów. Do tego czasu suwaki z brakującymi encjami są szare.</div>';
+  }
   _tab(t, user) {
     if (!this._schEl || !this._nauEl) return;
     this._tabCur = t === 'nau' ? 'nau' : 'sch';
@@ -1161,6 +1198,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const R = N.res;
     let h = '<div class="sh"><div class="sht">Nauka<small>podgląd: ustawień pompy nie zmienia (poza suwakiem automatyzacji cyrkulacji)</small><span style="flex:1"></span>' +
       '<button data-a="reload"' + (N.loading ? ' disabled' : '') + '>' + (N.loading ? 'Liczę…' : 'Przelicz') + '</button></div>';
+    h += this._pkHtml(esc);
     if (!R) { el.innerHTML = h + '<div class="info">' + (N.loading ? 'Pobieram historię z Home Assistant i pogodę z Open-Meteo…' : 'Brak danych.') + '</div></div>'; return; }
     (R.errs || []).forEach((e) => { h += '<div class="warn">' + esc(e) + '</div>'; });
     const C = R.curve, Y = R.cyrk;

@@ -182,3 +182,14 @@ Propozycja w Nauce to jedno okno na dzień: od „X min przed wstaniem” aż do
 - **Dodane:** drugi sygnał wstania w weekend (5:00–11:00): pobór ciepłej wody. Pakiet liczy tempo zmiany temperatury środka zasobnika CWU (`sensor.hp_cwu_srodek_zmiana`, pochodna BT6). Spadek szybszy niż 0,06 °C/min przez 30 s = ktoś odkręcił ciepłą wodę → zapis godziny wstania i start cyrkulacji (przy włączonej automatyzacji). Który sygnał zadziałał, zapisuje `input_text.hp_wstalismy_zrodlo` (woda / aktywnosc), a karta to pokazuje.
 - Czujnik przepływu BF1 pompy mierzy przepływ w obiegu pompy, nie w kranie, więc nie nadaje się do wykrycia odkręcenia wody. Dlatego sygnałem jest spadek BT6.
 - Wymaga wklejenia nowego pakietu (przeładuj też Pomocników tekstowych i liczbowych). Stary `input_number.hp_cyrk_po_wstaniu` po wklejeniu zniknie z HA sam.
+
+## v1.22: karta sama wykrywa stary pakiet w HA
+
+**Wersja pakietu HA: 1.22.** Pakiet `packages/hydrolution_karta.yaml` ma na górze „WERSJA PAKIETU” i dodaje `sensor.hp_pakiet_wersja` (stan = numer wersji). Karta porównuje go z wersją, której oczekuje, i sprawdza, czy są encje i automatyzacje z pakietu: `input_boolean.hp_auto_cyrk`, `input_number.hp_cyrk_po_wyjsciu`, `input_datetime.hp_wstalismy`, `input_text.hp_wstalismy_zrodlo`, `sensor.hp_cwu_srodek_zmiana`, `binary_sensor.hp_aktywnosc_w_domu`, `sensor.hp_temperatura_zewnetrzna_bt1`, automatyzacje `hp_auto_cyrk` i `hp_auto_wstali`.
+
+Jeśli czegoś brakuje albo wersja jest starsza, na górze karty pojawia się żółty pasek „Masz stary pakiet w HA” (klik = przejście do Nauki), a w Nauce żółta ramka z listą brakujących rzeczy i instrukcją:
+
+1. Zrób kopię `/config/packages/hydrolution_karta.yaml`.
+2. Wklej tam całą treść `packages/hydrolution_karta.yaml` z repo.
+3. Narzędzia deweloperskie → YAML → Sprawdź konfigurację.
+4. **Pełny restart HA** (Ustawienia → ⋮ → Uruchom ponownie). Samo przeładowanie nie wystarcza, bo dochodzą nowe pomocniki i sensory szablonów.
