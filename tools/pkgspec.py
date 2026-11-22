@@ -68,6 +68,13 @@ def items_of(d):
             if s.get('unit_time'):
                 c['unit_time'] = s['unit_time']
             out.append({'k': eid, 't': 'der', 'eid': eid, 'c': c})
+        elif s['platform'] == 'integration':
+            # v1.37: calka mocy -> energia (pomocnik "Integral" przez API)
+            c = {'name': s['name'], 'source': s['source'], 'method': s.get('method', 'trapezoidal'), 'round': s.get('round', 2), 'unit_time': s.get('unit_time', 'h')}
+            msi = s.get('max_sub_interval')
+            if isinstance(msi, dict):
+                c['max_sub_interval'] = {'hours': int(msi.get('hours', 0)), 'minutes': int(msi.get('minutes', 0)), 'seconds': int(msi.get('seconds', 0))}
+            out.append({'k': eid, 't': 'int', 'eid': eid, 'c': c})
     return out
 
 

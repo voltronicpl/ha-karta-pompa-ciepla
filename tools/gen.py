@@ -81,7 +81,8 @@ E = dict(
     cyrk_obec='input_text.hp_cyrk_obecnosc',  # v1.35: okna z obecnosci (hex)
     cyrk_plan='input_text.hp_cyrk_plan',  # v1.35: plan cyrkulacji policzony w HA (hex)
     cyrk_plan_at='input_datetime.hp_cyrk_plan_przeliczony',
-    prad='sensor.hp_prad_wybrany',  # v1.36: karta podstawia encje pradu wybrana w Nauce (input_text.hp_energia_encja); mozna nadpisac w entities: prad
+    prad='sensor.hp_moc_elektryczna_wybrana',  # v1.37: karta podstawia encje mocy wybrana w Nauce (W/kW), inaczej ten czujnik pakietu
+    prad_dzis='sensor.hp_prad_dzis',  # v1.37: prad dzis kWh (pakiet)
     wstali='input_datetime.hp_wstalismy',
     aktyw='binary_sensor.hp_aktywnosc_w_domu',
     auto_cwu='input_boolean.hp_auto_cwu',
@@ -209,13 +210,21 @@ kpi(15, 172, 'mdi:power', '#7ee04a', 'Tryb pracy',
     "(()=>{const p=st(@prio);return st(@defrost)==='Aktywne'?'#81d4fa':p==='Ogrzewanie'?'#7ee04a':p==='CWU'?'#29b6f6':'#b0bac5'})()",
     'prio')
 kpi(193, 148, 'mdi:flash', '#ffc21a', 'Moc grzewcza', "f(@pwr,2)+' kW'", ent='pwr')
-# v1.36: pod "Moc grzewcza" prad z encji wybranej w Nauce (bez wyboru: nic)
+# v1.36/v1.37: pod "Moc grzewcza" moc elektryczna (encja wybrana w Nauce albo szacunek pakietu), zawsze widoczna
 el(193, 184, 148, 30, """
 const s=states[@prad]; if(!s||s.state==='unknown'||s.state==='unavailable') return '';
-const v=parseFloat(s.state), un=(s.attributes&&s.attributes.unit_of_measurement)||'';
-const t=isNaN(v)?s.state:(Math.abs(v)>=100?v.toFixed(0):v.toFixed(2));
-return %s + P(207,199,I('mdi:transmission-tower',18,'#ffc21a')) + P(231,199,'Prąd: <b>'+t+' '+un+'</b>',F(14,400,'#e9eef3'));
+let v=parseFloat(s.state); const un=(s.attributes&&s.attributes.unit_of_measurement)||'';
+if(un==='W'&&!isNaN(v)) v=v/1000;
+const t=isNaN(v)?s.state:v.toFixed(2)+' kW';
+const est=/hp_moc_elektryczna/.test(@prad);
+return %s + P(207,199,I('mdi:transmission-tower',18,'#ffc21a')) + P(231,199,'Prąd: <b>'+t+'</b>'+(est?' <span style="opacity:.6;font-size:.8em">szac.</span>':''),F(14,400,'#e9eef3'));
 """ % glass(), template='hp_hit', tap=more('prad'))
+# v1.37: pod "Energia dzis" prad dzis (kWh), z tej samej encji co wyzej (licznik od polnocy albo calka z mocy)
+el(511, 184, 153, 30, """
+const s=states[@prad_dzis]; if(!s||s.state==='unknown'||s.state==='unavailable') return '';
+const v=parseFloat(s.state);
+return %s + P(525,199,I('mdi:transmission-tower',18,'#ffc21a')) + P(549,199,'Prąd dziś: <b>'+(isNaN(v)?s.state:v.toFixed(1))+' kWh</b>',F(14,400,'#e9eef3'));
+""" % glass(), template='hp_hit', tap=more('prad_dzis'))
 kpi(347, 158, 'mdi:leaf', '#7ee04a', 'COP (chwilowy)', "f(@cop,2)", ent='cop')
 kpi(511, 153, 'mdi:chart-bar', '#ffa31a', 'Energia dziś', "f(@e_day,1)+' kWh'", ent='e_day')
 kpi(670, 146, 'mdi:water-outline', '#29b6f6', 'CWU dziś', "f(@e_cwu,1)+' kWh'", ent='e_cwu')

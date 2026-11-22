@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.36';
+const PKG_VER = '1.37';
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];
 const PKG = __PKG__;   // v1.28: spis pakietu HA (tools/pkgspec.py) - karta zaklada brakujace elementy przez API
@@ -140,6 +140,16 @@ const V136_CSS = '#sch .rg2,#nau .rg2{display:flex;flex-wrap:wrap;align-items:ce
   '#sch .hh{position:absolute;inset:0;pointer-events:none;z-index:3}#sch .hh i{position:absolute}#sch .hh i.hp{top:0;height:3px;background:#ffe0ef;opacity:.9;border-radius:1px}#sch .hh i.hw{bottom:0;height:5px;background:#ff3b2f;border-radius:1px;box-shadow:0 0 4px rgba(255,59,47,.8)}' +
   '#sch .hsum{margin-left:.6em;opacity:.9}#sch .lgh{display:flex;flex-wrap:wrap;gap:.3em 1.2em;margin:.5em 0 0 6.1em;opacity:.8;font-size:.9em}#sch .lgh i{display:inline-block;width:1.4em;margin-right:.4em;vertical-align:middle;border-radius:2px}' +
   '#nau .dsw select{height:2em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit}#nau .en select{max-width:28em}';
+// v1.37: wiersze z datami i historia takze w Nauce, bloki trybu CWU poza oknami, pasek zakresu przyklejony u gory Nauki
+const V137_CSS = ('#sch .dn.dt{flex:0 0 5.6em;font-size:.9em;white-space:nowrap}#sch .hr.dt{margin-left:6.1em}#sch .dr.ps .bk{opacity:.55}#sch .dr.cp2{margin:.15em 0}#sch .dr.cp2 .tl{height:1.6em}#sch .dr.cp2 .bk{font-size:.7em}' +
+  '#sch .hh{position:absolute;inset:0;pointer-events:none;z-index:3}#sch .hh i{position:absolute}#sch .hh i.hp{top:0;height:3px;background:#ffe0ef;opacity:.9;border-radius:1px}#sch .hh i.hw{bottom:0;height:5px;background:#ff3b2f;border-radius:1px;box-shadow:0 0 4px rgba(255,59,47,.8)}' +
+  '#sch .hsum{margin-left:.6em;opacity:.9}#sch .lgh{display:flex;flex-wrap:wrap;gap:.3em 1.2em;margin:.5em 0 0 6.1em;opacity:.8;font-size:.9em}#sch .lgh i{display:inline-block;width:1.4em;margin-right:.4em;vertical-align:middle;border-radius:2px}').replace(/#sch /g, '#nau ') +
+  '#sch .gx{position:absolute;top:2px;bottom:2px;border-radius:5px;border:1px dashed rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;font-size:.72em;color:#fff;pointer-events:none;white-space:nowrap;overflow:hidden;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.8)}' +
+  '#sch .gx.L{background:rgba(255,79,163,.38)}#sch .gx.N{background:rgba(158,123,255,.38)}#sch .gx.E{background:rgba(67,211,67,.32)}#sch .gx.S{background:rgba(38,198,218,.35)}' +
+  '#nau .rg2.top{position:sticky;top:0;z-index:8;background:rgba(20,24,30,.97);padding:.45em .6em;border:1px solid rgba(110,193,255,.35);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.5)}#nau .rg2.top::before{content:"Zakres dla całej Nauki:";font-weight:600;margin-right:.3em}' +
+  '#nau .tl.ro{cursor:default}#nau .tl.ro .pw{position:absolute;top:30%;bottom:30%;border-radius:4px;background:rgba(67,194,90,.45);border:1px solid rgba(140,230,150,.6);pointer-events:none}#nau .nh{margin-top:1em}#nau .nh .st3{font-weight:600;margin:.2em 0 .3em;display:flex;flex-wrap:wrap;align-items:center;gap:.6em}' +
+  '#nau .esp{display:inline-flex;align-items:center;gap:.3em;padding:.1em .65em;border-radius:999px;font-size:.88em;font-weight:600}#nau .esp.ok{background:rgba(67,194,90,.18);border:1px solid #43d343;color:#bff0c8}#nau .esp.w{background:rgba(255,179,0,.14);border:1px solid #ffb300;color:#ffd9a0}#nau .esp.n{opacity:.65;border:1px solid rgba(255,255,255,.2)}' +
+  '#nau .rgt{font-size:.8em;opacity:.75;font-weight:400;margin-left:.5em;padding:.1em .5em;border:1px solid rgba(110,193,255,.35);border-radius:10px}';
 const ELS = [
 __ELEMENTS__
 ];
@@ -171,7 +181,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       '@media (max-width:700px){#c{min-width:860px}}' +
       '#c>img{display:block;width:100%;height:auto;user-select:none;pointer-events:none}' +
       '.el{position:absolute}.el.t{cursor:pointer}' + EXTRA.replace(':host { --u: calc(100cqw / 1672); }', '').replace(':host', '.el') + POP_CSS +
-      NAU_CSS + POP_CSS.replace(/#sch\b/g, '#nau') + V135_CSS + V136_CSS +
+      NAU_CSS + POP_CSS.replace(/#sch\b/g, '#nau') + V135_CSS + V136_CSS + V137_CSS +
       '</style><ha-card><div id="fw"><div id="mw"><div id="c"><img alt="" src="' + img + '"></div></div>' +
       '<div id="pk" hidden></div><div id="tb"><button data-t="sch">Harmonogram</button><button data-t="nau">Nauka</button></div><div id="sch"></div><div id="nau" hidden></div></div></ha-card>';
     const c = root.getElementById('c');
@@ -237,7 +247,10 @@ class HaKartaPompaCiepla extends HTMLElement {
     // v1.30: temp. w domu przy rozdzielaczu = czujnik salonu ze Zrodel nauki (odswiezane co 30 s)
     if (!(this._config.entities || {}).dom && (!this._domAt || Date.now() - this._domAt > 30000)) { this._domAt = Date.now(); try { E.dom = this._nauSalon()[0] || DEFAULT_E.dom; } catch (e) { E.dom = DEFAULT_E.dom; } }
     // v1.36: prad pod "Moc grzewcza" = encja wybrana w Nauce (input_text.hp_energia_encja); bez wyboru kafel ukryty
-    if (!(this._config.entities || {}).prad) { try { E.prad = this._enEnt() || DEFAULT_E.prad; } catch (e) { E.prad = DEFAULT_E.prad; } }
+    // v1.37: moc elektryczna = encja mocy (W/kW) wybrana w Nauce, inaczej czujnik pakietu (szacunek albo przeliczenie); CWU dzis z calki, gdy licznik stoi
+    const ce = this._config.entities || {};
+    if (!ce.prad) { try { const sel = this._enEnt(), u = sel ? this._enUnit(sel) : ''; E.prad = sel && /^(W|kW)$/.test(u) ? sel : st[DEFAULT_E.prad] ? DEFAULT_E.prad : 'sensor.hp_moc_elektryczna'; } catch (e) { E.prad = DEFAULT_E.prad; } }
+    if (!ce.e_cwu) E.e_cwu = st['sensor.hp_cieplo_cwu_dzis_razem'] ? 'sensor.hp_cieplo_cwu_dzis_razem' : DEFAULT_E.e_cwu;
     ELS.forEach((el, i) => {
       const sig = el.keys.map((k) => { const s = st[E[k]]; return s ? s.state : '?'; }).join('|') + (el.hist ? '#' + this._histAt : '');
       if (!force && this._nodes[i]._sig === sig) return;
@@ -358,8 +371,18 @@ class HaKartaPompaCiepla extends HTMLElement {
     const lk = this._schAuto(lane);
     if (lk) h += '<div class="info"><b>Automatyczny</b>: ten harmonogram ustawia zakładka Nauka (włączona „' + esc(lane.an) + '”) i automatyzacja w HA. Okna niżej to plan z Nauki, odświeżany sam' + (S.syncAt && S.syncAt[lane.k] ? ' (ostatnio ' + new Date(S.syncAt[lane.k]).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ')' : '') + '. Ręczna edycja jest zablokowana, żeby się nie gryzło: wyłącz automatyzację w Nauce, jeśli chcesz ustawiać sam. <button data-a="gonau">Pokaż w Nauce</button></div>';
     if (!st[lane.en]) h += '<div class="info">Brak przełącznika <code>' + lane.en + '</code>. Dodaj pakiet HA z repozytorium (packages/hydrolution_karta.yaml) i przeładuj konfigurację.</div>';
-    if (lane.p.length) {
-      h += '<div class="pr">' + lane.p.map((q) => {
+    // v1.37: przy wlaczonej automatyzacji CWU tryb w oknie = ten sam co w Nauce (input_select.hp_cwu_tryb_tania), jedno zrodlo prawdy
+    const cwuAu = lane.k === 'cwu' && this._schAuto(lane) && st[E.cwu_tania];
+    const lp = lane.k !== 'cwu' ? lane.p : lane.p.map((q) => (q.e === 'input_select.hp_cwu_tryb_w_oknie' ? (cwuAu ? { e: E.cwu_tania, l: 'Tryb CWU w taniej strefie' } : Object.assign({}, q, { l: 'Tryb CWU w oknie harmonogramu' }))
+      : q.e === 'input_select.hp_cwu_tryb_poza' ? Object.assign({}, q, { l: cwuAu ? 'Tryb CWU w drogiej strefie' : 'Tryb CWU poza oknem' }) : q));
+    if (lane.k === 'cwu') {
+      const lx = st[E.cwu_lux_on] && st[E.cwu_lux_on].state === 'on';
+      h += '<div class="ds" style="margin:.2em 0 .5em">' + (cwuAu ? 'Automatyzacja CWU włączona: w taniej strefie G12 (okna niżej) pompa dostaje „Tryb CWU w taniej strefie”, w drogiej „Tryb CWU w drogiej strefie”, a ' + (st[E.cwu_wait] ? Math.round(Number(st[E.cwu_wait].state)) : 30) + ' min przed tanią Ekonomiczny (czeka na tanią). To te same pola co w Nauce → CWU' +
+        (lx ? '. Dodatkowo luksus jednorazowy w taniej, gdy woda na górze (BT7) jest co najmniej 2 °C poniżej temp. stop Luksusu, najwyżej raz na 1,5 h' : '. Luksus jednorazowy w taniej strefie wyłączony (Nauka → CWU)')
+        : 'Automatyzacja CWU wyłączona: w oknach harmonogramu pompa dostaje „Tryb CWU w oknie harmonogramu”, poza nimi „Tryb CWU poza oknem”') + '.</div>';
+    }
+    if (lp.length) {
+      h += '<div class="pr">' + lp.map((q) => {
         const s = st[q.e]; if (!s) return '<label>' + esc(q.l) + ': <i>brak encji</i></label>';
         if (q.e.startsWith('input_select')) return '<label>' + esc(q.l) + '<select data-a="par" data-e="' + q.e + '">' + (s.attributes.options || []).map((o) => '<option' + (o === s.state ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select></label>';
         return '<label>' + esc(q.l) + '<input type="number" data-a="par" data-e="' + q.e + '" value="' + Number(s.state) + '" min="' + s.attributes.min + '" max="' + s.attributes.max + '" step="' + (s.attributes.step || 1) + '">' + (q.u || '') + '</label>';
@@ -382,13 +405,15 @@ class HaKartaPompaCiepla extends HTMLElement {
         const sel = S.sel && S.sel.d === d && S.sel.i === j;
         h += '<div class="bk' + (sel ? ' sel' : '') + '" data-a="bk" data-d="' + d + '" data-i="' + j + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '</div>';
       });
+      // v1.37: CWU - czas poza oknami tez wypelniony blokiem trybu (np. Ekonomiczny), tylko podglad
+      if (MS) MS[i].filter((b) => !dr[d].some((w) => w.f < b.t && w.t > b.f)).forEach((b) => { h += '<div class="gx ' + b.c + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%" title="poza oknem: ' + esc(NMS[b.m]) + '">' + (b.t - b.f >= 90 ? esc(NMS[b.m]) + ' ' : '') + (b.t - b.f >= 150 ? this._schFmt(b.f) + '–' + this._schFmt(b.t) : '') + '</div>'; });
       if (isT) h += '<div class="nw" style="left:' + (nowMin / 14.4) + '%"></div>';
       h += this._schHistRow(HS, dt.getTime());
       if (MS) h += '<div class="ms">' + MS[i].map((b) => '<i class="' + b.c + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%" title="' + esc(NMS[b.m]) + ' ' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '"></i>').join('') + '</div>';
       h += '</div>' + (lk ? '<span class="cp"></span>' : '<button class="cp" data-a="cp" data-d="' + d + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button>') + '</div>';
     });
     if (this._histIds(lane.k)) h += '<div class="lgh"><span><i style="background:#ffe0ef;height:3px"></i>plan wtedy</span><span><i style="background:#ff3b2f;height:5px"></i>faktyczna praca</span><span>Edycja okna w rzędzie zmienia ten dzień tygodnia (szablon tygodnia).</span></div>';
-    if (MS) h += '<div class="lgm"><span>Pasek pod osią = faktyczny tryb CWU:</span><span><i class="' + (NMS.lux ? 'L' : this._cwuCls(NMS.L)) + '"></i>' + esc(NMS.L) + ' (w oknie)</span>' + (this._schAuto(lane) ? '<span><i class="E"></i>Ekonomiczny (czeka na tanią)</span>' : '') + '<span><i class="' + this._cwuCls(NMS.N) + '"></i>' + esc(NMS.N) + ' (poza oknem)</span>' + this._cwuLeg() + '<span><i style="background:#f5a9cd"></i>okna (jasny róż)</span></div>';
+    if (MS) h += '<div class="lgm"><span>Pasek pod osią = faktyczny tryb CWU:</span><span><i class="' + (NMS.lux ? 'L' : this._cwuCls(NMS.L)) + '"></i>' + esc(NMS.L) + ' (w oknie)</span>' + (this._schAuto(lane) ? '<span><i class="E"></i>Ekonomiczny (czeka na tanią)</span>' : '') + '<span><i class="' + this._cwuCls(NMS.N) + '"></i>' + esc(NMS.N) + ' (poza oknem)</span>' + this._cwuLeg() + '<span><i style="background:#f5a9cd"></i>okna (jasny róż)</span><span><i class="E" style="opacity:.45;border:1px dashed #fff"></i>poza oknem (blok trybu, tylko podgląd)</span></div>';
     if (lk) { el.innerHTML = h + '<div class="ft"><span class="hint">Automatyczny harmonogram z Nauki. Czerwona kreska = teraz.</span></div></div>'; return; }
     if (S.sel && dr[S.sel.d] && dr[S.sel.d][S.sel.i]) {
       const b = dr[S.sel.d][S.sel.i];
@@ -701,7 +726,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (!(await this._pkWait(() => !!this._pkAutoEid(it.id), 8000))) throw new Error('HA nie wczytał automatyzacji: czy configuration.yaml ma „automation: !include automations.yaml”?');
       return;
     }
-    const H = { tpl: 'template', um: 'utility_meter', hs: 'history_stats', der: 'derivative' }[it.t];
+    const H = { tpl: 'template', um: 'utility_meter', hs: 'history_stats', der: 'derivative', int: 'integration' }[it.t];
     if (!H) throw new Error('nie da się przez API');
     const reg = await this._pkReg(true) || [];
     if (op === 'upd') {
@@ -748,7 +773,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     let updErr = false;
     try {
       await this._pkReg(true);
-      const R = this._pkPlan(), ord = ['helper', 'tpl', 'um', 'hs', 'der', 'script', 'auto'];
+      const R = this._pkPlan(), ord = ['helper', 'tpl', 'int', 'um', 'hs', 'der', 'script', 'auto'];
       const list = R.create.map((it) => ({ it, op: 'add' })).concat(R.update.map((it) => ({ it, op: 'upd' })));
       list.sort((a, b) => ord.indexOf(a.it.t) - ord.indexOf(b.it.t));
       for (const x of list) {
@@ -914,52 +939,103 @@ class HaKartaPompaCiepla extends HTMLElement {
     });
     return out;
   }
-  async _nauPrevFc(pastDays) {
-    // prognoza wydana dobe wczesniej (archiwum prognoz Open-Meteo "previous runs") do porownania z pomiarem BT1
+  // v1.37: dane dla zakresu z paska u gory (pomiar BT1 godzinowo, Open-Meteo symulacja i prognoza z dnia wczesniej)
+  _nauRng() {
+    const N = this._nau, R = this._rngDays(), key = R.from + ':' + R.to;
+    const ok = N.rd && N.rd.key === key && Date.now() - N.rd.at < 30 * 60000;
+    if (!ok && N.rdKey !== key) {
+      N.rdKey = key;
+      this._nauRngLoad(R).then((d) => { if (N.rdKey !== key) return; N.rd = { key, d, at: Date.now() }; N.rdKey = null; this._nauRender(); })
+        .catch((e) => { if (N.rdKey !== key) return; N.rd = { key, d: { err: String(e && (e.message || e.code) || e), meas: {}, wx: {}, prev: null }, at: Date.now() }; N.rdKey = null; this._nauRender(); });
+    }
+    return N.rd && N.rd.key === key ? N.rd.d : null;
+  }
+  _omUrl(host, R, extra) {
     const c = this._nauCfg(), hc = this._hass.config || {};
     const lat = Number(c.lat !== undefined ? c.lat : hc.latitude), lon = Number(c.lon !== undefined ? c.lon : hc.longitude);
     if (!isFinite(lat) || !isFinite(lon)) throw new Error('brak położenia domu w HA');
-    const r = await fetch('https://previous-runs-api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(2) + '&longitude=' + lon.toFixed(2) +
-      '&hourly=temperature_2m_previous_day1&timeformat=unixtime&timezone=auto&forecast_days=1&past_days=' + Math.max(1, Math.min(92, pastDays)));
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const j = await r.json(), H = j.hourly || {}, out = {};
-    (H.time || []).forEach((t, i) => { const v = (H.temperature_2m_previous_day1 || [])[i]; if (v !== null && v !== undefined && isFinite(v)) out[t * 1000] = v; });
-    return out;
+    return 'https://' + host + '/v1/forecast?latitude=' + lat.toFixed(2) + '&longitude=' + lon.toFixed(2) + '&timeformat=unixtime&timezone=auto' + extra +
+      '&start_date=' + this._rngIso(new Date(R[0])) + '&end_date=' + this._rngIso(new Date(R[1] - 1));
   }
-  _nauFcHtml(C, P) {
-    if (!P) return '';
-    const now = Date.now();
-    const pairs = Object.keys(P).map(Number).filter((t) => t <= now && C.toutH[t] !== undefined).sort((a, b) => a - b).map((t) => [t, P[t], C.toutH[t]]);
-    let h = '<div class="sec"><div class="st2">Prognoza temperatury vs rzeczywistość<small> – prognoza Open-Meteo wydana dobę wcześniej na tle pomiaru pompy BT1</small></div>';
-    if (pairs.length < 24) return h + '<div class="info">Za mało godzin z pomiarem pompy i prognozą (' + pairs.length + ' h). Wróć za dzień.</div></div>';
-    const err = pairs.map((p) => p[1] - p[2]);
-    const mae = err.reduce((a, x) => a + Math.abs(x), 0) / err.length, bias = err.reduce((a, x) => a + x, 0) / err.length;
-    const mx = err.reduce((a, x) => (Math.abs(x) > Math.abs(a) ? x : a), 0);
-    const days = new Set(pairs.map((p) => new Date(p[0]).toDateString())).size;
+  async _nauRngLoad(R) {
+    const hass = this._hass, E = this._E, st = hass.states, now = Date.now(), errs = [];
+    const inToday = R.to > now, wEnd = inToday ? Math.max(R.to, now + 2 * 864e5) : R.to;
+    // pomiar BT1: wlasna historia pakietu (statystyki bez limitu) albo BT1 z recordera
+    const ids = [E.t_out_hist, E.bt1].filter((i) => i && st[i]);
+    const ss = await this._nauStats(ids, R.from), meas = {};
+    ids.slice().reverse().forEach((id) => (ss[id] || []).forEach(([t, v]) => { const hk = Math.floor(t / 36e5) * 36e5; if (hk >= R.from && hk < R.to) meas[hk] = v; }));
+    const bn = parseFloat((st[E.bt1] || {}).state); if (inToday && isFinite(bn)) meas[Math.floor(now / 36e5) * 36e5] = bn;
+    // Open-Meteo: do ~90 dni wstecz zwykle API, starsze z archiwum prognoz
+    const old = R.from < now - 88 * 864e5, wx = {};
+    try {
+      const r = await fetch(this._omUrl(old ? 'historical-forecast-api.open-meteo.com' : 'api.open-meteo.com', [R.from, wEnd], '&hourly=temperature_2m'));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const H = (await r.json()).hourly || {};
+      (H.time || []).forEach((t, i) => { const v = (H.temperature_2m || [])[i]; if (v !== null && v !== undefined && isFinite(v)) wx[t * 1000] = v; });
+    } catch (e) { errs.push('Open-Meteo: ' + (e && e.message || e)); }
+    let prev = null;
+    try {
+      const r = await fetch(this._omUrl('previous-runs-api.open-meteo.com', [R.from, Math.min(R.to, now + 864e5)], '&hourly=temperature_2m_previous_day1'));
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const H = (await r.json()).hourly || {}; prev = {};
+      (H.time || []).forEach((t, i) => { const v = (H.temperature_2m_previous_day1 || [])[i]; if (v !== null && v !== undefined && isFinite(v)) prev[t * 1000] = v; });
+    } catch (e) { errs.push('archiwum prognoz Open-Meteo: ' + (e && e.message || e)); }
+    return { meas, wx, prev, errs, R, at: now };
+  }
+  // os czasu po dniach dla wykresow z zakresu
+  _axDays(t0, t1, sx, Y0, Y1) {
+    const DL = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'], d = new Date(t0); d.setHours(0, 0, 0, 0);
+    const n = Math.max(1, Math.round((t1 - t0) / 864e5)), every = n <= 9 ? 1 : n <= 18 ? 2 : n <= 35 ? 4 : 7;
+    let g = '', k = 0;
+    for (; d.getTime() < t1; d.setDate(d.getDate() + 1), k++) {
+      const x = sx(Math.max(t0, d.getTime()));
+      if (d.getTime() >= t0) g += '<line x1="' + x.toFixed(1) + '" y1="' + Y0 + '" x2="' + x.toFixed(1) + '" y2="' + Y1 + '" stroke="rgba(255,255,255,.07)"/>';
+      if (k % every) continue;
+      const lab = n === 1 ? '' : n <= 9 ? DL[d.getDay()] + ' ' + d.getDate() + '.' + (d.getMonth() + 1) : d.getDate() + '.' + String(d.getMonth() + 1).padStart(2, '0');
+      if (lab) g += '<text x="' + (x + 3).toFixed(1) + '" y="' + (Y1 + 15) + '" text-anchor="start">' + lab + '</text>';
+    }
+    if (n === 1) for (let hh = 0; hh <= 24; hh += 3) { const x = sx(t0 + hh * 36e5); g += '<line x1="' + x.toFixed(1) + '" y1="' + Y0 + '" x2="' + x.toFixed(1) + '" y2="' + Y1 + '" stroke="rgba(255,255,255,.06)"/><text x="' + x.toFixed(1) + '" y="' + (Y1 + 15) + '" text-anchor="' + (hh === 24 ? 'end' : hh === 0 ? 'start' : 'middle') + '">' + String(hh).padStart(2, '0') + ':00</text>'; }
+    return g;
+  }
+  _nauLine(sx, sy) {
+    return (pts, col, dash, w) => { let out = '', seg = [];
+      const flush = () => { if (seg.length > 1) out += '<polyline points="' + seg.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + (dash === true ? '5 4' : dash) + '"' : '') + ' stroke-linejoin="round"/>'; seg = []; };
+      pts.forEach((p, k) => { if (k && p[0] - pts[k - 1][0] > 3 * 36e5) flush(); seg.push(sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)); }); flush(); return out; };
+  }
+  _nauFcHtml() {
+    const RG = this._rngDays(), D = this._nauRng(), now = Date.now();
+    let h = '<div class="sec"><div class="st2">Prognoza temperatury vs rzeczywistość' + this._rngTag() + '<small> – prognoza Open-Meteo wydana dobę wcześniej na tle pomiaru pompy BT1</small></div>';
+    if (!D) return h + '<div class="info">Wczytuję pomiar i prognozy dla zakresu…</div></div>';
+    if (!D.prev) return h + '<div class="info">Brak archiwum prognoz Open-Meteo (' + (D.errs || []).join('; ') + ').</div></div>';
+    const P = D.prev, M = D.meas, t0 = RG.from, t1 = Math.min(RG.to, now);
+    if (t0 >= now) return h + '<div class="info">Zakres w przyszłości: nie ma jeszcze z czym porównać.</div></div>';
+    const pairs = Object.keys(P).map(Number).filter((t) => t >= t0 && t <= t1 && M[t] !== undefined).sort((a, b) => a - b).map((t) => [t, P[t], M[t]]);
     const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1);
-    h += '<div class="kt"><div class="k"><span>Średni błąd prognozy</span><b>' + mae.toFixed(1) + ' °C</b><i>z ' + days + ' dni (' + pairs.length + ' h)</i></div>' +
-      '<div class="k"><span>Prognoza średnio</span><b>' + sg(bias) + ' °C</b><i>' + (Math.abs(bias) < 0.3 ? 'bez wyraźnego przechyłu' : bias > 0 ? 'za ciepła względem czujnika pompy' : 'za zimna względem czujnika pompy') + '</i></div>' +
-      '<div class="k"><span>Największa pomyłka</span><b>' + sg(mx) + ' °C</b><i>pojedyncza godzina</i></div></div>';
-    // wykres: ostatnie 7 dni
-    const t0 = now - 7 * 864e5, pv = pairs.filter((p) => p[0] >= t0);
-    const fc = Object.keys(P).map(Number).filter((t) => t >= t0 && t <= now).sort((a, b) => a - b).map((t) => [t, P[t]]);
-    const ms = pv.map((p) => [p[0], p[2]]);
+    if (pairs.length >= 3) {
+      const err = pairs.map((p) => p[1] - p[2]);
+      const mae = err.reduce((a, x) => a + Math.abs(x), 0) / err.length, bias = err.reduce((a, x) => a + x, 0) / err.length;
+      const mx = err.reduce((a, x) => (Math.abs(x) > Math.abs(a) ? x : a), 0);
+      const days = new Set(pairs.map((p) => new Date(p[0]).toDateString())).size;
+      h += '<div class="kt"><div class="k"><span>Średni błąd prognozy</span><b>' + mae.toFixed(1) + ' °C</b><i>z ' + days + ' dni (' + pairs.length + ' h)</i></div>' +
+        '<div class="k"><span>Prognoza średnio</span><b>' + sg(bias) + ' °C</b><i>' + (Math.abs(bias) < 0.3 ? 'bez wyraźnego przechyłu' : bias > 0 ? 'za ciepła względem czujnika pompy' : 'za zimna względem czujnika pompy') + '</i></div>' +
+        '<div class="k"><span>Największa pomyłka</span><b>' + sg(mx) + ' °C</b><i>pojedyncza godzina</i></div></div>';
+    } else h += '<div class="info">W tym zakresie za mało godzin z pomiarem pompy i prognozą (' + pairs.length + ' h), wykres poniżej bez statystyk.</div>';
+    const fc = Object.keys(P).map(Number).filter((t) => t >= t0 && t <= t1).sort((a, b) => a - b).map((t) => [t, P[t]]);
+    const ms = Object.keys(M).map(Number).filter((t) => t >= t0 && t <= t1).sort((a, b) => a - b).map((t) => [t, M[t]]);
     const all = fc.map((p) => p[1]).concat(ms.map((p) => p[1]));
     if (all.length > 1) {
-      const lo = Math.floor((Math.min(...all) - 1) / 5) * 5, hi = Math.ceil((Math.max(...all) + 1) / 5) * 5;
-      const X0 = 46, X1 = 590, Y0 = 26, Y1 = 150, sx = (t) => X0 + (t - t0) / (now - t0) * (X1 - X0), sy = (v) => Y1 - (v - lo) / ((hi - lo) || 1) * (Y1 - Y0);
-      let g = '';
+      const lo = Math.floor((Math.min(...all) - 1) / 5) * 5, hi = Math.ceil((Math.max(...all) + 1) / 5) * 5, T1 = RG.to;
+      const X0 = 46, X1 = 590, Y0 = 26, Y1 = 150, sx = (t) => X0 + (t - t0) / (T1 - t0) * (X1 - X0), sy = (v) => Y1 - (v - lo) / ((hi - lo) || 1) * (Y1 - Y0);
+      let g = this._axDays(t0, T1, sx, Y0, Y1);
       for (let v = lo; v <= hi; v += 5) g += '<line x1="' + X0 + '" y1="' + sy(v) + '" x2="' + X1 + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + ' °C</text>';
-      const DL = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'], d = new Date(t0); d.setHours(0, 0, 0, 0);
-      for (d.setDate(d.getDate() + 1); d.getTime() <= now; d.setDate(d.getDate() + 1)) { const x = sx(d.getTime()); g += '<line x1="' + x + '" y1="' + Y0 + '" x2="' + x + '" y2="' + Y1 + '" stroke="rgba(255,255,255,.07)"/><text x="' + (x + 18) + '" y="' + (Y1 + 15) + '" text-anchor="middle">' + DL[d.getDay()] + '</text>'; }
-      const line = (pts, col, dash, w) => { let out = '', seg = [];
-        const flush = () => { if (seg.length > 1) out += '<polyline points="' + seg.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="5 4"' : '') + ' stroke-linejoin="round"/>'; seg = []; };
-        pts.forEach((p, k) => { if (k && p[0] - pts[k - 1][0] > 3 * 36e5) flush(); seg.push(sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)); }); flush(); return out; };
+      const line = this._nauLine(sx, sy);
       const leg = '<line x1="50" y1="10" x2="74" y2="10" stroke="#ffab1a" stroke-width="2.4"/><text x="80" y="14" fill="#e3e8ee">Rzeczywistość (pompa BT1)</text>' +
         '<line x1="250" y1="10" x2="274" y2="10" stroke="#c38fff" stroke-width="1.8" stroke-dasharray="5 4"/><text x="280" y="14" fill="#e3e8ee">Prognoza z dnia wcześniej</text>';
-      h += '<svg viewBox="0 0 600 170" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + '</g>' + line(fc, '#c38fff', true, 1.8) + line(ms, '#ffab1a', false, 2.4) + '</svg>';
-    }
-    return h + '<div class="wn">Błąd = prognoza − pomiar. Czujnik BT1 wisi na ścianie domu, więc stały przechył może też wynikać z miejsca czujnika (słońce, ściana), nie tylko z prognozy.</div></div>';
+      const nx = now < T1 ? sx(now) : null;
+      h += '<svg viewBox="0 0 600 170" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + '</g>' + line(fc, '#c38fff', true, 1.8) + line(ms, '#ffab1a', false, 2.4) +
+        (nx !== null ? '<line x1="' + nx.toFixed(1) + '" y1="' + Y0 + '" x2="' + nx.toFixed(1) + '" y2="' + Y1 + '" stroke="#ff5a4a" stroke-width="1.5"/>' : '') + '</svg>';
+    } else h += '<div class="info">Brak danych w tym zakresie.</div>';
+    return h + '<div class="wn">Błąd = prognoza − pomiar. Czujnik BT1 wisi na ścianie domu, więc stały przechył może też wynikać z miejsca czujnika (słońce, ściana), nie tylko z prognozy.' + ((D.errs || []).length ? ' Uwaga: ' + D.errs.join('; ') + '.' : '') + '</div></div>';
   }
   async _nauLoad() {
     const N = this._nau, hass = this._hass, E = this._E, c = this._nauCfg();
@@ -974,7 +1050,6 @@ class HaKartaPompaCiepla extends HTMLElement {
       let W = {};
       try { W = await this._nauWeather(dk); } catch (e) { res.errs.push('Pogoda Open-Meteo niedostępna (' + (e && e.message || e) + '), liczę bez wiatru i słońca.'); }
       res.wx = W;
-      try { res.prev = await this._nauPrevFc(dk); } catch (e) { res.prev = null; res.errs.push('Archiwum prognoz Open-Meteo niedostępne (' + (e && e.message || e) + '), brak porównania prognoza/pomiar.'); }
       const pg = this._nauSrc('pogoda') || [].concat(c.pogoda || []).filter((i) => hass.states[i]);
       if (pg.length) {
         const ps = await this._nauStats(pg, now - dk * 864e5);
@@ -1348,34 +1423,29 @@ class HaKartaPompaCiepla extends HTMLElement {
     for (let k = 0; k < 7; k++) if (!N.edit[k]) N.edit[k] = [];
     return N.edit;
   }
-  _nauOutHtml(C, W) {
-    // temp. zewnetrzna: 7 dni wstecz + 2 dni prognozy; pomiar pompy (BT1) vs symulacja Open-Meteo
-    const now = Date.now(), t0 = now - 7 * 864e5, t1 = now + 48 * 36e5;
-    const meas = Object.keys(C.toutH).map(Number).filter((t) => t >= t0 && t <= now).sort((a, b) => a - b).map((t) => [t, C.toutH[t]]);
-    const sim = Object.keys(W).map(Number).filter((t) => t >= t0 && t <= t1 && isFinite(W[t].temp)).sort((a, b) => a - b).map((t) => [t, W[t].temp]);
+  _nauOutHtml(C) {
+    // v1.37: temp. zewnetrzna w zakresie z paska u gory; gdy zakres obejmuje dzis, doklejone 2 dni prognozy
+    const RG = this._rngDays(), D = this._nauRng(), now = Date.now();
+    let h = '<div class="sec"><div class="st2">Temperatura zewnętrzna: pomiar pompy i symulacja' + this._rngTag() + '<small> – do nauki idzie pomiar z pompy, Open-Meteo tylko tam, gdzie pomiaru brak' + (RG.to > now ? '; za „teraz” 2 dni prognozy' : '') + '.</small></div>';
+    if (!D) return h + '<div class="info">Wczytuję pomiar i symulację dla zakresu…</div></div>';
+    const t0 = RG.from, t1 = RG.to > now ? Math.max(RG.to, now + 48 * 36e5) : RG.to;
+    const meas = Object.keys(D.meas).map(Number).filter((t) => t >= t0 && t <= Math.min(now, t1)).sort((a, b) => a - b).map((t) => [t, D.meas[t]]);
+    const sim = Object.keys(D.wx).map(Number).filter((t) => t >= t0 && t <= t1).sort((a, b) => a - b).map((t) => [t, D.wx[t]]);
     const all = meas.concat(sim).map((p) => p[1]);
-    if (!all.length) return '';
+    if (!all.length) return h + '<div class="info">Brak pomiaru i symulacji w tym zakresie.' + ((D.errs || []).length ? ' ' + D.errs.join('; ') : '') + '</div></div>';
     const lo = Math.floor((Math.min(...all) - 1) / 5) * 5, hi = Math.ceil((Math.max(...all) + 1) / 5) * 5;
     const X0 = 46, X1 = 590, Y0 = 26, Y1 = 150;
     const sx = (t) => X0 + (t - t0) / (t1 - t0) * (X1 - X0), sy = (v) => Y1 - (v - lo) / ((hi - lo) || 1) * (Y1 - Y0);
-    let g = '';
+    let g = this._axDays(t0, t1, sx, Y0, Y1);
     for (let v = lo; v <= hi; v += 5) g += '<line x1="' + X0 + '" y1="' + sy(v) + '" x2="' + X1 + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + ' °C</text>';
-    const DL = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'];
-    const d = new Date(t0); d.setHours(0, 0, 0, 0);
-    for (d.setDate(d.getDate() + 1); d.getTime() <= t1; d.setDate(d.getDate() + 1)) { const x = sx(d.getTime()); g += '<line x1="' + x + '" y1="' + Y0 + '" x2="' + x + '" y2="' + Y1 + '" stroke="rgba(255,255,255,.07)"/><text x="' + (x + 18) + '" y="' + (Y1 + 15) + '" text-anchor="middle">' + DL[d.getDay()] + '</text>'; }
-    // linia ciagla tylko dla kolejnych godzin (przerwy w pomiarze = przerwy w linii)
-    const line = (pts, col, dash, w) => { let out = '', seg = [];
-      const flush = () => { if (seg.length > 1) out += '<polyline points="' + seg.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="5 4"' : '') + ' stroke-linejoin="round"/>'; seg = []; };
-      pts.forEach((p, k) => { if (k && p[0] - pts[k - 1][0] > 3 * 36e5) flush(); seg.push(sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)); }); flush(); return out; };
-    const nx = sx(now);
+    const line = this._nauLine(sx, sy), nx = now >= t0 && now <= t1 ? sx(now) : null;
     const leg = '<line x1="50" y1="10" x2="74" y2="10" stroke="#ffab1a" stroke-width="2.4"/><text x="80" y="14" fill="#e3e8ee">Pomiar pompy (BT1)</text>' +
       '<line x1="230" y1="10" x2="254" y2="10" stroke="#8fb8ff" stroke-width="1.8" stroke-dasharray="5 4"/><text x="260" y="14" fill="#e3e8ee">Symulacja Open-Meteo (było / będzie)</text>';
-    return '<div class="sec"><div class="st2">Temperatura zewnętrzna: pomiar pompy i symulacja<small> – 7 dni wstecz i 2 dni prognozy. Do nauki idzie pomiar z pompy, Open-Meteo tylko tam, gdzie pomiaru brak.</small></div>' +
-      '<svg viewBox="0 0 600 170" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + '</g>' +
-      '<rect x="' + nx + '" y="' + Y0 + '" width="' + (X1 - nx) + '" height="' + (Y1 - Y0) + '" fill="rgba(143,184,255,.06)"/>' +
+    return h + '<svg viewBox="0 0 600 170" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + '</g>' +
+      (nx !== null ? '<rect x="' + nx + '" y="' + Y0 + '" width="' + (X1 - nx) + '" height="' + (Y1 - Y0) + '" fill="rgba(143,184,255,.06)"/>' : '') +
       line(sim, '#8fb8ff', true, 1.8) + line(meas, '#ffab1a', false, 2.4) +
-      '<line x1="' + nx + '" y1="' + Y0 + '" x2="' + nx + '" y2="' + Y1 + '" stroke="#ff5a4a" stroke-width="1.5"/><text x="' + nx + '" y="' + (Y0 - 3) + '" text-anchor="middle" font-size="11" fill="#ff8a80">teraz</text></svg>' +
-      '<div class="wn">Własna historia z pompy: ' + (C.ownHist ? C.ownHist + ' h zapisanych w sensor.hp_temperatura_zewnetrzna_bt1' : 'brak sensor.hp_temperatura_zewnetrzna_bt1 (dodaj pakiet v1.15), na razie biorę historię BT1 z recordera') + '. Dni z pomiarem pompy: ' + C.measDays + '.</div></div>';
+      (nx !== null ? '<line x1="' + nx + '" y1="' + Y0 + '" x2="' + nx + '" y2="' + Y1 + '" stroke="#ff5a4a" stroke-width="1.5"/><text x="' + nx + '" y="' + (Y0 - 3) + '" text-anchor="middle" font-size="11" fill="#ff8a80">teraz</text>' : '') + '</svg>' +
+      '<div class="wn">Godzin z pomiarem pompy w zakresie: ' + meas.length + '. Własna historia z pompy: ' + (C && C.ownHist ? 'sensor.hp_temperatura_zewnetrzna_bt1 (statystyki bez limitu dni)' : 'brak sensor.hp_temperatura_zewnetrzna_bt1 (dodaj pakiet), starsze dni tylko z recordera') + '.' + ((D.errs || []).length ? ' Uwaga: ' + D.errs.join('; ') + '.' : '') + '</div></div>';
   }
   _nauCyrkHtml(Y, esc, fmt) {
     const hass = this._hass, st = hass.states, E = this._E, N = this._nau;
@@ -1407,7 +1477,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       const pl = st[E.cyrk_plan], pa = st[E.cyrk_plan_at], ok = pl && /^[0-9a-f]{168}$/.test(pl.state);
       const pd = pa ? new Date(String(pa.state).replace(' ', 'T')) : null;
       h += '<div class="wn" style="margin:-.3em 0 .8em">' + (!pl ? 'Brak <code>' + E.cyrk_plan + '</code>: wklej / zainstaluj pakiet ' + PKG_VER + ', wtedy HA sam przelicza plan cyrkulacji bez otwierania karty.'
-        : ok ? 'Plan cyrkulacji liczy HA sam (bez otwartej karty): przy wyjściu / powrocie telefonów, po wykrytym śnie i wstaniu, po zmianie ustawień tutaj i raz na dobę. Ostatnio przeliczony: <b>' + (pd && !isNaN(pd) ? pd.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '–') + '</b>.'
+        : ok ? 'Plan cyrkulacji liczy HA sam (bez otwartej karty): po wykrytym śnie i wstaniu, po zmianie ustawień tutaj i raz na dobę (wyjście / powrót telefonów automatyzacja obsługuje na bieżąco). Ostatnio przeliczony: <b>' + (pd && !isNaN(pd) ? pd.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '–') + '</b>.'
         : 'Plan w HA jeszcze nie policzony: policzy się po włączeniu automatyzacji cyrkulacji (karta wysyła model z Nauki).') + '</div>';
     }
     if (!au) h += '<div class="info">Brak przełącznika <code>' + E.auto_cyrk + '</code>. Dodaj pakiet <code>packages/hydrolution_karta.yaml</code> z wersji v1.15 i przeładuj konfigurację HA.</div>';
@@ -1453,6 +1523,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     h += '<div class="lg"><span><i style="background:rgba(67,194,90,.45)"></i>ktoś w domu (im mocniej, tym częściej)</span><span><i style="background:rgba(90,120,255,.6)"></i>sen</span><span><i class="pb"></i>okna do wysłania' + (N.edit ? ' (poprawione ręcznie)' : ' (propozycja)') + '</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span><span><i style="background:#ff5a4a;width:2px"></i>teraz</span><span><i style="background:#ffb300;width:2px"></i>wstajemy</span></div>';
     h += '<div class="ft"><span class="hint">Przeciągnij po osi, żeby dodać okno, kliknij okno, żeby zmienić godziny albo usunąć, ⧉ kopiuje dzień. „Wyślij na główną” wpisze okna do harmonogramu Cyrkulacja CWU (zapisujesz tam „Zapisz harmonogram”).</span>' +
       (N.edit ? '<button data-a="nrst">Przywróć propozycję</button>' : '') + '<button class="sv" data-a="send">Wyślij na główną</button></div>';
+    h += this._nauHistRows('cyrk', bl, esc);
     return h + '</div>';
   }
   _nauSend() {
@@ -1604,10 +1675,11 @@ class HaKartaPompaCiepla extends HTMLElement {
       (luxOn ? 'Luksus jednorazowy w taniej WŁĄCZONY: na wejściu w okno (tania strefa), gdy BT7 jest poniżej celu luksusu: luksus jednorazowy (SMO40: tymczasowy luksus Jednorazowo), tryb pracy Ręczny i ogrzewanie CO wyłączone, żeby cała moc szła w wodę. Gdy BT7 dojdzie do celu albo luksus się skończy: tryb pracy Auto i CO z powrotem. Bezpieczniki: max ' + luxMax + ' min, po restarcie HA, po wyjściu z taniej strefy, wyłączeniu automatyzacji albo tej opcji też wraca na Auto.'
         : 'Luksus jednorazowy w taniej (tryb Ręczny + CO wstrzymane, jak w v1.27) jest wyłączony: zaznacz go, jeśli chcesz.') +
       (st[E.auto_cwu] && st[E.cwu_boost] && sT && sL ? '' : ' Brak encji automatyzacji CWU: wklej pakiet ' + PKG_VER + ' i zrób pełny restart HA.') + '</span></div>';
-    if (!R) return h + '<div class="info">Brak historii temperatury CWU (BT6), propozycja = wszystkie tanie strefy.</div>' + this._nauCwuRows(P, null, esc, fmt) + '</div>';
+    if (!R) return h + '<div class="info">Brak historii temperatury CWU (BT6), propozycja = wszystkie tanie strefy.</div>' + this._nauCwuRows(P, null, esc, fmt) + this._nauHistRows('cwu', P.blocks, esc) + '</div>';
     h += '<div class="lh"><span>Zużycie ciepłej wody: średnio <b>' + R.perDay.toFixed(1) + ' °C</b> spadku BT6 na dobę (z ' + R.days + ' dni)</span>' + this._nauCwuStat(R, G) + '</div>';
     if (R.days < 7 || !R.cnt.every((x) => x > 0)) h += '<div class="info">Mało historii zużycia wody (' + R.days + ' dni, potrzeba min. 7, każdy dzień tygodnia). Na razie propozycja = wszystkie tanie strefy; potem zacznie pomijać strefy, po których nie zużywacie wody.</div>';
     h += this._nauCwuRows(P, R, esc, fmt);
+    h += this._nauHistRows('cwu', P.blocks, esc);
     return h + '</div>';
   }
   _nauCwuStat(R, G) {
@@ -1692,54 +1764,68 @@ class HaKartaPompaCiepla extends HTMLElement {
       '&end_time=' + encodeURIComponent(new Date(now).toISOString()) + '&minimal_response&no_attributes')) || [];
     const by = {};
     r.forEach((a) => { if (a && a.length) by[a[0].entity_id] = a.map((p) => [Date.parse(p.last_changed || p.last_updated), p.state]).filter((p) => !isNaN(p[0])).sort((x, y) => x[0] - y[0]); });
-    return { by, from: d0.getTime(), at: now };
+    // v1.37: dni starsze niz historia recordera (~10 dni) - godzinowe statystyki (temperatury; praca sprezarki z sensor.hp_hist_*)
+    const sm = {};
+    if (now - d0.getTime() > 9 * 864e5) {
+      const sIds = [E.bt25, E.s1, E.bt7].concat(sal, ['sensor.hp_hist_sprezarka', 'sensor.hp_hist_cwu_praca']).filter((i, k, a) => i && st[i] && a.indexOf(i) === k);
+      try {
+        const q = await hass.callWS({ type: 'recorder/statistics_during_period', start_time: d0.toISOString(), statistic_ids: sIds, period: 'hour', types: ['mean'] });
+        sIds.forEach((id) => { sm[id] = ((q && q[id]) || []).filter((x) => x.mean !== null && x.mean !== undefined).map((x) => [typeof x.start === 'number' ? x.start : Date.parse(x.start), Number(x.mean)]); });
+      } catch (e) { /* brak statystyk */ }
+    }
+    return { by, sm, from: d0.getTime(), at: now };
   }
   _nauDayHtml(R, esc) {
     const hass = this._hass, st = hass.states, E = this._E, N = this._nau, D = R.day, C = R.curve;
-    const ser = ['co', 'cwu', 'dom'].indexOf(N.dser) >= 0 ? N.dser : 'cwu', dd = Math.max(0, Math.min(400, Math.round(Number(N.dday) || 0))), showCpr = N.dcpr !== false;
+    const ser = ['co', 'cwu', 'dom'].indexOf(N.dser) >= 0 ? N.dser : 'cwu', showCpr = N.dcpr !== false;
     const btn = (a, v, cur, txt) => '<button data-a="' + a + '" data-v="' + v + '" class="' + (String(v) === String(cur) ? 'on' : '') + '">' + txt + '</button>';
-    let h = '<div class="sec dy"><div class="st2">Doba 00–24: plan i realnie<small> – linia ciągła = realnie z historii HA, przerywana = proponowany plan (Nauka). Widać spadki temperatury w ciągu dnia.</small></div>' +
+    const RG = this._rngDays(), now = Date.now(), days = RG.days.filter((d) => d.getTime() < now);
+    let h = '<div class="sec dy"><div class="st2">Doba 00–24: plan i realnie' + this._rngTag() + '<small> – linia ciągła = realnie z historii HA, przerywana = proponowany plan (Nauka). Przy kilku dniach linia idzie dzień po dniu.</small></div>' +
       '<div class="lh dsw">' + btn('dser', 'cwu', ser, 'Woda CWU (BT7)') + btn('dser', 'co', ser, 'Zasilanie CO (BT25)') + btn('dser', 'dom', ser, 'Dom (salon)') +
-      '<span style="width:1em"></span>' + btn('dday', 0, dd, 'Dziś') + btn('dday', 1, dd, 'Wczoraj') + this._nauDaySel(dd) +
       '<label><input type="checkbox" data-a="dcpr"' + (showCpr ? ' checked' : '') + '> praca sprężarki (słupki)</label></div>';
     if (!D) return h + '<div class="info">Brak historii z HA do wykresu doby.</div></div>';
-    { // v1.36: dzien starszy niz wczytana historia -> doczytaj
-      const a0 = new Date(); a0.setHours(0, 0, 0, 0); a0.setDate(a0.getDate() - dd);
-      if (a0.getTime() < D.from && !N.dayBusy) { N.dayBusy = true; this._nauDayLoad(a0.getTime()).then((d) => { R.day = d; N.dayBusy = false; this._nauRender(); }).catch(() => { N.dayBusy = false; }); }
-      if (a0.getTime() < D.from) return h + '<div class="info">Wczytuję historię dnia…</div></div>';
+    if (!days.length) return h + '<div class="info">Zakres w przyszłości: nie ma jeszcze realnych danych.</div></div>';
+    const A = days[0].getTime(), lastD = new Date(days[days.length - 1]); lastD.setDate(lastD.getDate() + 1);
+    const B = lastD.getTime(), Bend = Math.min(B, now), nD = days.length, one = nD === 1;
+    if (A < D.from) {
+      if (!N.dayBusy) { N.dayBusy = true; this._nauDayLoad(A).then((d) => { R.day = d; N.dayBusy = false; this._nauRender(); }).catch(() => { N.dayBusy = false; }); }
+      return h + '<div class="info">Wczytuję historię zakresu…</div></div>';
     }
-    const now = Date.now(), a = new Date(); a.setHours(0, 0, 0, 0); a.setDate(a.getDate() - dd);
-    const A = a.getTime(), B = A + 864e5, Bend = Math.min(B, now), wd = (a.getDay() + 6) % 7;
-    const STEP = 5 * 60000;
-    // wartosc schodkowa (sensor zapisuje przy zmianie) probkowana co 5 min
+    const STEP = (nD <= 2 ? 5 : nD <= 7 ? 10 : 30) * 60000;
+    // wartosc schodkowa (sensor zapisuje przy zmianie) probkowana co STEP; przed historia recordera - srednie godzinowe ze statystyk
     const samp = (id) => {
-      const s = (D.by[id] || []).slice(), out = [];
-      if (dd === 0 && st[id]) s.push([now, st[id].state]);
+      const s = (D.by[id] || []).slice(), out = [], f0 = s.length ? s[0][0] : Infinity;
+      if (Bend === now && st[id]) s.push([now, st[id].state]);
+      const smv = {}; ((D.sm || {})[id] || []).forEach(([t, v]) => { smv[t] = v; });
       let j = -1;
       for (let t = A; t <= Bend; t += STEP) {
+        if (t < f0) { const v = smv[Math.floor(t / 36e5) * 36e5]; if (v !== undefined && isFinite(v)) out.push([t, v]); continue; }
         while (j + 1 < s.length && s[j + 1][0] <= t) j++;
         if (j < 0) continue;
         const v = parseFloat(s[j][1]); if (isFinite(v)) out.push([t, v]);
       }
-      if (dd === 0 && st[id]) { const v = parseFloat(st[id].state); if (isFinite(v)) out.push([now, v]); }
+      if (Bend === now && st[id]) { const v = parseFloat(st[id].state); if (isFinite(v)) out.push([now, v]); }
       return out;
     };
-    const onMin = (id) => {
-      const s = (D.by[id] || []), m = new Array(24).fill(0);
-      if (!s.length) return null;
+    const nH = Math.round((B - A) / 36e5);
+    const onMin = (id, hid) => {
+      const s = (D.by[id] || []), m = new Array(nH).fill(0);
+      const f0 = s.length ? s[0][0] : Infinity;
+      ((D.sm || {})[hid] || []).forEach(([t, v]) => { if (t >= A && t + 36e5 <= f0) { const k = Math.floor((t - A) / 36e5); if (k >= 0 && k < nH) m[k] = v * 0.6; } });
+      if (!s.length && !((D.sm || {})[hid] || []).length) return null;
       for (let k = 0; k < s.length; k++) {
         if (s[k][1] !== 'on') continue;
-        let f = Math.max(A, s[k][0]), t = Math.min(Bend, k + 1 < s.length ? s[k + 1][0] : now);
-        while (f < t) { const hh = Math.floor((f - A) / 36e5); if (hh < 0 || hh > 23) break; const e = Math.min(t, A + (hh + 1) * 36e5); m[hh] += (e - f) / 60000; f = e; }
+        let f = Math.max(A, s[k][0]); const t = Math.min(Bend, k + 1 < s.length ? s[k + 1][0] : now);
+        while (f < t) { const hh = Math.floor((f - A) / 36e5); if (hh < 0 || hh >= nH) break; const e = Math.min(t, A + (hh + 1) * 36e5); m[hh] += (e - f) / 60000; f = e; }
       }
       return m;
     };
-    const fmtT = (t) => new Date(t).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+    const fmtT = (t) => new Date(t).toLocaleString('pl-PL', one ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     const num = (k) => { const v = parseFloat((st[E[k]] || {}).state); return isFinite(v) ? v : null; };
     let real = [], real2 = [], plan = [], plan2 = [], unit = '°C', nm = '', nm2 = '', pn = '', pn2 = '', note = '', bands = [];
     if (ser === 'cwu') {
       nm = 'Realnie BT7 (CWU góra)'; real = samp(E.bt7);
-      // plan: symulacja wody wg okien CWU z Nauki, trybow tania/droga strefa i progow stop
+      // plan: symulacja wody wg okien CWU z Nauki, trybow tania/droga strefa i progow stop - dzien po dniu
       const okS = (x) => x && x.state && x.state !== 'unknown' && x.state !== 'unavailable';
       const auOn = st[E.auto_cwu] && st[E.auto_cwu].state === 'on';
       const tt = okS(st[E.cwu_tania]) ? st[E.cwu_tania].state : 'Ekonomiczny', tp = okS(st[E.cwu_poza]) ? st[E.cwu_poza].state : 'Normalny';
@@ -1747,40 +1833,43 @@ class HaKartaPompaCiepla extends HTMLElement {
       const curM = okS(st[E.hwmode]) ? st[E.hwmode].state : 'Normalny';
       const wait = st[E.cwu_wait] ? Math.round(Number(st[E.cwu_wait].state)) || 0 : 30;
       const stopOf = (m) => { const k = m === 'Luksus' ? 'stop_lux' : m === 'Ekonomiczny' ? 'stop_eco' : 'stop_norm'; const v = num(k); return v !== null ? v : (m === 'Luksus' ? 55 : m === 'Ekonomiczny' ? 45 : 50); };
-      const P = this._nauCwuPlan(R.cwu), win = P.blocks[wd] || [];
-      const inW = (m) => win.some((b) => b.f <= m && m < b.t);
-      const toW = (m) => { const nx = win.filter((b) => b.f > m).map((b) => b.f); return nx.length ? Math.min(...nx) - m : 9999; };
-      // tempo grzania z realnych wzrostow BT7 (mediana), domyslnie 0,3 °C/min
-      const rs = []; for (let k = 1; k < real.length; k++) { const dv = real[k][1] - real[k - 1][1]; if (dv > 0.6) rs.push(dv / 5); }
+      const P = this._nauCwuPlan(R.cwu);
+      const rs = []; for (let k = 1; k < real.length; k++) { const dv = real[k][1] - real[k - 1][1]; if (dv > 0.6 && real[k][0] - real[k - 1][0] <= STEP) rs.push(dv / (STEP / 60000)); }
       rs.sort((x, y) => x - y);
       const rate = rs.length >= 3 ? Math.max(0.1, Math.min(1.5, rs[Math.floor(rs.length / 2)])) : 0.3, HYS = 5, LOSS = 0.01;
-      const use = R.cwu && R.cwu.use ? R.cwu.use[wd] : null;
-      let T = real.length && real[0][0] === A ? real[0][1] : stopOf(auOn ? tt : curM), heat = false;
-      for (let m = 0; m <= 1440; m += 5) {
-        let mode = curM;
-        if (auOn) mode = inW(m) ? (luxOn ? 'Luksus' : tt) : (toW(m) <= wait ? 'Ekonomiczny' : tp);
-        const stp = stopOf(mode);
-        plan.push([A + m * 60000, Math.round(T * 10) / 10]);
-        if (!heat && T < stp - HYS) heat = true;
-        if (heat) { T += rate * 5; if (T >= stp) { T = stp; heat = false; } }
-        else T -= LOSS * 5 + (use ? use[Math.min(95, Math.floor(m / 15))] / 3 : 0);
-      }
+      const at = (t) => { const p = real.find((x) => x[0] >= t && x[0] - t < 36e5); return p ? p[1] : null; };
+      days.forEach((dt) => {
+        const a0 = dt.getTime(), wd = (dt.getDay() + 6) % 7, win = P.blocks[wd] || [];
+        const inW = (m) => win.some((b) => b.f <= m && m < b.t);
+        const toW = (m) => { const nx = win.filter((b) => b.f > m).map((b) => b.f); return nx.length ? Math.min(...nx) - m : 9999; };
+        const use = R.cwu && R.cwu.use ? R.cwu.use[wd] : null;
+        const r0 = at(a0); let T = r0 !== null ? r0 : stopOf(auOn ? tt : curM), heat = false;
+        for (let m = 0; m < 1440 || (m === 1440 && dt === days[days.length - 1]); m += 5) {
+          let mode = curM;
+          if (auOn) mode = inW(m) ? (luxOn ? 'Luksus' : tt) : (toW(m) <= wait ? 'Ekonomiczny' : tp);
+          const stp = stopOf(mode);
+          if ((m * 60000) % STEP === 0) plan.push([a0 + m * 60000, Math.round(T * 10) / 10]);
+          if (!heat && T < stp - HYS) heat = true;
+          if (heat) { T += rate * 5; if (T >= stp) { T = stp; heat = false; } }
+          else T -= LOSS * 5 + (use ? use[Math.min(95, Math.floor(m / 15))] / 3 : 0);
+        }
+        win.forEach((b) => bands.push([a0 + b.f * 6e4, a0 + b.t * 6e4]));
+      });
       pn = 'Plan (symulacja: okna CWU, tryby, pobór wody)';
-      bands = win.map((b) => [b.f, b.t, 'rgba(41,182,246,.16)', 'CWU']);
       note = 'Plan CWU to symulacja: w oknach CWU z Nauki tryb „' + esc(auOn ? (luxOn ? 'Luksus' : tt) : curM) + '”, poza nimi „' + esc(auOn ? tp : curM) + '”' + (auOn ? '' : ' (automatyzacja CWU wyłączona, biorę obecny tryb)') +
-        '; pompa dogrzewa, gdy woda spadnie ' + HYS + ' °C poniżej temp. stop, tempo grzania ' + rate.toFixed(2) + ' °C/min' + (rs.length >= 3 ? ' (z historii)' : ' (domyślne)') + ', straty ' + LOSS + ' °C/min + średni pobór wody z historii tego dnia tygodnia.';
+        '; pompa dogrzewa, gdy woda spadnie ' + HYS + ' °C poniżej temp. stop, tempo grzania ' + rate.toFixed(2) + ' °C/min' + (rs.length >= 3 ? ' (z historii)' : ' (domyślne)') + ', straty ' + LOSS + ' °C/min + średni pobór wody z historii tego dnia tygodnia. Każdy dzień symulacji startuje od realnej temperatury o północy.';
     } else if (ser === 'co') {
       nm = 'Realnie BT25 (zasilanie CO)'; real = samp(E.bt25);
       nm2 = 'Zadane przez pompę S1'; real2 = samp(E.s1);
       if (C) {
-        const W = R.wx || {}, mn = num('minsup'), mx = num('maxsup');
-        const at = (ys, to) => { const T7 = C.T; if (to <= -30) return ys[0]; if (to >= 30) return ys[6]; const i = Math.min(5, Math.floor((to + 30) / 10)), f = (to - T7[i]) / 10; return ys[i] + (ys[i + 1] - ys[i]) * f; };
+        const W = R.wx || {}, RD = this._nauRng(), MS = (RD && RD.meas) || {}, WX = (RD && RD.wx) || {}, mn = num('minsup'), mx = num('maxsup');
+        const atC = (ys, to) => { const T7 = C.T; if (to <= -30) return ys[0]; if (to >= 30) return ys[6]; const i = Math.min(5, Math.floor((to + 30) / 10)), f = (to - T7[i]) / 10; return ys[i] + (ys[i + 1] - ys[i]) * f; };
         const clamp = (v) => { if (mx !== null) v = Math.min(mx, v); if (mn !== null) v = Math.max(mn, v); return Math.round(v * 10) / 10; };
-        for (let hh = 0; hh <= 24; hh++) {
-          const t = A + hh * 36e5, hk = Math.floor(t / 36e5) * 36e5;
-          const to = C.toutH[hk] !== undefined && hk <= now ? C.toutH[hk] : (W[hk] && isFinite(W[hk].temp) ? W[hk].temp : null);
+        for (let t = A; t <= B; t += 36e5) {
+          const hk = Math.floor(t / 36e5) * 36e5;
+          const to = C.toutH[hk] !== undefined && hk <= now ? C.toutH[hk] : MS[hk] !== undefined ? MS[hk] : W[hk] && isFinite(W[hk].temp) ? W[hk].temp : WX[hk] !== undefined ? WX[hk] : null;
           if (to === null) continue;
-          plan.push([t, clamp(at(C.prop, to))]); plan2.push([t, clamp(at(C.cur, to))]);
+          plan.push([t, clamp(atC(C.prop, to))]); plan2.push([t, clamp(atC(C.cur, to))]);
         }
         pn = 'Plan wg proponowanej krzywej'; pn2 = 'wg obecnej krzywej';
         note = 'Plan CO = zasilanie z krzywej dla temperatury na zewnątrz w danej godzinie (pomiar BT1, a dalej prognoza Open-Meteo), obcięte do min./max. zasilania. Nocnego obniżenia z harmonogramu nie doliczam. Podczas grzania wody CWU zasilanie CO naturalnie spada.';
@@ -1789,25 +1878,23 @@ class HaKartaPompaCiepla extends HTMLElement {
       const sal = this._nauSalon()[0];
       if (sal) { nm = 'Realnie ' + ((st[sal].attributes || {}).friendly_name || sal); real = samp(sal); }
       const cel = N.src && Number(N.src.cel), tg = cel && isFinite(cel) ? cel : (C && C.target !== null ? C.target : null);
-      if (tg !== null) { for (let hh = 0; hh <= 24; hh++) plan.push([A + hh * 36e5, tg]); pn = 'Cel w domu ' + tg.toFixed(1) + ' °C'; }
+      if (tg !== null) { plan.push([A, tg], [B, tg]); pn = 'Cel w domu ' + tg.toFixed(1) + ' °C'; }
       note = sal ? 'Plan = temperatura, którą chcesz w domu (pole „Chcę w domu” albo mediana z historii).' : 'Brak czujnika salonu: ustaw go w „Źródłach nauki” niżej.';
     }
-    const cpr = showCpr ? onMin(E.cpr) : null, cprC = showCpr ? onMin(E.cpr_cwu) : null;
+    const cpr = showCpr ? onMin(E.cpr, 'sensor.hp_hist_sprezarka') : null, cprC = showCpr ? onMin(E.cpr_cwu, 'sensor.hp_hist_cwu_praca') : null;
     const vals = real.concat(real2, plan, plan2).map((p) => p[1]);
-    if (!vals.length) return h + '<div class="info">Brak danych dla tej serii w wybranym dniu.</div><div class="wn">' + note + '</div></div>';
+    if (!vals.length) return h + '<div class="info">Brak danych dla tej serii w wybranym zakresie.</div><div class="wn">' + note + '</div></div>';
     const lo = Math.floor((Math.min(...vals) - 1) / 5) * 5, hi = Math.ceil((Math.max(...vals) + 1) / 5) * 5;
-    const X0 = 46, X1 = 590, Y0 = 42, Y1 = showCpr ? 172 : 200, BY0 = 184, BY1 = 208;
-    const sx = (t) => X0 + (t - A) / 864e5 * (X1 - X0), sy = (v) => Y1 - (v - lo) / ((hi - lo) || 1) * (Y1 - Y0);
+    const X0 = 46, X1 = 590, Y0 = 42, Y1 = showCpr ? 172 : 200, BY0 = 184, BY1 = 208, YB = showCpr ? BY1 : Y1;
+    const sx = (t) => X0 + (t - A) / (B - A) * (X1 - X0), sy = (v) => Y1 - (v - lo) / ((hi - lo) || 1) * (Y1 - Y0);
     let g = '';
     const G = this._g12();
-    (G.day[wd] || []).forEach((b) => { g += '<rect x="' + sx(A + b.f * 6e4).toFixed(1) + '" y="' + Y0 + '" width="' + ((b.t - b.f) / 1440 * (X1 - X0)).toFixed(1) + '" height="' + (Y1 - Y0) + '" fill="rgba(126,224,74,.08)"/>'; });
-    bands.forEach((b) => { g += '<rect x="' + sx(A + b[0] * 6e4).toFixed(1) + '" y="' + (Y1 - 6) + '" width="' + ((b[1] - b[0]) / 1440 * (X1 - X0)).toFixed(1) + '" height="6" rx="2" fill="#29b6f6" opacity=".8"/>'; });
+    days.forEach((dt) => { const a0 = dt.getTime(), wd = (dt.getDay() + 6) % 7; (G.day[wd] || []).forEach((b) => { g += '<rect x="' + sx(a0 + b.f * 6e4).toFixed(1) + '" y="' + Y0 + '" width="' + ((b.t - b.f) * 6e4 / (B - A) * (X1 - X0)).toFixed(1) + '" height="' + (Y1 - Y0) + '" fill="rgba(126,224,74,.08)"/>'; }); });
+    bands.forEach((b) => { g += '<rect x="' + sx(b[0]).toFixed(1) + '" y="' + (Y1 - 6) + '" width="' + ((b[1] - b[0]) / (B - A) * (X1 - X0)).toFixed(1) + '" height="6" rx="2" fill="#29b6f6" opacity=".8"/>'; });
     const stepV = hi - lo > 30 ? 10 : 5;
     for (let v = lo; v <= hi; v += stepV) g += '<line x1="' + X0 + '" y1="' + sy(v) + '" x2="' + X1 + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + ' ' + unit + '</text>';
-    for (let hh = 0; hh <= 24; hh += 3) { const x = sx(A + hh * 36e5); g += '<line x1="' + x + '" y1="' + Y0 + '" x2="' + x + '" y2="' + (showCpr ? BY1 : Y1) + '" stroke="rgba(255,255,255,.07)"/><text x="' + x + '" y="' + ((showCpr ? BY1 : Y1) + 14) + '" text-anchor="' + (hh === 24 ? 'end' : hh === 0 ? 'start' : 'middle') + '">' + String(hh).padStart(2, '0') + ':00</text>'; }
-    const line = (pts, col, dash, w) => { let out = '', seg = [];
-      const flush = () => { if (seg.length > 1) out += '<polyline points="' + seg.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + ' stroke-linejoin="round"/>'; seg = []; };
-      pts.forEach((p, k) => { if (k && p[0] - pts[k - 1][0] > 3 * 36e5) flush(); seg.push(sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)); }); flush(); return out; };
+    g += this._axDays(A, B, sx, Y0, YB);
+    const line = this._nauLine(sx, sy);
     // najwiekszy spadek (szczyt -> dolek pozniej) i minimum realnej linii
     let mi = null, dr = null, pk = null;
     real.forEach((p) => {
@@ -1818,17 +1905,22 @@ class HaKartaPompaCiepla extends HTMLElement {
     let mk = '';
     if (dr && dr.d >= 0.5) mk += '<line x1="' + sx(dr.a[0]).toFixed(1) + '" y1="' + sy(dr.a[1]).toFixed(1) + '" x2="' + sx(dr.b[0]).toFixed(1) + '" y2="' + sy(dr.b[1]).toFixed(1) + '" stroke="#ff5a4a" stroke-width="1.2" stroke-dasharray="2 3"/><circle cx="' + sx(dr.a[0]).toFixed(1) + '" cy="' + sy(dr.a[1]).toFixed(1) + '" r="3" fill="#ff8a80"/>';
     if (mi) mk += '<circle cx="' + sx(mi[0]).toFixed(1) + '" cy="' + sy(mi[1]).toFixed(1) + '" r="4" fill="#ff5a4a" stroke="#fff" stroke-width="1"/><text x="' + Math.min(X1 - 30, Math.max(X0 + 30, sx(mi[0]))).toFixed(1) + '" y="' + Math.min(Y1 - 4, sy(mi[1]) + 15).toFixed(1) + '" text-anchor="middle" font-size="11" fill="#ff8a80">min ' + mi[1].toFixed(1) + ' ' + unit + '</text>';
+    // slupki: do 7 dni minuty pracy w godzinie, dluzej godziny pracy na dobe
     let bars = '';
     if (cpr) {
-      bars += '<text x="' + (X0 - 6) + '" y="' + (BY0 + 8) + '" text-anchor="end" font-size="9.5" fill="#c8d0da">60 min</text><text x="' + (X0 - 6) + '" y="' + BY1 + '" text-anchor="end" font-size="9.5" fill="#c8d0da">0</text>';
-      const bw = (X1 - X0) / 24;
-      cpr.forEach((m, hh) => {
-        const mc = cprC ? Math.min(m, cprC[hh]) : 0, x = X0 + hh * bw + 1.5, H1 = (BY1 - BY0) * Math.min(60, m) / 60, Hc = (BY1 - BY0) * Math.min(60, mc) / 60;
-        if (m > 0.5) bars += '<rect x="' + x.toFixed(1) + '" y="' + (BY1 - H1).toFixed(1) + '" width="' + (bw - 3).toFixed(1) + '" height="' + H1.toFixed(1) + '" fill="#ffab1a" opacity=".75"><title>' + String(hh).padStart(2, '0') + ':00 sprężarka ' + Math.round(m) + ' min' + (cprC ? ', w tym CWU ' + Math.round(mc) + ' min' : '') + '</title></rect>';
-        if (mc > 0.5) bars += '<rect x="' + x.toFixed(1) + '" y="' + (BY1 - Hc).toFixed(1) + '" width="' + (bw - 3).toFixed(1) + '" height="' + Hc.toFixed(1) + '" fill="#29b6f6" pointer-events="none"/>';
+      const perDay = nD > 7, nb = perDay ? nD : nH, cap = perDay ? 1440 : 60;
+      const agg = (m) => { if (!m) return null; if (!perDay) return m; const o = new Array(nD).fill(0); m.forEach((v, k) => { const d = Math.min(nD - 1, Math.floor(k / 24)); o[d] += v; }); return o; };
+      const cA = agg(cpr), cC = agg(cprC);
+      bars += '<text x="' + (X0 - 6) + '" y="' + (BY0 + 8) + '" text-anchor="end" font-size="9.5" fill="#c8d0da">' + (perDay ? '24 h' : '60 min') + '</text><text x="' + (X0 - 6) + '" y="' + BY1 + '" text-anchor="end" font-size="9.5" fill="#c8d0da">0</text>';
+      const bw = (X1 - X0) / nb, gap = bw > 6 ? 1.5 : 0.3;
+      cA.forEach((m, k) => {
+        const mc = cC ? Math.min(m, cC[k]) : 0, x = X0 + k * bw + gap, H1 = (BY1 - BY0) * Math.min(cap, m) / cap, Hc = (BY1 - BY0) * Math.min(cap, mc) / cap;
+        const lab = perDay ? days[k].toLocaleDateString('pl-PL', { weekday: 'short', day: '2-digit', month: '2-digit' }) : new Date(A + k * 36e5).toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+        if (m > 0.5) bars += '<rect x="' + x.toFixed(1) + '" y="' + (BY1 - H1).toFixed(1) + '" width="' + Math.max(0.5, bw - 2 * gap).toFixed(1) + '" height="' + H1.toFixed(1) + '" fill="#ffab1a" opacity=".75"><title>' + lab + ' sprężarka ' + Math.round(m) + ' min' + (cC ? ', w tym CWU ' + Math.round(mc) + ' min' : '') + '</title></rect>';
+        if (mc > 0.5) bars += '<rect x="' + x.toFixed(1) + '" y="' + (BY1 - Hc).toFixed(1) + '" width="' + Math.max(0.5, bw - 2 * gap).toFixed(1) + '" height="' + Hc.toFixed(1) + '" fill="#29b6f6" pointer-events="none"/>';
       });
     }
-    const nx = dd === 0 ? sx(now) : null;
+    const nx = Bend === now ? sx(now) : null;
     const colR = ser === 'cwu' ? '#ff4d3a' : ser === 'co' ? '#9c6cff' : '#ffab1a';
     let lg = '<line x1="50" y1="10" x2="72" y2="10" stroke="' + colR + '" stroke-width="2.4"/><text x="77" y="14" fill="#e3e8ee">' + esc(nm || 'Realnie') + '</text>';
     let lx = 77 + Math.min(200, (nm || 'Realnie').length * 6.2) + 14;
@@ -1836,26 +1928,30 @@ class HaKartaPompaCiepla extends HTMLElement {
     let lg2 = '';
     if (nm2 && real2.length) lg2 += '<line x1="50" y1="24" x2="72" y2="24" stroke="#d0b8ff" stroke-width="1.2" stroke-dasharray="1 3"/><text x="77" y="27" fill="#c8d0da">' + esc(nm2) + '</text>';
     if (pn2 && plan2.length) lg2 += '<line x1="230" y1="24" x2="252" y2="24" stroke="#29b6f6" stroke-width="1.4" stroke-dasharray="3 3"/><text x="257" y="27" fill="#c8d0da">' + esc(pn2) + '</text>';
-    h += '<svg viewBox="0 0 600 ' + ((showCpr ? BY1 : Y1) + 22) + '" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="11.5">' + lg + '</g><g font-size="10.5">' + lg2 + '</g>' +
+    h += '<svg viewBox="0 0 600 ' + (YB + 22) + '" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="11.5">' + lg + '</g><g font-size="10.5">' + lg2 + '</g>' +
       bars +
-      line(plan2, '#29b6f6', '3 3', 1.4) + line(plan, '#43d343', '6 4', 2) + line(real2, '#d0b8ff', '1 3', 1.2) + line(real, colR, '', 2.4) + mk +
-      (nx !== null ? '<line x1="' + nx.toFixed(1) + '" y1="' + Y0 + '" x2="' + nx.toFixed(1) + '" y2="' + (showCpr ? BY1 : Y1) + '" stroke="#ff5a4a" stroke-width="1.5"/><text x="' + nx.toFixed(1) + '" y="' + (Y0 - 3) + '" text-anchor="middle" font-size="10.5" fill="#ff8a80">teraz</text>' : '') + '</svg>';
+      line(plan2, '#29b6f6', '3 3', 1.4) + line(plan, '#43d343', '6 4', 2) + line(real2, '#d0b8ff', '1 3', 1.2) + line(real, colR, '', one ? 2.4 : 1.8) + mk +
+      (nx !== null ? '<line x1="' + nx.toFixed(1) + '" y1="' + Y0 + '" x2="' + nx.toFixed(1) + '" y2="' + YB + '" stroke="#ff5a4a" stroke-width="1.5"/><text x="' + nx.toFixed(1) + '" y="' + (Y0 - 3) + '" text-anchor="middle" font-size="10.5" fill="#ff8a80">teraz</text>' : '') + '</svg>';
     // kafle
     let dev = null;
     if (plan.length > 1 && real.length) {
-      const pv = (t) => { for (let k = 1; k < plan.length; k++) if (plan[k][0] >= t) { const p0 = plan[k - 1], p1 = plan[k]; return p0[1] + (p1[1] - p0[1]) * (t - p0[0]) / ((p1[0] - p0[0]) || 1); } return null; };
+      let k0 = 1;
+      const pv = (t) => { while (k0 < plan.length && plan[k0][0] < t) k0++; if (k0 >= plan.length) return null; const p0 = plan[k0 - 1], p1 = plan[k0]; if (p1[0] - p0[0] > 3 * 36e5) return null; return p0[1] + (p1[1] - p0[1]) * (t - p0[0]) / ((p1[0] - p0[0]) || 1); };
       const ds = real.map((p) => { const v = pv(p[0]); return v === null ? null : p[1] - v; }).filter((x) => x !== null);
-      if (ds.length) dev = { avg: ds.reduce((s, x) => s + x, 0) / ds.length, min: Math.min(...ds) };
+      if (ds.length) dev = { avg: ds.reduce((s2, x) => s2 + x, 0) / ds.length, min: Math.min(...ds) };
     }
     const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1);
-    const tot = cpr ? cpr.reduce((s, x) => s + x, 0) : null, totC = cprC ? cprC.reduce((s, x) => s + x, 0) : null;
+    const tot = cpr ? cpr.reduce((s2, x) => s2 + x, 0) : null, totC = cprC ? cprC.reduce((s2, x) => s2 + x, 0) : null;
+    const t0d = new Date(); t0d.setHours(0, 0, 0, 0);
+    const cprLab = !one ? 'w zakresie (' + nD + ' dni)' : A === t0d.getTime() ? 'dziś' : A === t0d.getTime() - 864e5 ? 'wczoraj' : days[0].toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit' });
+    const hm = (m) => Math.floor(m / 60) + ' h ' + Math.round(m % 60) + ' min';
     h += '<div class="kt">' +
       '<div class="k"><span>Najniżej (realnie)</span><b>' + (mi ? mi[1].toFixed(1) + ' ' + unit : '–') + '</b><i>' + (mi ? 'o ' + fmtT(mi[0]) : 'brak danych') + '</i></div>' +
       '<div class="k"><span>Największy spadek</span><b>' + (dr && dr.d >= 0.1 ? '−' + dr.d.toFixed(1) + ' ' + unit : '–') + '</b><i>' + (dr && dr.d >= 0.1 ? fmtT(dr.a[0]) + ' → ' + fmtT(dr.b[0]) + ' (' + dr.a[1].toFixed(1) + ' → ' + dr.b[1].toFixed(1) + ')' : 'bez spadków') + '</i></div>' +
       '<div class="k"><span>Realnie vs plan</span><b>' + (dev ? sg(dev.avg) + ' ' + unit : '–') + '</b><i>' + (dev ? 'średnio; ' + (dev.min < 0 ? 'najbardziej pod planem ' + sg(dev.min) + ' ' + unit : 'cały czas nad planem') : 'brak planu do porównania') + '</i></div>' +
-      (tot !== null ? '<div class="k"><span>Sprężarka ' + (dd ? 'wczoraj' : 'dziś') + '</span><b>' + Math.floor(tot / 60) + ' h ' + Math.round(tot % 60) + ' min</b><i>' + (totC !== null ? 'w tym CWU ' + Math.floor(totC / 60) + ' h ' + Math.round(totC % 60) + ' min (niebieskie)' : 'pomarańczowe słupki = minuty pracy w godzinie') + '</i></div>' : '') +
+      (tot !== null ? '<div class="k"><span>Sprężarka ' + cprLab + '</span><b>' + hm(tot) + '</b><i>' + (totC !== null ? 'w tym CWU ' + hm(totC) + ' (niebieskie)' : 'pomarańczowe słupki = praca') + (nD > 1 ? ', średnio ' + hm(tot / nD) + ' na dobę' : '') + '</i></div>' : '') +
       '</div>';
-    return h + '<div class="wn">Zielone tło = tania strefa G12' + (ser === 'cwu' ? ', niebieski pasek = okna grzania CWU z Nauki' : '') + '. Czerwona kropka = minimum, czerwona kropkowana = największy spadek. ' + note + ' Wykres nic nie zmienia w pompie.</div></div>';
+    return h + '<div class="wn">Zielone tło = tania strefa G12' + (ser === 'cwu' ? ', niebieski pasek = okna grzania CWU z Nauki' : '') + '. Czerwona kropka = minimum, czerwona kropkowana = największy spadek. ' + note + (nD > 9 ? ' Dni starsze niż historia HA (~10 dni) z godzinowych statystyk.' : '') + ' Wykres nic nie zmienia w pompie.</div></div>';
   }
   _nauRender() {
     const el = this._nauEl, hass = this._hass, N = this._nau;
@@ -1955,7 +2051,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     let h = '<div class="sh"><div class="sht">Nauka<small>podgląd: ustawień pompy nie zmienia (poza suwakami automatyzacji cyrkulacji i CWU)</small><span style="flex:1"></span>' +
       '<button data-a="reload"' + (N.loading ? ' disabled' : '') + '>' + (N.loading ? 'Liczę…' : 'Przelicz') + '</button></div>';
     h += this._pkHtml(esc);
-    h += this._rngHtml();
+    h += this._rngHtml(true);
     if (!R) { el.innerHTML = h + '<div class="info">' + (N.loading ? 'Pobieram historię z Home Assistant i pogodę z Open-Meteo…' : 'Brak danych.') + '</div></div>'; return; }
     (R.errs || []).forEach((e) => { h += '<div class="warn">' + esc(e) + '</div>'; });
     const C = R.curve, Y = R.cyrk;
@@ -1978,7 +2074,9 @@ class HaKartaPompaCiepla extends HTMLElement {
       '<span>Salon teraz: <b>' + (isNaN(salV) ? '–' : salV.toFixed(1) + ' °C') + '</b>' + (sal ? ' (' + esc((st[sal].attributes.friendly_name) || sal) + ')' : ' (brak czujnika salonu, ustaw w „Źródłach nauki”)') + '</span>' +
       '<span class="ds">Wpisz temperaturę i Enter: proponowana krzywa przeliczy się dla tej temperatury w domu. Nic nie zmienia w pompie.</span></div>';
     if (C) {
-      const all = C.cur.concat(C.prop);
+      // v1.37: fioletowa = pamiec krzywej wybrana nizej (wzorcowa / robocza, z edycja na biezaco) + obecne przesuniecie
+      const kOff = parseFloat((st[E.offset] || {}).state), kMem = this._krzBuf(N.kc || 'wz').map((v) => v + (isFinite(kOff) ? kOff : 0));
+      const all = C.cur.concat(C.prop, kMem);
       const lo = Math.min(20, Math.floor((Math.min(...all) - 2) / 10) * 10), hi = Math.max(50, Math.ceil((Math.max(...all) + 2) / 10) * 10);
       const X0 = 46, X1 = 590, Y0 = 34, Y1 = 196;
       const sx = (t) => X0 + (30 - t) / 60 * (X1 - X0), sy = (v) => Y1 - (v - lo) / (hi - lo) * (Y1 - Y0);
@@ -1990,8 +2088,9 @@ class HaKartaPompaCiepla extends HTMLElement {
       const ox = parseFloat((st[E.bt1] || {}).state);
       const nowl = isNaN(ox) ? '' : '<line x1="' + sx(Math.max(-30, Math.min(30, ox))) + '" y1="' + Y0 + '" x2="' + sx(Math.max(-30, Math.min(30, ox))) + '" y2="' + Y1 + '" stroke="#ffb300" stroke-dasharray="3 4"/><text x="' + sx(Math.max(-30, Math.min(30, ox))) + '" y="' + (Y0 - 4) + '" text-anchor="middle" fill="#ffb300">teraz ' + ox.toFixed(1) + ' °C</text>';
       const leg = '<line x1="50" y1="12" x2="74" y2="12" stroke="#29b6f6" stroke-width="2.6"/><text x="80" y="16" fill="#e3e8ee">Obecna (P1–P7 + przesunięcie)</text>' +
-        '<line x1="300" y1="12" x2="324" y2="12" stroke="#43d343" stroke-width="2.6" stroke-dasharray="7 5"/><text x="330" y="16" fill="#e3e8ee">Proponowana</text>';
-      h += '<div class="cv"><svg viewBox="0 0 600 220" style="width:100%;height:auto;display:block;font-family:inherit"><g font-size="11.5" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + nowl + '</g>' + pl(C.cur, '#29b6f6') + (N.diff && N.diff.old.prop ? '<polyline points="' + C.T.map((t, i) => sx(t) + ',' + sy(N.diff.old.prop[i])).join(' ') + '" fill="none" stroke="#9aa4b0" stroke-width="1.8" stroke-dasharray="2 4"/>' : '') + pl(C.prop, '#43d343', true) + '</svg>' +
+        '<line x1="290" y1="12" x2="314" y2="12" stroke="#43d343" stroke-width="2.6" stroke-dasharray="7 5"/><text x="320" y="16" fill="#e3e8ee">Proponowana</text>' +
+        '<line x1="412" y1="12" x2="436" y2="12" stroke="#c38fff" stroke-width="2.6"/><text x="442" y="16" fill="#e3e8ee">Pamięć ' + ((N.kc || 'wz') === 'ro' ? 'robocza' : 'wzorcowa') + '</text>';
+      h += '<div class="cv"><svg viewBox="0 0 600 220" style="width:100%;height:auto;display:block;font-family:inherit"><g font-size="11.5" fill="#c8d0da">' + g + '</g><g font-size="12">' + leg + nowl + '</g>' + pl(C.cur, '#29b6f6') + (N.diff && N.diff.old.prop ? '<polyline points="' + C.T.map((t, i) => sx(t) + ',' + sy(N.diff.old.prop[i])).join(' ') + '" fill="none" stroke="#9aa4b0" stroke-width="1.8" stroke-dasharray="2 4"/>' : '') + pl(C.prop, '#43d343', true) + pl(kMem, '#c38fff') + '</svg>' +
         '<div class="pv">' + C.T.map((t, i) => i).reverse().map((i) => { const d = Math.round((C.prop[i] - C.cur[i]) * 10) / 10;
           return '<div><b>P' + (i + 1) + '</b><span>' + C.T[i] + ' °C</span><span>' + C.cur[i].toFixed(0) + ' → <em class="' + (d > 0 ? 'u' : d < 0 ? 'd' : '') + '">' + (Math.round(C.prop[i] * 10) / 10) + '</em> °C</span></div>'; }).join('') + '</div></div>';
       h += '<div class="why"><div class="wt">Co przesunęło propozycję:</div>' + (C.why.length ? C.why.map((w) => '<div class="wr"><span>' + esc(w.t) + '</span><b>' + esc(w.v) + '</b></div>').join('')
@@ -2003,8 +2102,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     h += '</div>';
     h += this._nauDayHtml(R, esc);
     h += this._enHtml(esc);
-    if (C) h += this._nauOutHtml(C, R.wx || {});
-    if (C) h += this._nauFcHtml(C, R.prev);
+    h += this._nauOutHtml(C);
+    h += this._nauFcHtml();
     h += this._nauCyrkHtml(Y, esc, fmt);
     h += this._nauCwuHtml(R.cwu, esc, fmt);
     if (N.srcLoaded) h += this._nauSrcHtml(esc);
@@ -2071,17 +2170,21 @@ class HaKartaPompaCiepla extends HTMLElement {
     else if (r.k === 'w') { a = add(t0, -((t0.getDay() + 6) % 7) + 7 * (r.off || 0)); n = 7; }
     else if (r.k === 'm') { a = new Date(t0.getFullYear(), t0.getMonth() + (r.off || 0), 1); n = new Date(a.getFullYear(), a.getMonth() + 1, 0).getDate(); }
     else if (r.k === 'cal' && r.f && r.t) {
-      a = new Date(r.f + 'T00:00:00'); const b = new Date(r.t + 'T00:00:00');
-      if (isNaN(a) || isNaN(b)) { a = add(t0, -3); n = 7; } else { if (b < a) { const x = a; a = b; r.t = r.f; r.f = this._rngIso(x); } n = Math.min(31, Math.round((Math.max(a, b) - Math.min(a, b)) / 864e5) + 1); }
+      a = new Date(r.f + 'T00:00:00'); let b = new Date(r.t + 'T00:00:00');
+      if (isNaN(a) || isNaN(b)) { a = add(t0, -3); n = 7; } else { if (b < a) { const x = a; a = b; b = x; const f = r.f; r.f = r.t; r.t = f; } n = Math.min(31, Math.round((b - a) / 864e5) + 1); }
     } else { a = add(t0, -3 + 7 * (r.off || 0)); n = 7; }
     const days = []; for (let i = 0; i < n; i++) days.push(add(a, i));
     return { days, from: days[0].getTime(), to: add(days[days.length - 1], 1).getTime() };
   }
   _rngIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-  _rngHtml() {
+  _rngTag() {
+    const R = this._rngDays(), f = R.days[0], l = R.days[R.days.length - 1], fd = (d) => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
+    return '<span class="rgt" title="Zmieniasz na pasku „Zakres dla całej Nauki” u góry">zakres: ' + fd(f) + (R.days.length > 1 ? '–' + fd(l) : '') + '</span>';
+  }
+  _rngHtml(top) {
     const r = this._rngGet(), R = this._rngDays(), b = (k, off, txt) => '<button data-a="rng" data-k="' + k + '" data-o="' + off + '" class="' + (r.k === k && (r.off || 0) === off ? 'on' : '') + '">' + txt + '</button>';
     const f = R.days[0], l = R.days[R.days.length - 1], fd = (d) => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
-    return '<div class="rg2">' + b('pm3', 0, '±3 dni') + b('d', 0, 'Dziś') + b('d', -1, 'Wczoraj') + b('w', 0, 'Ten tydzień') + b('w', -1, 'Poprzedni tydz.') + b('m', 0, 'Ten miesiąc') + b('m', -1, 'Poprzedni mies.') +
+    return '<div class="rg2' + (top ? ' top' : '') + '">' + b('pm3', 0, '±3 dni') + b('d', 0, 'Dziś') + b('d', -1, 'Wczoraj') + b('w', 0, 'Ten tydzień') + b('w', -1, 'Poprzedni tydz.') + b('m', 0, 'Ten miesiąc') + b('m', -1, 'Poprzedni mies.') +
       '<button data-a="rng" data-k="cal" data-o="0" class="' + (r.k === 'cal' ? 'on' : '') + '">Kalendarz</button>' +
       (r.k === 'cal' ? '<label>od <input type="date" data-a="rngf" value="' + (r.f || this._rngIso(f)) + '"></label><label>do <input type="date" data-a="rngt" value="' + (r.t || this._rngIso(l)) + '"></label><span class="ds">maks. 31 dni</span>'
         : '<button data-a="rngs" data-v="-1" title="Wcześniej">◀</button><button data-a="rngs" data-v="1" title="Później">▶</button>') +
@@ -2126,8 +2229,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (R.from >= now) return null;
     const ent = { busy: true, at: now, data: c && c.data };
     this._sh[key] = ent;
-    this._schHistLoad(k, R).then((d) => { ent.data = d; ent.busy = false; ent.at = Date.now(); this._schRender(); })
-      .catch((e) => { ent.busy = false; ent.at = Date.now(); ent.data = { err: String(e && (e.message || e.code) || e), plan: [], work: [], hp: {}, hw: {} }; this._schRender(); });
+    const re = () => { this._schRender(); if (this._nau && this._nau.res) this._nauRender(); };
+    this._schHistLoad(k, R).then((d) => { ent.data = d; ent.busy = false; ent.at = Date.now(); re(); })
+      .catch((e) => { ent.busy = false; ent.at = Date.now(); ent.data = { err: String(e && (e.message || e.code) || e), plan: [], work: [], hp: {}, hw: {} }; re(); });
     return ent.data || null;
   }
   async _schHistLoad(k, R) {
@@ -2152,6 +2256,25 @@ class HaKartaPompaCiepla extends HTMLElement {
       out.hp = conv(r && r[ids[0]]); out.hw = conv(r && r[ids[1]]);
     }
     return out;
+  }
+  // v1.37: Nauka - te same daty co na pasku zakresu: okna Nauki dla dnia tygodnia (zielone), plan wtedy (jasny) i faktyczna praca (czerwony)
+  _nauHistRows(k, bl, esc) {
+    const RG = this._rngDays(), t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const HS = this._schHist(k), lane = this._schLanes().find((l) => l.k === k), cmp = RG.days.length > 10;
+    const DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'], now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes();
+    const nm = { cyrk: 'pompa cyrkulacji (pompa nie ma czujnika pracy: to, co wysterował sterownik)', cwu: 'grzanie CWU sprężarką' }[k] || 'praca';
+    let h = '<div class="nh"><div class="st3">Po datach: plan i faktyczna praca' + this._rngTag() + (lane && this._E ? this._espBadge(lane) : '') + '</div>';
+    h += '<div class="ds" style="margin:0 0 .4em">Zielone = okna z Nauki dla tego dnia tygodnia, cienki jasny u góry = plan, który wtedy obowiązywał, czerwony na dole = ' + nm + '.' +
+      (HS ? (HS.err ? ' Błąd historii: ' + esc(HS.err) : this._schHistSum(HS, RG)) : ' Wczytuję historię…') + (HS && !HS.own ? ' <i>Bez pakietu ' + PKG_VER + ' tylko ostatnie ~10 dni.</i>' : '') + '</div>';
+    h += '<div class="hr dt">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
+    RG.days.forEach((dt) => {
+      const i = (dt.getDay() + 6) % 7, isT = dt.getTime() === t0.getTime(), past = dt < t0;
+      h += '<div class="dr' + (past ? ' ps' : '') + (cmp ? ' cp2' : '') + '"><span class="dn dt' + (isT ? ' td' : '') + '">' + DL[i] + ' ' + String(dt.getDate()).padStart(2, '0') + '.' + String(dt.getMonth() + 1).padStart(2, '0') + '</span><div class="tl ro">';
+      ((bl && bl[i]) || []).forEach((b) => { h += '<div class="pw" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%" title="' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '"></div>'; });
+      if (isT) h += '<div class="nw" style="left:' + (nowMin / 14.4) + '%"></div>';
+      h += this._schHistRow(HS, dt.getTime()) + '</div><span class="cp"></span></div>';
+    });
+    return h + '<div class="lgh"><span><i style="background:rgba(67,194,90,.6);height:.7em"></i>okna z Nauki</span><span><i style="background:#ffe0ef;height:3px"></i>plan wtedy</span><span><i style="background:#ff3b2f;height:5px"></i>faktyczna praca</span></div></div>';
   }
   _schHistRow(H, d0) {
     if (!H) return '';
@@ -2192,17 +2315,22 @@ class HaKartaPompaCiepla extends HTMLElement {
     const hP = ser('sensor.hp_moc_grzewcza', (x) => (x.mean === null || x.mean === undefined ? null : x.mean));
     const eP = elId && !elKwh ? ser(elId, (x) => (x.mean === null || x.mean === undefined ? null : x.mean / elDiv)) : {};
     const eE = elId ? (elKwh ? ser(elId, (x) => (x.change === null || x.change === undefined ? null : Math.max(0, x.change / elDiv))) : eP) : {};
+    // v1.37: jedna encja na oba wykresy - z licznika kWh srednia moc godzinowa = kWh w tej godzinie
+    if (elKwh) Object.keys(eE).forEach((t) => { eP[t] = eE[t]; });
     // cieplo kWh: liczniki ciepla CO + CWU (zmiana na godzine), bez nich calka z mocy grzewczej (srednia godzinowa x 1 h)
-    let hE = {}, hSrc = 'calka';
+    // v1.37: gdy liczniki stoja (na SMO40 rejestry licznikow ciepla daja 0), tez calka z mocy
+    let hE = hP, hSrc = 'calka';
     if (hMet.length === 2 && r[hMet[0]] && r[hMet[0]].length) {
       const a = ser(hMet[0], (x) => (x.change === null || x.change === undefined ? null : Math.max(0, x.change))), b = ser(hMet[1], (x) => (x.change === null || x.change === undefined ? null : Math.max(0, x.change)));
-      Object.keys(a).forEach((t) => { hE[t] = a[t] + (b[t] || 0); }); hSrc = 'licznik';
-    } else hE = hP;
+      const m = {}; Object.keys(a).forEach((t) => { m[t] = a[t] + (b[t] || 0); });
+      const sm = Object.values(m).reduce((x, y) => x + y, 0), sp = Object.values(hP).reduce((x, y) => x + y, 0);
+      if (sm > 0.05 && sm >= 0.5 * sp) { hE = m; hSrc = 'licznik'; } else if (sp > 0.3) hSrc = 'calka0';
+    }
     return { R, hP, eP, hE, eE, elId, sel, elKwh, hSrc, at: now };
   }
   _enHtml(esc) {
     const N = this._nau, st = this._hass.states, R = this._rngDays(), key = R.from + ':' + R.to + ':' + (st['input_text.hp_energia_encja'] || {}).state;
-    let h = '<div class="sec en"><div class="st2">Moc i energia: ciepło vs prąd<small> – zakres z paska wyżej, godzinowe statystyki HA</small></div>';
+    let h = '<div class="sec en"><div class="st2">Moc i energia: ciepło vs prąd' + this._rngTag() + '<small> – godzinowe statystyki HA; jedna encja prądu na oba wykresy</small></div>';
     const cand = Object.keys(st).filter((i) => i.startsWith('sensor.') && /^(W|kW|Wh|kWh)$/.test(this._enUnit(i)) && !/^sensor\.hp_(moc_grzewcza|cieplo_)/.test(i)).sort();
     const cur = (st['input_text.hp_energia_encja'] || {}).state || '';
     h += '<div class="lh wk"><label>Prąd (encja): <select data-a="enent"' + (st['input_text.hp_energia_encja'] ? '' : ' disabled') + '><option value="">– brak (szacunek pakietu) –</option>' +
@@ -2235,16 +2363,10 @@ class HaKartaPompaCiepla extends HTMLElement {
       '<rect x="' + (x + bw * 0.5).toFixed(1) + '" y="' + by(ee[t] || 0).toFixed(1) + '" width="' + (bw * 0.4).toFixed(1) + '" height="' + (BY1 - by(ee[t] || 0)).toFixed(1) + '" fill="#29b6f6"><title>prąd ' + (ee[t] || 0).toFixed(2) + ' kWh</title></rect>'; });
     h += '<div class="st2" style="font-size:1em;margin-top:.8em">Ciepło kWh vs prąd kWh (' + (hourly ? 'na godzinę' : 'na dzień') + ')</div><svg viewBox="0 0 600 190" style="width:100%;max-width:60em;height:auto;display:block"><g font-size="11" fill="#c8d0da">' + g2 + '</g>' +
       '<g font-size="12"><rect x="60" y="4" width="14" height="10" fill="#ff9100"/><text x="80" y="14" fill="#e3e8ee">Ciepło</text><rect x="160" y="4" width="14" height="10" fill="#29b6f6"/><text x="180" y="14" fill="#e3e8ee">Prąd</text></g></svg>';
-    h += '<div class="kt" style="margin-top:.6em"><div class="k"><span>Ciepło w zakresie</span><b>' + sh.toFixed(1) + ' kWh</b><i>' + (D.hSrc === 'licznik' ? 'liczniki ciepła CO + CWU z pompy' : 'policzone z mocy grzewczej (średnia godzinowa × 1 h), brak liczników ciepła') + '</i></div>' +
+    h += '<div class="kt" style="margin-top:.6em"><div class="k"><span>Ciepło w zakresie</span><b>' + sh.toFixed(1) + ' kWh</b><i>' + (D.hSrc === 'licznik' ? 'liczniki ciepła CO + CWU z pompy' : D.hSrc === 'calka0' ? 'policzone z mocy grzewczej (średnia godzinowa × 1 h): liczniki ciepła z pompy stoją na 0' : 'policzone z mocy grzewczej (średnia godzinowa × 1 h), brak liczników ciepła') + '</i></div>' +
       '<div class="k"><span>Prąd w zakresie</span><b>' + se.toFixed(1) + ' kWh</b><i>' + esc(elN) + (D.sel ? (D.elKwh ? ' (licznik kWh)' : ' (z mocy × 1 h)') : ' (szacunek pakietu)') + '</i></div>' +
       '<div class="k"><span>COP w zakresie</span><b>' + (se > 0.05 ? (sh / se).toFixed(2) : '–') + '</b><i>ciepło / prąd</i></div></div>';
     return h + '</div>';
-  }
-  _nauDaySel(dd) {
-    const R = this._rngDays(), t0 = new Date(); t0.setHours(0, 0, 0, 0);
-    const ds = R.days.filter((d) => d <= t0); if (ds.length < 2) return '';
-    const DL = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So'];
-    return '<select data-a="dday2">' + ds.map((d) => { const b = Math.round((t0 - d) / 864e5); return '<option value="' + b + '"' + (b === dd ? ' selected' : '') + '>' + DL[d.getDay()] + ' ' + String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '</option>'; }).join('') + '</select>';
   }
 
   // --- maski planu 7 dni x 96 kwadransow (hex, Pn..Nd), jak w pakiecie ---
@@ -2289,7 +2411,11 @@ class HaKartaPompaCiepla extends HTMLElement {
   // --- Harmonogram: znacznik "zapisany do ESP" przy oknach ---
   _espBadge(l) {
     const st = this._hass.states, E = this._E, S = this._sch, pe = st[E.esp_plan];
-    if (!pe) return '';
+    // v1.37: powiedz wprost, czemu nie idzie do ESP
+    if (!pe || pe.state === 'unavailable') return '<span class="esp w" title="ESP musi mieć wgrany plik v5.5 lub nowszy (encje text „Plan offline …”) i być online">⚠ nie idzie do ESP: ' + (!pe ? 'brak encji „Plan offline” (wgraj ESP v5.6)' : 'ESP offline') + '</span>';
+    const au = Object.keys(st).find((i) => i.startsWith('automation.') && st[i].attributes && st[i].attributes.id === 'hp_esp_plan');
+    if (!au) return '<span class="esp w" title="Automatyzacja hp_esp_plan z pakietu wysyła plan co 15 min i po każdej zmianie">⚠ nie idzie do ESP: brak automatyzacji „wyślij plan tygodnia do ESP” (zaktualizuj pakiet)</span>';
+    if (st[au].state !== 'on') return '<span class="esp w">⚠ nie idzie do ESP: automatyzacja „wyślij plan tygodnia do ESP” wyłączona</span>';
     const eid = { cwu: E.esp_cwu, cyrk: E.esp_cyrk, noc: E.esp_noc, grz: E.esp_grz }[l.k];
     if (!eid) return '<span class="esp n">ESP tego nie wykonuje (tylko HA)</span>';
     const es = st[eid]; if (!es) return '';

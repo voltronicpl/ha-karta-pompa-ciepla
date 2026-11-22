@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.36 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.37 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.36"
+        state: "1.37"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -175,13 +175,55 @@ template:
           {{ (states('sensor.hp_moc_grzewcza') | float(0)
               / states('sensor.hp_moc_elektryczna') | float(1)) | round(2) }}
 
+      # v1.37: liczniki ciepla z pompy (rejestry 44306/44308) na SMO40 stoja na 0 -> gdy licznik nic nie nabil,
+      #        a calka z mocy grzewczej tak, bierzemy calke (sensor.hp_cieplo_calka_dzis).
       - name: "HP cieplo dzis"
         unique_id: hp_cieplo_dzis
         unit_of_measurement: "kWh"
         device_class: energy
         state: >
-          {{ (states('sensor.hp_cieplo_co_dzis') | float(0)
-              + states('sensor.hp_cieplo_cwu_dzis') | float(0)) | round(1) }}
+          {% set m = states('sensor.hp_cieplo_co_dzis') | float(0) + states('sensor.hp_cieplo_cwu_dzis') | float(0) %}
+          {% set c = states('sensor.hp_cieplo_calka_dzis') | float(0) %}
+          {{ (m if m > 0.05 or c < 0.3 else c) | round(1) }}
+      - name: "HP cieplo CWU dzis razem"
+        unique_id: hp_cieplo_cwu_dzis_razem
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state: >
+          {% set m = states('sensor.hp_cieplo_cwu_dzis') | float(0) %}
+          {% set c = states('sensor.hp_cieplo_cwu_calka_dzis') | float(0) %}
+          {{ (m if m > 0.05 or c < 0.3 else c) | round(1) }}
+      # v1.37: moc grzewcza tylko podczas grzania CWU (do calki "ciepla CWU")
+      - name: "HP moc grzewcza CWU"
+        unique_id: hp_moc_grzewcza_cwu
+        unit_of_measurement: "kW"
+        device_class: power
+        state_class: measurement
+        state: "{{ states('sensor.hp_moc_grzewcza') | float(0) if is_state('binary_sensor.hp_sprezarka_cwu', 'on') else 0 }}"
+      # v1.37: moc elektryczna z encji wybranej w Nauce (input_text.hp_energia_encja, W albo kW), bez wyboru / licznik kWh = szacunek pakietu
+      - name: "HP moc elektryczna wybrana"
+        unique_id: hp_moc_elektryczna_wybrana
+        unit_of_measurement: "kW"
+        device_class: power
+        state_class: measurement
+        state: >
+          {% set e = states('input_text.hp_energia_encja') %}
+          {% set u = state_attr(e, 'unit_of_measurement') if e.startswith('sensor.') else none %}
+          {% if u == 'W' and has_value(e) %}{{ (states(e) | float(0) / 1000) | round(3) }}
+          {% elif u == 'kW' and has_value(e) %}{{ states(e) | float(0) | round(3) }}
+          {% else %}{{ states('sensor.hp_moc_elektryczna') | float(0) | round(3) }}{% endif %}
+      # v1.37: prad dzis (kWh): licznik kWh wybrany w Nauce (od polnocy) albo calka z mocy elektrycznej
+      - name: "HP prad dzis"
+        unique_id: hp_prad_dzis
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state: >
+          {% set e = states('input_text.hp_energia_encja') %}
+          {% set u = state_attr(e, 'unit_of_measurement') if e.startswith('sensor.') else none %}
+          {% set b = states('input_number.hp_prad_licznik_polnoc') | float(-1) %}
+          {% if u in ['kWh', 'Wh'] and has_value(e) and b >= 0 %}
+          {{ ([0, states(e) | float(0) - b] | max * (0.001 if u == 'Wh' else 1)) | round(2) }}
+          {% else %}{{ states('sensor.hp_prad_calka_dzis') | float(0) | round(2) }}{% endif %}
 
       - name: "HP cieplo miesiac"
         unique_id: hp_cieplo_miesiac
@@ -257,6 +299,19 @@ utility_meter:
     name: "HP starty dzis"
     source: sensor.hydrolution_sprezarka_liczba_startow
     cycle: daily
+  # v1.37: dzienne z calek mocy (zamiast stojacych licznikow ciepla z pompy)
+  hp_cieplo_calka_dzis:
+    name: "HP cieplo calka dzis"
+    source: sensor.hp_cieplo_calka
+    cycle: daily
+  hp_cieplo_cwu_calka_dzis:
+    name: "HP cieplo CWU calka dzis"
+    source: sensor.hp_cieplo_cwu_calka
+    cycle: daily
+  hp_prad_calka_dzis:
+    name: "HP prad calka dzis"
+    source: sensor.hp_prad_calka
+    cycle: daily
 
 sensor:
   - platform: history_stats
@@ -283,6 +338,31 @@ sensor:
     type: time
     start: "{{ today_at() }}"
     end: "{{ now() }}"
+  # v1.37: calki mocy -> energia kWh (cieplo z mocy grzewczej, prad z mocy elektrycznej wybranej w Nauce)
+  - platform: integration
+    name: "HP cieplo calka"
+    unique_id: hp_cieplo_calka
+    source: sensor.hp_moc_grzewcza
+    method: left
+    unit_time: h
+    round: 3
+    max_sub_interval: {minutes: 5}
+  - platform: integration
+    name: "HP cieplo CWU calka"
+    unique_id: hp_cieplo_cwu_calka
+    source: sensor.hp_moc_grzewcza_cwu
+    method: left
+    unit_time: h
+    round: 3
+    max_sub_interval: {minutes: 5}
+  - platform: integration
+    name: "HP prad calka"
+    unique_id: hp_prad_calka
+    source: sensor.hp_moc_elektryczna_wybrana
+    method: left
+    unit_time: h
+    round: 3
+    max_sub_interval: {minutes: 5}
   # v1.21: tempo zmiany temp. srodka zasobnika CWU (BT6), °C/min - szybki spadek = ktos odkrecil ciepla wode
   - platform: derivative
     name: "HP CWU srodek zmiana"
@@ -517,6 +597,13 @@ input_number:
     step: 1
     mode: box
     unit_of_measurement: "min"
+  # v1.37: stan licznika pradu (wybranego w Nauce, kWh/Wh) o polnocy -> sensor.hp_prad_dzis; -1 = jeszcze nie zapisany
+  hp_prad_licznik_polnoc:
+    name: "HP prad: licznik o polnocy"
+    min: -1
+    max: 999999999
+    step: 0.001
+    mode: box
   # v1.35: postoj min. 1 min (sterownik nie przyjmuje 0)
   hp_cyrk_postoj:
     name: "HP plan: cyrkulacja w oknie - czas postoju"
@@ -898,12 +985,31 @@ automation:
         target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
         data: {value: "{{ postoj }}"}
 
+  # 3f) v1.37 Prad dzis: o polnocy (i po zmianie encji w Nauce) zapamietaj stan licznika kWh
+  - id: hp_prad_polnoc
+    alias: "HP energia: licznik pradu o polnocy"
+    mode: queued
+    triggers:
+      - trigger: time
+        at: "00:00:00"
+      - trigger: state
+        entity_id: input_text.hp_energia_encja
+    actions:
+      - variables:
+          e: "{{ states('input_text.hp_energia_encja') }}"
+          ok: "{{ e.startswith('sensor.') and state_attr(e, 'unit_of_measurement') in ['kWh', 'Wh'] and has_value(e) }}"
+      - action: input_number.set_value
+        target: {entity_id: input_number.hp_prad_licznik_polnoc}
+        data:
+          value: "{{ states(e) | float(0) if ok and trigger.platform == 'time' else -1 }}"
+
   # 3d) v1.35 Plan cyrkulacji liczony w HA (bez otwierania karty). Dziala tylko przy hp_auto_cyrk = on.
   #     Z modelu (input_text.hp_cyrk_model: pora wstawania Pn-Pt / So-Nd, ile min przed, pora snu na kazdy dzien)
   #     i okien z obecnosci (input_text.hp_cyrk_obecnosc) liczy to samo co karta: okno od (wstanie - przed) do snu,
   #     sen po polnocy = okno 0:00-sen nastepnego dnia. Wynik -> input_text.hp_cyrk_plan (hex 7 x 96 kwadransow).
-  #     Przelicza: zmiana modelu (karta / nauka snu i wstawania), wlaczenie automatyzacji, wyjscie / powrot telefonow,
-  #     raz na dobe (0:05) i po starcie HA. Wpisuje tylko, gdy plan sie zmienil. Plan idzie dalej do ESP (hp_esp_plan).
+  #     Przelicza: zmiana modelu (karta / nauka snu i wstawania), zmiana okien z obecnosci, wlaczenie automatyzacji,
+  #     raz na dobe (0:05) i po starcie HA. (v1.37: bez wyzwalacza zone.home - plan od niego nie zalezy;
+  #     wyjscie / powrot telefonow obsluguje na biezaco hp_auto_cyrk.) Wpisuje tylko, gdy plan sie zmienil. Plan idzie dalej do ESP (hp_esp_plan).
   - id: hp_cyrk_przelicz
     alias: "HP auto: przelicz plan cyrkulacji (bez karty)"
     mode: restart
@@ -913,8 +1019,6 @@ automation:
       - trigger: state
         entity_id: input_boolean.hp_auto_cyrk
         to: "on"
-      - trigger: state
-        entity_id: zone.home
       - trigger: time
         at: "00:05:00"
       - trigger: homeassistant
@@ -967,8 +1071,9 @@ automation:
         data: {timestamp: "{{ now().timestamp() }}"}
 
   # 3e) v1.35 Nauka po stronie HA (gdy karta zamknieta): poprawia model po kazdej nocy.
-  #     Sen = brak aktywnosci w domu (binary_sensor.hp_aktywnosc_w_domu) przez 30 min, 19:00-3:00, ktos w domu (raz na noc).
-  #     Wstanie = pierwsza aktywnosc albo pobor cieplej wody 4:00-11:00 po wykrytym snie (raz na dzien).
+  #     Sen = brak aktywnosci w domu (binary_sensor.hp_aktywnosc_w_domu) przez 30 min, 21:00-3:00, ktos w domu (raz na noc).
+  #     Wstanie = aktywnosc trwajaca 10 min albo pobor cieplej wody 4:00-11:00 po wykrytym snie (raz na dzien).
+  #     v1.37: sen dopiero od 21:00 (cichy wieczor przy TV to nie sen), wstanie dopiero po 10 min aktywnosci (nocne wstawanie to nie poranek).
   #     Nowa wartosc = 3/4 starej + 1/4 dzisiejszej (pory ustawione w Nauce recznie nie sa ruszane).
   #     Po otwarciu karty model nadpisuje Nauka z karty (liczona z calej historii). Dziala tylko przy hp_auto_cyrk = on.
   - id: hp_cyrk_nauka
@@ -984,6 +1089,7 @@ automation:
         entity_id: binary_sensor.hp_aktywnosc_w_domu
         from: "off"
         to: "on"
+        for: {minutes: 10}
         id: wstanie
       - trigger: numeric_state
         entity_id: sensor.hp_cwu_srodek_zmiana
@@ -1004,7 +1110,7 @@ automation:
           {%- set wst = states('input_datetime.hp_nauka_wstanie') | as_datetime(none) -%}
           {%- if trigger.id == 'sen' -%}
           {%- set o = now() - timedelta(minutes=30) -%}
-          {{ (o.hour >= 19 or o.hour < 3) and (sen is none or (now() - (sen | as_local)).total_seconds() > 12 * 3600) }}
+          {{ (o.hour >= 21 or o.hour < 3) and (sen is none or (now() - (sen | as_local)).total_seconds() > 12 * 3600) }}
           {%- else -%}
           {{ 4 <= now().hour < 11 and sen is not none and (now() - (sen | as_local)).total_seconds() < 14 * 3600
              and (wst is none or (wst | as_local).date() != now().date()) }}
