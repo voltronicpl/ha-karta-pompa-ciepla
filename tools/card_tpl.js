@@ -114,6 +114,7 @@ const NAU_CSS = '#pk{margin:0;padding:.55em 1em;background:rgba(255,160,0,.16);b
   '#nau .src{display:flex;flex-wrap:wrap;align-items:center;gap:.5em 1em;padding:.55em 0;border-bottom:1px solid rgba(255,255,255,.06)}#nau .sn{flex:0 0 15em;display:flex;flex-direction:column}#nau .sn small{opacity:.6}' +
   '#nau .chips{flex:1 1 20em;display:flex;flex-wrap:wrap;gap:.35em}#nau .chip{display:inline-flex;align-items:center;gap:.3em;padding:.2em .3em .2em .7em;border-radius:999px;background:rgba(41,182,246,.15);border:1px solid rgba(41,182,246,.45)}' +
   '#nau .chip button{padding:0 .45em;border:none;background:none;font-size:1.1em;line-height:1}#nau .chip button:hover{color:#ff8a80}' +
+  '#nau .dsw button.on{background:rgba(41,182,246,.35);border-color:#29b6f6;color:#fff}#nau .dsw label{display:flex;align-items:center;gap:.35em}' +
   '#nau .sa{display:flex;gap:.4em;flex:0 1 26em}#nau .sa input{flex:1;min-width:10em;height:2.1em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);padding:0 .5em;color:#fff;font:inherit}';
 const ELS = [
 __ELEMENTS__
@@ -949,6 +950,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       const dw = Math.max(3, Math.min(30, Number(c.dni_cwu) || 14));
       res.cwu = await this._nauCwuLoad(now - dw * 864e5);
     } catch (e) { res.errs.push('CWU: ' + (e && e.message || e)); }
+    try { res.day = await this._nauDayLoad(); } catch (e) { res.day = null; res.errs.push('Wykres doby: ' + (e && e.message || e)); }
     N.res = res; N.at = Date.now(); N.loading = false;
     const sn = this._nauSnap();
     if (N.cmpFrom && sn) { N.diff = this._nauDiff(N.cmpFrom, sn); N.cmpFrom = null; }
@@ -1616,6 +1618,177 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._schRender();
     if (this._schEl.scrollIntoView) this._schEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+  // ====================== v1.32: DOBA 00-24, plan (proponowany) vs realnie z historii HA ======================
+  async _nauDayLoad() {
+    const hass = this._hass, E = this._E, st = hass.states, now = Date.now();
+    const d0 = new Date(); d0.setHours(0, 0, 0, 0); d0.setDate(d0.getDate() - 1);
+    const sal = this._nauSalon();
+    const ids = [E.bt25, E.s1, E.bt7, E.cpr, E.cpr_cwu].concat(sal).filter((i, k, a) => i && st[i] && a.indexOf(i) === k);
+    if (!ids.length) throw new Error('brak czujników pompy');
+    const r = (await hass.callApi('GET', 'history/period/' + d0.toISOString() + '?filter_entity_id=' + ids.join(',') +
+      '&end_time=' + encodeURIComponent(new Date(now).toISOString()) + '&minimal_response&no_attributes')) || [];
+    const by = {};
+    r.forEach((a) => { if (a && a.length) by[a[0].entity_id] = a.map((p) => [Date.parse(p.last_changed || p.last_updated), p.state]).filter((p) => !isNaN(p[0])).sort((x, y) => x[0] - y[0]); });
+    return { by, from: d0.getTime(), at: now };
+  }
+  _nauDayHtml(R, esc) {
+    const hass = this._hass, st = hass.states, E = this._E, N = this._nau, D = R.day, C = R.curve;
+    const ser = ['co', 'cwu', 'dom'].indexOf(N.dser) >= 0 ? N.dser : 'cwu', dd = N.dday === 1 ? 1 : 0, showCpr = N.dcpr !== false;
+    const btn = (a, v, cur, txt) => '<button data-a="' + a + '" data-v="' + v + '" class="' + (String(v) === String(cur) ? 'on' : '') + '">' + txt + '</button>';
+    let h = '<div class="sec dy"><div class="st2">Doba 00–24: plan i realnie<small> – linia ciągła = realnie z historii HA, przerywana = proponowany plan (Nauka). Widać spadki temperatury w ciągu dnia.</small></div>' +
+      '<div class="lh dsw">' + btn('dser', 'cwu', ser, 'Woda CWU (BT7)') + btn('dser', 'co', ser, 'Zasilanie CO (BT25)') + btn('dser', 'dom', ser, 'Dom (salon)') +
+      '<span style="width:1em"></span>' + btn('dday', 0, dd, 'Dziś') + btn('dday', 1, dd, 'Wczoraj') +
+      '<label><input type="checkbox" data-a="dcpr"' + (showCpr ? ' checked' : '') + '> praca sprężarki (słupki)</label></div>';
+    if (!D) return h + '<div class="info">Brak historii z HA do wykresu doby.</div></div>';
+    const now = Date.now(), a = new Date(); a.setHours(0, 0, 0, 0); a.setDate(a.getDate() - dd);
+    const A = a.getTime(), B = A + 864e5, Bend = Math.min(B, now), wd = (a.getDay() + 6) % 7;
+    const STEP = 5 * 60000;
+    // wartosc schodkowa (sensor zapisuje przy zmianie) probkowana co 5 min
+    const samp = (id) => {
+      const s = (D.by[id] || []).slice(), out = [];
+      if (dd === 0 && st[id]) s.push([now, st[id].state]);
+      let j = -1;
+      for (let t = A; t <= Bend; t += STEP) {
+        while (j + 1 < s.length && s[j + 1][0] <= t) j++;
+        if (j < 0) continue;
+        const v = parseFloat(s[j][1]); if (isFinite(v)) out.push([t, v]);
+      }
+      if (dd === 0 && st[id]) { const v = parseFloat(st[id].state); if (isFinite(v)) out.push([now, v]); }
+      return out;
+    };
+    const onMin = (id) => {
+      const s = (D.by[id] || []), m = new Array(24).fill(0);
+      if (!s.length) return null;
+      for (let k = 0; k < s.length; k++) {
+        if (s[k][1] !== 'on') continue;
+        let f = Math.max(A, s[k][0]), t = Math.min(Bend, k + 1 < s.length ? s[k + 1][0] : now);
+        while (f < t) { const hh = Math.floor((f - A) / 36e5); if (hh < 0 || hh > 23) break; const e = Math.min(t, A + (hh + 1) * 36e5); m[hh] += (e - f) / 60000; f = e; }
+      }
+      return m;
+    };
+    const fmtT = (t) => new Date(t).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+    const num = (k) => { const v = parseFloat((st[E[k]] || {}).state); return isFinite(v) ? v : null; };
+    let real = [], real2 = [], plan = [], plan2 = [], unit = '°C', nm = '', nm2 = '', pn = '', pn2 = '', note = '', bands = [];
+    if (ser === 'cwu') {
+      nm = 'Realnie BT7 (CWU góra)'; real = samp(E.bt7);
+      // plan: symulacja wody wg okien CWU z Nauki, trybow tania/droga strefa i progow stop
+      const okS = (x) => x && x.state && x.state !== 'unknown' && x.state !== 'unavailable';
+      const auOn = st[E.auto_cwu] && st[E.auto_cwu].state === 'on';
+      const tt = okS(st[E.cwu_tania]) ? st[E.cwu_tania].state : 'Ekonomiczny', tp = okS(st[E.cwu_poza]) ? st[E.cwu_poza].state : 'Normalny';
+      const luxOn = !!(st[E.cwu_lux_on] && st[E.cwu_lux_on].state === 'on');
+      const curM = okS(st[E.hwmode]) ? st[E.hwmode].state : 'Normalny';
+      const wait = st[E.cwu_wait] ? Math.round(Number(st[E.cwu_wait].state)) || 0 : 30;
+      const stopOf = (m) => { const k = m === 'Luksus' ? 'stop_lux' : m === 'Ekonomiczny' ? 'stop_eco' : 'stop_norm'; const v = num(k); return v !== null ? v : (m === 'Luksus' ? 55 : m === 'Ekonomiczny' ? 45 : 50); };
+      const P = this._nauCwuPlan(R.cwu), win = P.blocks[wd] || [];
+      const inW = (m) => win.some((b) => b.f <= m && m < b.t);
+      const toW = (m) => { const nx = win.filter((b) => b.f > m).map((b) => b.f); return nx.length ? Math.min(...nx) - m : 9999; };
+      // tempo grzania z realnych wzrostow BT7 (mediana), domyslnie 0,3 °C/min
+      const rs = []; for (let k = 1; k < real.length; k++) { const dv = real[k][1] - real[k - 1][1]; if (dv > 0.6) rs.push(dv / 5); }
+      rs.sort((x, y) => x - y);
+      const rate = rs.length >= 3 ? Math.max(0.1, Math.min(1.5, rs[Math.floor(rs.length / 2)])) : 0.3, HYS = 5, LOSS = 0.01;
+      const use = R.cwu && R.cwu.use ? R.cwu.use[wd] : null;
+      let T = real.length && real[0][0] === A ? real[0][1] : stopOf(auOn ? tt : curM), heat = false;
+      for (let m = 0; m <= 1440; m += 5) {
+        let mode = curM;
+        if (auOn) mode = inW(m) ? (luxOn ? 'Luksus' : tt) : (toW(m) <= wait ? 'Ekonomiczny' : tp);
+        const stp = stopOf(mode);
+        plan.push([A + m * 60000, Math.round(T * 10) / 10]);
+        if (!heat && T < stp - HYS) heat = true;
+        if (heat) { T += rate * 5; if (T >= stp) { T = stp; heat = false; } }
+        else T -= LOSS * 5 + (use ? use[Math.min(95, Math.floor(m / 15))] / 3 : 0);
+      }
+      pn = 'Plan (symulacja: okna CWU, tryby, pobór wody)';
+      bands = win.map((b) => [b.f, b.t, 'rgba(41,182,246,.16)', 'CWU']);
+      note = 'Plan CWU to symulacja: w oknach CWU z Nauki tryb „' + esc(auOn ? (luxOn ? 'Luksus' : tt) : curM) + '”, poza nimi „' + esc(auOn ? tp : curM) + '”' + (auOn ? '' : ' (automatyzacja CWU wyłączona, biorę obecny tryb)') +
+        '; pompa dogrzewa, gdy woda spadnie ' + HYS + ' °C poniżej temp. stop, tempo grzania ' + rate.toFixed(2) + ' °C/min' + (rs.length >= 3 ? ' (z historii)' : ' (domyślne)') + ', straty ' + LOSS + ' °C/min + średni pobór wody z historii tego dnia tygodnia.';
+    } else if (ser === 'co') {
+      nm = 'Realnie BT25 (zasilanie CO)'; real = samp(E.bt25);
+      nm2 = 'Zadane przez pompę S1'; real2 = samp(E.s1);
+      if (C) {
+        const W = R.wx || {}, mn = num('minsup'), mx = num('maxsup');
+        const at = (ys, to) => { const T7 = C.T; if (to <= -30) return ys[0]; if (to >= 30) return ys[6]; const i = Math.min(5, Math.floor((to + 30) / 10)), f = (to - T7[i]) / 10; return ys[i] + (ys[i + 1] - ys[i]) * f; };
+        const clamp = (v) => { if (mx !== null) v = Math.min(mx, v); if (mn !== null) v = Math.max(mn, v); return Math.round(v * 10) / 10; };
+        for (let hh = 0; hh <= 24; hh++) {
+          const t = A + hh * 36e5, hk = Math.floor(t / 36e5) * 36e5;
+          const to = C.toutH[hk] !== undefined && hk <= now ? C.toutH[hk] : (W[hk] && isFinite(W[hk].temp) ? W[hk].temp : null);
+          if (to === null) continue;
+          plan.push([t, clamp(at(C.prop, to))]); plan2.push([t, clamp(at(C.cur, to))]);
+        }
+        pn = 'Plan wg proponowanej krzywej'; pn2 = 'wg obecnej krzywej';
+        note = 'Plan CO = zasilanie z krzywej dla temperatury na zewnątrz w danej godzinie (pomiar BT1, a dalej prognoza Open-Meteo), obcięte do min./max. zasilania. Nocnego obniżenia z harmonogramu nie doliczam. Podczas grzania wody CWU zasilanie CO naturalnie spada.';
+      } else note = 'Brak krzywej z Nauki, więc tylko realny przebieg.';
+    } else {
+      const sal = this._nauSalon()[0];
+      if (sal) { nm = 'Realnie ' + ((st[sal].attributes || {}).friendly_name || sal); real = samp(sal); }
+      const cel = N.src && Number(N.src.cel), tg = cel && isFinite(cel) ? cel : (C && C.target !== null ? C.target : null);
+      if (tg !== null) { for (let hh = 0; hh <= 24; hh++) plan.push([A + hh * 36e5, tg]); pn = 'Cel w domu ' + tg.toFixed(1) + ' °C'; }
+      note = sal ? 'Plan = temperatura, którą chcesz w domu (pole „Chcę w domu” albo mediana z historii).' : 'Brak czujnika salonu: ustaw go w „Źródłach nauki” niżej.';
+    }
+    const cpr = showCpr ? onMin(E.cpr) : null, cprC = showCpr ? onMin(E.cpr_cwu) : null;
+    const vals = real.concat(real2, plan, plan2).map((p) => p[1]);
+    if (!vals.length) return h + '<div class="info">Brak danych dla tej serii w wybranym dniu.</div><div class="wn">' + note + '</div></div>';
+    const lo = Math.floor((Math.min(...vals) - 1) / 5) * 5, hi = Math.ceil((Math.max(...vals) + 1) / 5) * 5;
+    const X0 = 46, X1 = 590, Y0 = 42, Y1 = showCpr ? 172 : 200, BY0 = 184, BY1 = 208;
+    const sx = (t) => X0 + (t - A) / 864e5 * (X1 - X0), sy = (v) => Y1 - (v - lo) / ((hi - lo) || 1) * (Y1 - Y0);
+    let g = '';
+    const G = this._g12();
+    (G.day[wd] || []).forEach((b) => { g += '<rect x="' + sx(A + b.f * 6e4).toFixed(1) + '" y="' + Y0 + '" width="' + ((b.t - b.f) / 1440 * (X1 - X0)).toFixed(1) + '" height="' + (Y1 - Y0) + '" fill="rgba(126,224,74,.08)"/>'; });
+    bands.forEach((b) => { g += '<rect x="' + sx(A + b[0] * 6e4).toFixed(1) + '" y="' + (Y1 - 6) + '" width="' + ((b[1] - b[0]) / 1440 * (X1 - X0)).toFixed(1) + '" height="6" rx="2" fill="#29b6f6" opacity=".8"/>'; });
+    const stepV = hi - lo > 30 ? 10 : 5;
+    for (let v = lo; v <= hi; v += stepV) g += '<line x1="' + X0 + '" y1="' + sy(v) + '" x2="' + X1 + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + ' ' + unit + '</text>';
+    for (let hh = 0; hh <= 24; hh += 3) { const x = sx(A + hh * 36e5); g += '<line x1="' + x + '" y1="' + Y0 + '" x2="' + x + '" y2="' + (showCpr ? BY1 : Y1) + '" stroke="rgba(255,255,255,.07)"/><text x="' + x + '" y="' + ((showCpr ? BY1 : Y1) + 14) + '" text-anchor="' + (hh === 24 ? 'end' : hh === 0 ? 'start' : 'middle') + '">' + String(hh).padStart(2, '0') + ':00</text>'; }
+    const line = (pts, col, dash, w) => { let out = '', seg = [];
+      const flush = () => { if (seg.length > 1) out += '<polyline points="' + seg.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="' + w + '"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + ' stroke-linejoin="round"/>'; seg = []; };
+      pts.forEach((p, k) => { if (k && p[0] - pts[k - 1][0] > 3 * 36e5) flush(); seg.push(sx(p[0]).toFixed(1) + ',' + sy(p[1]).toFixed(1)); }); flush(); return out; };
+    // najwiekszy spadek (szczyt -> dolek pozniej) i minimum realnej linii
+    let mi = null, dr = null, pk = null;
+    real.forEach((p) => {
+      if (!mi || p[1] < mi[1]) mi = p;
+      if (!pk || p[1] > pk[1]) pk = p;
+      const d = pk[1] - p[1]; if (!dr || d > dr.d) dr = { d, a: pk, b: p };
+    });
+    let mk = '';
+    if (dr && dr.d >= 0.5) mk += '<line x1="' + sx(dr.a[0]).toFixed(1) + '" y1="' + sy(dr.a[1]).toFixed(1) + '" x2="' + sx(dr.b[0]).toFixed(1) + '" y2="' + sy(dr.b[1]).toFixed(1) + '" stroke="#ff5a4a" stroke-width="1.2" stroke-dasharray="2 3"/><circle cx="' + sx(dr.a[0]).toFixed(1) + '" cy="' + sy(dr.a[1]).toFixed(1) + '" r="3" fill="#ff8a80"/>';
+    if (mi) mk += '<circle cx="' + sx(mi[0]).toFixed(1) + '" cy="' + sy(mi[1]).toFixed(1) + '" r="4" fill="#ff5a4a" stroke="#fff" stroke-width="1"/><text x="' + Math.min(X1 - 30, Math.max(X0 + 30, sx(mi[0]))).toFixed(1) + '" y="' + Math.min(Y1 - 4, sy(mi[1]) + 15).toFixed(1) + '" text-anchor="middle" font-size="11" fill="#ff8a80">min ' + mi[1].toFixed(1) + ' ' + unit + '</text>';
+    let bars = '';
+    if (cpr) {
+      bars += '<text x="' + (X0 - 6) + '" y="' + (BY0 + 8) + '" text-anchor="end" font-size="9.5" fill="#c8d0da">60 min</text><text x="' + (X0 - 6) + '" y="' + BY1 + '" text-anchor="end" font-size="9.5" fill="#c8d0da">0</text>';
+      const bw = (X1 - X0) / 24;
+      cpr.forEach((m, hh) => {
+        const mc = cprC ? Math.min(m, cprC[hh]) : 0, x = X0 + hh * bw + 1.5, H1 = (BY1 - BY0) * Math.min(60, m) / 60, Hc = (BY1 - BY0) * Math.min(60, mc) / 60;
+        if (m > 0.5) bars += '<rect x="' + x.toFixed(1) + '" y="' + (BY1 - H1).toFixed(1) + '" width="' + (bw - 3).toFixed(1) + '" height="' + H1.toFixed(1) + '" fill="#ffab1a" opacity=".75"><title>' + String(hh).padStart(2, '0') + ':00 sprężarka ' + Math.round(m) + ' min' + (cprC ? ', w tym CWU ' + Math.round(mc) + ' min' : '') + '</title></rect>';
+        if (mc > 0.5) bars += '<rect x="' + x.toFixed(1) + '" y="' + (BY1 - Hc).toFixed(1) + '" width="' + (bw - 3).toFixed(1) + '" height="' + Hc.toFixed(1) + '" fill="#29b6f6" pointer-events="none"/>';
+      });
+    }
+    const nx = dd === 0 ? sx(now) : null;
+    const colR = ser === 'cwu' ? '#ff4d3a' : ser === 'co' ? '#9c6cff' : '#ffab1a';
+    let lg = '<line x1="50" y1="10" x2="72" y2="10" stroke="' + colR + '" stroke-width="2.4"/><text x="77" y="14" fill="#e3e8ee">' + esc(nm || 'Realnie') + '</text>';
+    let lx = 77 + Math.min(200, (nm || 'Realnie').length * 6.2) + 14;
+    if (pn) { lg += '<line x1="' + lx + '" y1="10" x2="' + (lx + 22) + '" y2="10" stroke="#43d343" stroke-width="2" stroke-dasharray="6 4"/><text x="' + (lx + 27) + '" y="14" fill="#e3e8ee">' + esc(pn) + '</text>'; lx += 27 + Math.min(260, pn.length * 6.2) + 14; }
+    let lg2 = '';
+    if (nm2 && real2.length) lg2 += '<line x1="50" y1="24" x2="72" y2="24" stroke="#d0b8ff" stroke-width="1.2" stroke-dasharray="1 3"/><text x="77" y="27" fill="#c8d0da">' + esc(nm2) + '</text>';
+    if (pn2 && plan2.length) lg2 += '<line x1="230" y1="24" x2="252" y2="24" stroke="#29b6f6" stroke-width="1.4" stroke-dasharray="3 3"/><text x="257" y="27" fill="#c8d0da">' + esc(pn2) + '</text>';
+    h += '<svg viewBox="0 0 600 ' + ((showCpr ? BY1 : Y1) + 22) + '" style="width:100%;max-width:60em;height:auto;display:block;font-family:inherit"><g font-size="11" fill="#c8d0da">' + g + '</g><g font-size="11.5">' + lg + '</g><g font-size="10.5">' + lg2 + '</g>' +
+      bars +
+      line(plan2, '#29b6f6', '3 3', 1.4) + line(plan, '#43d343', '6 4', 2) + line(real2, '#d0b8ff', '1 3', 1.2) + line(real, colR, '', 2.4) + mk +
+      (nx !== null ? '<line x1="' + nx.toFixed(1) + '" y1="' + Y0 + '" x2="' + nx.toFixed(1) + '" y2="' + (showCpr ? BY1 : Y1) + '" stroke="#ff5a4a" stroke-width="1.5"/><text x="' + nx.toFixed(1) + '" y="' + (Y0 - 3) + '" text-anchor="middle" font-size="10.5" fill="#ff8a80">teraz</text>' : '') + '</svg>';
+    // kafle
+    let dev = null;
+    if (plan.length > 1 && real.length) {
+      const pv = (t) => { for (let k = 1; k < plan.length; k++) if (plan[k][0] >= t) { const p0 = plan[k - 1], p1 = plan[k]; return p0[1] + (p1[1] - p0[1]) * (t - p0[0]) / ((p1[0] - p0[0]) || 1); } return null; };
+      const ds = real.map((p) => { const v = pv(p[0]); return v === null ? null : p[1] - v; }).filter((x) => x !== null);
+      if (ds.length) dev = { avg: ds.reduce((s, x) => s + x, 0) / ds.length, min: Math.min(...ds) };
+    }
+    const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1);
+    const tot = cpr ? cpr.reduce((s, x) => s + x, 0) : null, totC = cprC ? cprC.reduce((s, x) => s + x, 0) : null;
+    h += '<div class="kt">' +
+      '<div class="k"><span>Najniżej (realnie)</span><b>' + (mi ? mi[1].toFixed(1) + ' ' + unit : '–') + '</b><i>' + (mi ? 'o ' + fmtT(mi[0]) : 'brak danych') + '</i></div>' +
+      '<div class="k"><span>Największy spadek</span><b>' + (dr && dr.d >= 0.1 ? '−' + dr.d.toFixed(1) + ' ' + unit : '–') + '</b><i>' + (dr && dr.d >= 0.1 ? fmtT(dr.a[0]) + ' → ' + fmtT(dr.b[0]) + ' (' + dr.a[1].toFixed(1) + ' → ' + dr.b[1].toFixed(1) + ')' : 'bez spadków') + '</i></div>' +
+      '<div class="k"><span>Realnie vs plan</span><b>' + (dev ? sg(dev.avg) + ' ' + unit : '–') + '</b><i>' + (dev ? 'średnio; ' + (dev.min < 0 ? 'najbardziej pod planem ' + sg(dev.min) + ' ' + unit : 'cały czas nad planem') : 'brak planu do porównania') + '</i></div>' +
+      (tot !== null ? '<div class="k"><span>Sprężarka ' + (dd ? 'wczoraj' : 'dziś') + '</span><b>' + Math.floor(tot / 60) + ' h ' + Math.round(tot % 60) + ' min</b><i>' + (totC !== null ? 'w tym CWU ' + Math.floor(totC / 60) + ' h ' + Math.round(totC % 60) + ' min (niebieskie)' : 'pomarańczowe słupki = minuty pracy w godzinie') + '</i></div>' : '') +
+      '</div>';
+    return h + '<div class="wn">Zielone tło = tania strefa G12' + (ser === 'cwu' ? ', niebieski pasek = okna grzania CWU z Nauki' : '') + '. Czerwona kropka = minimum, czerwona kropkowana = największy spadek. ' + note + ' Wykres nic nie zmienia w pompie.</div></div>';
+  }
   _nauRender() {
     const el = this._nauEl, hass = this._hass, N = this._nau;
     if (!el || !hass || el.hidden) return;
@@ -1638,6 +1811,8 @@ class HaKartaPompaCiepla extends HTMLElement {
         else if (a === 'pkok') { if (this._pk) { this._pk.log = []; this._pk.err = []; } this._nauRender(); }
         else if (a === 'reload' && !N.loading) { N.cmpFrom = N.base || this._nauSnap(); this._nauLoad(); }
         else if (a === 'dhide') { N.diff = null; this._nauRender(); }
+        else if (a === 'dser') { N.dser = t.getAttribute('data-v'); this._nauRender(); }
+        else if (a === 'dday') { N.dday = Number(t.getAttribute('data-v')); this._nauRender(); }
         else if (a === 'more') this._more(t.getAttribute('data-e'));
         else if (a === 'sdel') this._nauSrcEdit(t.getAttribute('data-k'), 'del', t.getAttribute('data-e'));
         else if (a === 'sauto') this._nauSrcEdit(t.getAttribute('data-k'), 'auto');
@@ -1670,6 +1845,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         if (a === 'g12') { const v = String(t.value).replace(/\s+/g, ''); if (this._g12Parse(v).length && this._hass.states[this._E.g12]) this._hass.callService('input_text', 'set_value', { entity_id: this._E.g12, value: v }); else this._nauRender(); return; }
         if (a === 'g12we') { const id = this._E.g12_we; if (this._hass.states[id]) this._hass.callService('input_boolean', t.checked ? 'turn_on' : 'turn_off', { entity_id: id }); return; }
         if (a === 'ctania' || a === 'cpoza') { const id = a === 'ctania' ? this._E.cwu_tania : this._E.cwu_poza; if (this._hass.states[id]) this._hass.callService('input_select', 'select_option', { entity_id: id, option: t.value }); return; }
+        if (a === 'dcpr') { N.dcpr = !!t.checked; this._nauRender(); return; }
         if (a === 'cluxon') { const id = this._E.cwu_lux_on; if (this._hass.states[id]) this._hass.callService('input_boolean', t.checked ? 'turn_on' : 'turn_off', { entity_id: id }); return; }
         if (a === 'cluxmax') { const v = parseInt(t.value, 10), id = this._E.cwu_lux_max; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(15, Math.min(240, v)) }); return; }
         if (a === 'cwait') { const v = parseInt(t.value, 10), id = this._E.cwu_wait; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(0, Math.min(180, v)) }); return; }
@@ -1749,6 +1925,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         '. Liczone z godzin 8–22 (nocne obniżenie pomijam). Wykres nic nie zmienia, punkty P1–P7 ustawiasz sam w panelu „Własna krzywa”.</div></div>';
     } else h += '<div class="info">Nie da się policzyć krzywej (brak danych).</div>';
     h += '</div>';
+    h += this._nauDayHtml(R, esc);
     if (C) h += this._nauOutHtml(C, R.wx || {});
     if (C) h += this._nauFcHtml(C, R.prev);
     h += this._nauCyrkHtml(Y, esc, fmt);

@@ -263,3 +263,13 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - **Nauka → CWU:** dwa nowe wybory: **„tryb w taniej strefie”** (domyślnie **Ekonomiczny**) i **„tryb w drogiej strefie”** (domyślnie **Normalny**), opcje Ekonomiczny / Normalny / Luksus / Smart. Automatyzacja CWU ustawia w taniej strefie wybrany tryb, w drogiej drugi, a gdy do taniej zostało ≤ „czekaj” minut, dalej Ekonomiczny (czeka).
 - **Luksus jednorazowy z v1.27** (tryb pracy Ręczny + CO wstrzymane, aż woda dojdzie do celu luksusu) jest teraz osobną opcją **„luksus jednorazowy w taniej (CO wstrzymane)”**, **domyślnie WYŁĄCZONĄ**. Wyłączenie jej w trakcie luksusu z automatu od razu wraca na Auto z CO.
 - Pakiet HA **1.31**: nowe `input_select.hp_cwu_tryb_tania` i `input_boolean.hp_cwu_lux_tania`; zmienione automatyzacje `hp_auto_cwu` i `hp_cwu_boost_koniec`. Tryb w drogiej strefie to istniejący `input_select.hp_cwu_tryb_poza` (ten sam, co w harmonogramie „Tryb CWU”). Pakiet z karty: karta sama dołoży i zaktualizuje te elementy (konto admina, zakładka Nauka). Pakiet w pliku YAML: wklej nowy `packages/hydrolution_karta.yaml` i zrób **pełny restart HA**.
+
+## v1.32: Nauka → wykres doby 00–24 (plan i realnie)
+
+- **Nauka → „Doba 00–24: plan i realnie”** (nowa sekcja pod krzywą grzewczą): cała doba na osi godzin, **linia ciągła = realnie** z historii HA, **przerywana = proponowany plan**. Przełączniki: **Woda CWU (BT7)**, **Zasilanie CO (BT25)**, **Dom (salon)** oraz **Dziś / Wczoraj**.
+  - **CWU:** plan to symulacja wody: okna grzania CWU z Nauki (niebieski pasek), tryb w taniej / drogiej strefie, temp. stop trybów, średni pobór wody z historii tego dnia tygodnia.
+  - **CO:** plan = zasilanie z proponowanej krzywej (i cienka linia z obecnej krzywej) dla temperatury na zewnątrz w danej godzinie (BT1, dalej prognoza Open-Meteo). Dodatkowo realna wartość zadana pompy S1.
+  - **Dom:** plan = temperatura „Chcę w domu” (albo mediana z historii).
+- Zaznaczone: **tania strefa G12** (zielone tło), **teraz** (czerwona kreska), **minimum** (czerwona kropka) i **największy spadek** (czerwona kropkowana). Kafle: najniżej, największy spadek, realnie vs plan, czas pracy sprężarki.
+- Opcjonalne **słupki pracy sprężarki** (minuty w godzinie, niebieskie = CWU), można wyłączyć.
+- Bez nowych encji i bez zmian pakietu (zostaje 1.31). Historia czytana przez API HA. Wykres nic nie zmienia w pompie.
