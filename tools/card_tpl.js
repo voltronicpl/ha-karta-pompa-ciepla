@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.33';
+const PKG_VER = '1.34';
 const PKG = __PKG__;   // v1.28: spis pakietu HA (tools/pkgspec.py) - karta zaklada brakujace elementy przez API
 const DEFAULT_E = __ENTITIES__;
 const BG = 'data:image/jpeg;base64,__BG__';
@@ -301,6 +301,12 @@ class HaKartaPompaCiepla extends HTMLElement {
     const missing = lanes.filter((l) => !st[l.sch]);
     const espOn = (st[E.sch_n] && st[E.sch_n].state === 'on') || (st[E.sch_hw] && st[E.sch_hw].state === 'on');
     let h = '<div class="sh"><div class="sht">Harmonogram<small>tydzień, wszystko robi Home Assistant</small></div>';
+    // v1.34: plan tygodnia zapisany w ESP v5.5 (wykonuje go sam, gdy HA nie odpowiada > 5 min)
+    { const st = this._hass.states, pe = st[this._E.esp_plan], po = st[this._E.esp_off];
+      const pv = pe ? String(pe.state).split(',') : [];
+      h += '<div class="ds" style="margin:.2em 0 .6em">' + (!pe ? 'Plan w ESP: brak (wgraj ESP v5.5, wtedy bez HA pompa dalej idzie wg tego harmonogramu).'
+        : (pv.length >= 9 ? 'Plan w ESP zapisany ' + pv[8] + '. Bez HA (> 5 min) ESP sam ustawia wg niego CWU, cyrkulację, krzywą i grzałkę (bez obecności telefonów).' : 'Plan w ESP: jeszcze nie wysłany (automatyzacja „wyślij plan tygodnia do ESP”, pakiet ' + PKG_VER + ').'))
+        + (po && po.state === 'on' ? ' <b style="color:#ffb300">Teraz steruje ESP (brak HA).</b>' : '') + '</div>'; }
     if (espOn) h += '<div class="warn">⚠ Na ESP jest włączony własny harmonogram („Harmonogram nocny / CWU aktywny”). Planem ma rządzić Home Assistant, więc wyłącz go, bo będą się gryźć. <button data-a="more" data-e="' + (st[E.sch_n] && st[E.sch_n].state === 'on' ? E.sch_n : E.sch_hw) + '">Pokaż przełącznik</button></div>';
     h += '<div class="tabs">' + lanes.map((l) => {
       const on = st[l.en] && st[l.en].state === 'on', inw = st[l.sch] && st[l.sch].state === 'on';
@@ -494,7 +500,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const miss = need.filter((i) => !st[i]);
     const autoIds = {};
     Object.keys(st).forEach((k) => { if (k.startsWith('automation.') && st[k].attributes && st[k].attributes.id) autoIds[st[k].attributes.id] = 1; });
-    [['hp_auto_cyrk', 'automatyzacja „HP auto: cyrkulacja CWU wg harmonogramu i obecnosci”'], ['hp_auto_wstali', 'automatyzacja „HP auto: weekend - wstalismy (cyrkulacja)”'], ['hp_auto_cwu', 'automatyzacja „HP auto: CWU wg taryfy G12”'], ['hp_cwu_boost_koniec', 'automatyzacja „HP auto: koniec luksusu jednorazowego”'], ['hp_cyrk_wymus', 'automatyzacja „HP cyrkulacja: reczne wymuszenie z karty”']]
+    [['hp_auto_cyrk', 'automatyzacja „HP auto: cyrkulacja CWU wg harmonogramu i obecnosci”'], ['hp_auto_wstali', 'automatyzacja „HP auto: weekend - wstalismy (cyrkulacja)”'], ['hp_auto_cwu', 'automatyzacja „HP auto: CWU wg taryfy G12”'], ['hp_cwu_boost_koniec', 'automatyzacja „HP auto: koniec luksusu jednorazowego”'], ['hp_cyrk_wymus', 'automatyzacja „HP cyrkulacja: reczne wymuszenie z karty”'], ['hp_esp_plan', 'automatyzacja „HP plan: wyslij plan tygodnia do ESP”']]
       .forEach(([id, n]) => { if (!autoIds[id]) miss.push(n); });
     const vs = st['sensor.hp_pakiet_wersja'], ver = vs ? String(vs.state) : null;
     const num = (v) => String(v).split('.').map((x) => parseInt(x, 10) || 0);

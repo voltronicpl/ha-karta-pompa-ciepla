@@ -280,3 +280,11 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - Po czasie przejmuje automatyzacja albo plan. Gdy oba są wyłączone, cyrkulacja się wyłącza (praca 1 / postój 60).
 - Pakiet HA **1.33**: nowe `input_datetime.hp_cyrk_wymus_do`, `input_number.hp_cyrk_wymus_min`, automatyzacja `hp_cyrk_wymus`; zmienione `hp_plan_cyrk` i `hp_auto_cyrk` (czekają, dopóki trwa wymuszenie). Nic nie usunięte. Pakiet z karty: karta sama dołoży elementy (konto admina, zakładka Nauka). Pakiet w pliku YAML: wklej nowy `packages/hydrolution_karta.yaml` i zrób **pełny restart HA**.
 - Bez pakietu 1.33 klik działa jak wcześniej.
+
+## v1.34: plan tygodnia w ESP, działa bez HA (pakiet 1.34, ESP v5.5)
+
+- Nowa automatyzacja `hp_esp_plan` wysyła do ESP plan tygodnia (Pn–Nd, co 15 min) z harmonogramów: tryb CWU (okna; przy automatyzacji CWU bez harmonogramu strefy G12), cyrkulacja, obniżenie CO, grzałka, plus czasy i tryby. Wysyła tylko przy zmianie (co 15 min sprawdza), więc nie zużywa flasha ESP.
+- ESP v5.5 (osobny plik, nie w repo) trzyma plan we flashu. Gdy HA nie odpowiada ponad 5 min, ESP co minutę porównuje pompę z planem i zapisuje tylko różnice; tydzień powtarza się w kółko. Zegar z internetu (SNTP) albo z HA. Bez HA nie ma obecności telefonów, wykrywania wstania i luksusu jednorazowego.
+- ESP v5.5 pilnuje też „Produkcja CWU” (47387): wyłączona = włącza (przełącznik „Pilnuj produkcji CWU”).
+- Karta: zakładka Harmonogram pokazuje „Plan w ESP zapisany …” i „Teraz steruje ESP (brak HA)”.
+- Pakiet HA **1.34**: nowa automatyzacja `hp_esp_plan`; nic nie zmienione ani usunięte. Bez ESP v5.5 automatyzacja nic nie robi. Wymaga HA z akcją `schedule.get_schedule`.

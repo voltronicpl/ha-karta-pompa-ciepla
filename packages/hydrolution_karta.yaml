@@ -3,9 +3,9 @@
 # Wrzuc do /config/packages/ i dodaj w configuration.yaml:
 #   homeassistant:
 #     packages: !include_dir_named packages
-# Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...).
+# Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.33 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.34 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.33"
+        state: "1.34"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -859,3 +859,156 @@ automation:
       - action: select.select_option
         target: {entity_id: select.hydrolution_podgrzanie_cwu_jednorazowe}
         data: {option: "Jednorazowo"}
+
+  # 6) v1.34 Plan tygodnia do ESP (v5.5): ESP trzyma go we flashu i wykonuje sam, gdy HA nie odpowiada > 5 min.
+  #    Maski 7 dni x 96 kwadransow (hex, Pn..Nd) dla: tryb CWU (okno), cyrkulacja, obnizenie CO, grzalka + parametry.
+  #    Wysyla tylko, gdy cos sie zmienilo (oszczedza flash ESP). Bez ESP v5.5 (brak encji text.hydrolution_plan_offline_*) nic nie robi.
+  #    Bez HA ESP nie zna obecnosci ani luksusu jednorazowego: cyrkulacja wg okien, CWU wg okien (G12 albo harmonogram).
+  - id: hp_esp_plan
+    alias: "HP plan: wyslij plan tygodnia do ESP"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [input_boolean.hp_plan_cwu, input_boolean.hp_auto_cwu, input_boolean.hp_plan_cyrk, input_boolean.hp_auto_cyrk, input_boolean.hp_plan_noc, input_boolean.hp_plan_grz, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_select.hp_cwu_tryb_tania, input_number.hp_cwu_czekaj_min, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_text.hp_g12_strefy, input_boolean.hp_g12_weekend_tani]
+      - trigger: state
+        entity_id: text.hydrolution_plan_offline_parametry
+        from: unavailable
+      - trigger: time_pattern
+        minutes: "/15"
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: template
+        value_template: "{{ states('text.hydrolution_plan_offline_parametry') not in ['unavailable', 'unknown'] and states('text.hydrolution_plan_offline_cwu') not in ['unavailable', 'unknown'] }}"
+    actions:
+      - delay: {seconds: 5}
+      - variables:
+          lista: "{{ ['schedule.hp_plan_tryb_cwu', 'schedule.hp_plan_cyrkulacja_cwu', 'schedule.hp_plan_obnizenie_co', 'schedule.hp_plan_grzalka'] | select('in', states.schedule | map(attribute='entity_id') | list) | list }}"
+      - if:
+          - condition: template
+            value_template: "{{ lista | count > 0 }}"
+        then:
+          - action: schedule.get_schedule
+            target: {entity_id: "{{ lista }}"}
+            response_variable: harm
+            continue_on_error: true
+      - variables:
+          sch: "{{ harm if harm is defined and harm is mapping else {} }}"
+          auto_cwu: "{{ is_state('input_boolean.hp_auto_cwu', 'on') }}"
+          cwu_pusty: >-
+            {%- set sd = (sch.get('schedule.hp_plan_tryb_cwu') or {}) if sch is mapping else {} -%}
+            {{ sd.values() | map('count') | sum == 0 if sd is mapping else true }}
+          m_cwu: >-
+            {%- if auto_cwu and cwu_pusty -%}
+            {%- set s = states('input_text.hp_g12_strefy') -%}
+            {%- if s in ['', 'unknown', 'unavailable'] -%}{%- set s = '22:00-06:00,13:00-15:00' -%}{%- endif -%}
+            {%- set zz = namespace(l=[]) -%}
+            {%- for z in s.split(',') -%}{%- set p = z.strip().split('-') -%}{%- if p | count == 2 and ':' in p[0] and ':' in p[1] -%}
+            {%- set a = (p[0].split(':')[0] | int(0)) * 60 + (p[0].split(':')[1] | int(0)) -%}
+            {%- set b = (p[1].split(':')[0] | int(0)) * 60 + (p[1].split(':')[1] | int(0)) -%}
+            {%- if b > a -%}{%- set zz.l = zz.l + [[a, b]] -%}{%- else -%}{%- set zz.l = zz.l + [[a, 1440], [0, b]] -%}{%- endif -%}
+            {%- endif -%}{%- endfor -%}
+            {%- set we = is_state('input_boolean.hp_g12_weekend_tani', 'on') -%}
+            {%- set acc = namespace(l=[]) -%}
+            {%- for d in range(7) -%}{%- set acc.l = acc.l + [zz.l + ([[0, 1440]] if we and d >= 5 else [])] -%}{%- endfor -%}
+            {%- set dws = acc.l -%}
+            {%- else -%}
+            {%- set sd = (sch.get('schedule.hp_plan_tryb_cwu') or {}) if sch is mapping else {} -%}
+            {%- set acc = namespace(l=[]) -%}
+            {%- for dn in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] -%}{%- set ws = namespace(l=[]) -%}
+            {%- for w in (sd.get(dn) or []) -%}
+            {%- set a = (w['from'] | string).split(':') -%}{%- set b = (w['to'] | string).split(':') -%}
+            {%- set fm = (a[0] | int(0)) * 60 + (a[1] | int(0)) -%}{%- set tm = (b[0] | int(0)) * 60 + (b[1] | int(0)) -%}
+            {%- set ws.l = ws.l + [[fm, 1440 if tm == 0 else tm]] -%}
+            {%- endfor -%}{%- set acc.l = acc.l + [ws.l] -%}{%- endfor -%}
+            {%- set dws = acc.l -%}
+            {%- endif -%}
+            {%- set ns = namespace(h='') -%}
+            {%- for dw in dws -%}{%- for q in range(24) -%}{%- set nb = namespace(v=0) -%}
+            {%- for i in range(4) -%}{%- set m = (q * 4 + i) * 15 -%}{%- set on = namespace(b=false) -%}
+            {%- for w in dw -%}{%- if w[0] <= m < w[1] -%}{%- set on.b = true -%}{%- endif -%}{%- endfor -%}
+            {%- if on.b -%}{%- set nb.v = nb.v + 2 ** (3 - i) -%}{%- endif -%}
+            {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
+            {{- ns.h -}}
+          m_cyrk: >-
+            {%- set sd = (sch.get('schedule.hp_plan_cyrkulacja_cwu') or {}) if sch is mapping else {} -%}
+            {%- set acc = namespace(l=[]) -%}
+            {%- for dn in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] -%}{%- set ws = namespace(l=[]) -%}
+            {%- for w in (sd.get(dn) or []) -%}
+            {%- set a = (w['from'] | string).split(':') -%}{%- set b = (w['to'] | string).split(':') -%}
+            {%- set fm = (a[0] | int(0)) * 60 + (a[1] | int(0)) -%}{%- set tm = (b[0] | int(0)) * 60 + (b[1] | int(0)) -%}
+            {%- set ws.l = ws.l + [[fm, 1440 if tm == 0 else tm]] -%}
+            {%- endfor -%}{%- set acc.l = acc.l + [ws.l] -%}{%- endfor -%}
+            {%- set dws = acc.l -%}
+            {%- set ns = namespace(h='') -%}
+            {%- for dw in dws -%}{%- for q in range(24) -%}{%- set nb = namespace(v=0) -%}
+            {%- for i in range(4) -%}{%- set m = (q * 4 + i) * 15 -%}{%- set on = namespace(b=false) -%}
+            {%- for w in dw -%}{%- if w[0] <= m < w[1] -%}{%- set on.b = true -%}{%- endif -%}{%- endfor -%}
+            {%- if on.b -%}{%- set nb.v = nb.v + 2 ** (3 - i) -%}{%- endif -%}
+            {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
+            {{- ns.h -}}
+          m_noc: >-
+            {%- set sd = (sch.get('schedule.hp_plan_obnizenie_co') or {}) if sch is mapping else {} -%}
+            {%- set acc = namespace(l=[]) -%}
+            {%- for dn in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] -%}{%- set ws = namespace(l=[]) -%}
+            {%- for w in (sd.get(dn) or []) -%}
+            {%- set a = (w['from'] | string).split(':') -%}{%- set b = (w['to'] | string).split(':') -%}
+            {%- set fm = (a[0] | int(0)) * 60 + (a[1] | int(0)) -%}{%- set tm = (b[0] | int(0)) * 60 + (b[1] | int(0)) -%}
+            {%- set ws.l = ws.l + [[fm, 1440 if tm == 0 else tm]] -%}
+            {%- endfor -%}{%- set acc.l = acc.l + [ws.l] -%}{%- endfor -%}
+            {%- set dws = acc.l -%}
+            {%- set ns = namespace(h='') -%}
+            {%- for dw in dws -%}{%- for q in range(24) -%}{%- set nb = namespace(v=0) -%}
+            {%- for i in range(4) -%}{%- set m = (q * 4 + i) * 15 -%}{%- set on = namespace(b=false) -%}
+            {%- for w in dw -%}{%- if w[0] <= m < w[1] -%}{%- set on.b = true -%}{%- endif -%}{%- endfor -%}
+            {%- if on.b -%}{%- set nb.v = nb.v + 2 ** (3 - i) -%}{%- endif -%}
+            {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
+            {{- ns.h -}}
+          m_grz: >-
+            {%- set sd = (sch.get('schedule.hp_plan_grzalka') or {}) if sch is mapping else {} -%}
+            {%- set acc = namespace(l=[]) -%}
+            {%- for dn in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] -%}{%- set ws = namespace(l=[]) -%}
+            {%- for w in (sd.get(dn) or []) -%}
+            {%- set a = (w['from'] | string).split(':') -%}{%- set b = (w['to'] | string).split(':') -%}
+            {%- set fm = (a[0] | int(0)) * 60 + (a[1] | int(0)) -%}{%- set tm = (b[0] | int(0)) * 60 + (b[1] | int(0)) -%}
+            {%- set ws.l = ws.l + [[fm, 1440 if tm == 0 else tm]] -%}
+            {%- endfor -%}{%- set acc.l = acc.l + [ws.l] -%}{%- endfor -%}
+            {%- set dws = acc.l -%}
+            {%- set ns = namespace(h='') -%}
+            {%- for dw in dws -%}{%- for q in range(24) -%}{%- set nb = namespace(v=0) -%}
+            {%- for i in range(4) -%}{%- set m = (q * 4 + i) * 15 -%}{%- set on = namespace(b=false) -%}
+            {%- for w in dw -%}{%- if w[0] <= m < w[1] -%}{%- set on.b = true -%}{%- endif -%}{%- endfor -%}
+            {%- if on.b -%}{%- set nb.v = nb.v + 2 ** (3 - i) -%}{%- endif -%}
+            {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
+            {{- ns.h -}}
+          lit: "{{ {'Ekonomiczny': 'E', 'Normalny': 'N', 'Luksus': 'L', 'Smart': 'S'} }}"
+          c_in: "{{ lit.get(states('input_select.hp_cwu_tryb_tania') if auto_cwu else states('input_select.hp_cwu_tryb_w_oknie'), 'E' if auto_cwu else 'L') }}"
+          c_out: "{{ lit.get(states('input_select.hp_cwu_tryb_poza'), 'N') }}"
+          flagi: >-
+            {{ '1' if auto_cwu or is_state('input_boolean.hp_plan_cwu', 'on') else '0' -}}
+            {{ '1' if is_state('input_boolean.hp_auto_cyrk', 'on') or is_state('input_boolean.hp_plan_cyrk', 'on') else '0' -}}
+            {{ '1' if is_state('input_boolean.hp_plan_noc', 'on') else '0' -}}
+            {{ '1' if is_state('input_boolean.hp_plan_grz', 'on') else '0' }}
+          tresc: >-
+            {{ c_in }},{{ c_out }},{{ (states('input_number.hp_cwu_czekaj_min') | int(30)) if auto_cwu else 0 }},{{ states('input_number.hp_cyrk_praca') | int(60) }},{{ states('input_number.hp_cyrk_postoj') | int(0) }},{{ states('input_number.hp_noc_przesuniecie') | int(0) }},{{ states('input_number.hp_dzien_przesuniecie') | int(0) }},{{ flagi }}
+          zmiany: >-
+            {{ (states('text.hydrolution_plan_offline_cwu') != m_cwu) or (states('text.hydrolution_plan_offline_cyrkulacja') != m_cyrk) or (states('text.hydrolution_plan_offline_noc') != m_noc) or (states('text.hydrolution_plan_offline_grzalka') != m_grz) or ((states('text.hydrolution_plan_offline_parametry').split(',')[:8] | join(',')) != tresc) }}
+      - condition: template
+        value_template: "{{ zmiany and m_cwu | length == 168 }}"
+      - repeat:
+          for_each:
+            - {e: text.hydrolution_plan_offline_cwu, v: "{{ m_cwu }}"}
+            - {e: text.hydrolution_plan_offline_cyrkulacja, v: "{{ m_cyrk }}"}
+            - {e: text.hydrolution_plan_offline_noc, v: "{{ m_noc }}"}
+            - {e: text.hydrolution_plan_offline_grzalka, v: "{{ m_grz }}"}
+          sequence:
+            - if:
+                - condition: template
+                  value_template: "{{ states(repeat.item.e) != repeat.item.v }}"
+              then:
+                - action: text.set_value
+                  target: {entity_id: "{{ repeat.item.e }}"}
+                  data: {value: "{{ repeat.item.v }}"}
+      - action: text.set_value
+        target: {entity_id: text.hydrolution_plan_offline_parametry}
+        data: {value: "{{ tresc }},{{ now().strftime('%Y-%m-%d %H:%M') }}"}
