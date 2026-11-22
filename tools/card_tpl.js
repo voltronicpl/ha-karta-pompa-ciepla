@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.31';
+const PKG_VER = '1.33';
 const PKG = __PKG__;   // v1.28: spis pakietu HA (tools/pkgspec.py) - karta zaklada brakujace elementy przez API
 const DEFAULT_E = __ENTITIES__;
 const BG = 'data:image/jpeg;base64,__BG__';
@@ -490,11 +490,11 @@ class HaKartaPompaCiepla extends HTMLElement {
     const st = this._hass.states, E = this._E;
     const need = [E.auto_cyrk, 'input_number.hp_cyrk_po_wyjsciu', E.wstali, 'input_text.hp_wstalismy_zrodlo',
       'sensor.hp_cwu_srodek_zmiana', E.aktyw, 'sensor.hp_temperatura_zewnetrzna_bt1', 'sensor.hp_pakiet_wersja',
-      E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.g12_do, E.cwu_wait, E.cwu_boost, E.cwu_lux_max, 'input_datetime.hp_cwu_boost_ostatnio', E.cwu_tania, E.cwu_lux_on, E.cwu_poza];
+      E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.g12_do, E.cwu_wait, E.cwu_boost, E.cwu_lux_max, 'input_datetime.hp_cwu_boost_ostatnio', E.cwu_tania, E.cwu_lux_on, E.cwu_poza, E.cyrk_wymus, E.cyrk_wymus_min];
     const miss = need.filter((i) => !st[i]);
     const autoIds = {};
     Object.keys(st).forEach((k) => { if (k.startsWith('automation.') && st[k].attributes && st[k].attributes.id) autoIds[st[k].attributes.id] = 1; });
-    [['hp_auto_cyrk', 'automatyzacja „HP auto: cyrkulacja CWU wg harmonogramu i obecnosci”'], ['hp_auto_wstali', 'automatyzacja „HP auto: weekend - wstalismy (cyrkulacja)”'], ['hp_auto_cwu', 'automatyzacja „HP auto: CWU wg taryfy G12”'], ['hp_cwu_boost_koniec', 'automatyzacja „HP auto: koniec luksusu jednorazowego”']]
+    [['hp_auto_cyrk', 'automatyzacja „HP auto: cyrkulacja CWU wg harmonogramu i obecnosci”'], ['hp_auto_wstali', 'automatyzacja „HP auto: weekend - wstalismy (cyrkulacja)”'], ['hp_auto_cwu', 'automatyzacja „HP auto: CWU wg taryfy G12”'], ['hp_cwu_boost_koniec', 'automatyzacja „HP auto: koniec luksusu jednorazowego”'], ['hp_cyrk_wymus', 'automatyzacja „HP cyrkulacja: reczne wymuszenie z karty”']]
       .forEach(([id, n]) => { if (!autoIds[id]) miss.push(n); });
     const vs = st['sensor.hp_pakiet_wersja'], ver = vs ? String(vs.state) : null;
     const num = (v) => String(v).split('.').map((x) => parseInt(x, 10) || 0);
@@ -631,7 +631,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (r && r.id && r.id !== it.id) throw new Error('HA nadał inną nazwę: ' + d + '.' + r.id + ' (ta jest zajęta)');
       await hass.callWS(Object.assign({ type: d + '/update', [d + '_id']: it.id }, c));
       // wartosci domyslne tylko dla swiezej encji (nie nadpisuje przywroconej wartosci)
-      const DEF = { 'input_number.hp_cwu_lux_max': 60, 'input_number.hp_cwu_czekaj_min': 30, 'input_number.hp_cyrk_po_wyjsciu': 5, 'input_number.hp_noc_przesuniecie': -2,
+      const DEF = { 'input_number.hp_cwu_lux_max': 60, 'input_number.hp_cwu_czekaj_min': 30, 'input_number.hp_cyrk_po_wyjsciu': 5, 'input_number.hp_cyrk_wymus_min': 60, 'input_number.hp_noc_przesuniecie': -2,
         'input_number.hp_dzien_przesuniecie': 0, 'input_number.hp_cyrk_praca': 60, 'input_number.hp_cyrk_postoj': 0, 'input_text.hp_g12_strefy': '22:00-06:00,13:00-15:00',
         'input_select.hp_cwu_tryb_w_oknie': 'Luksus', 'input_select.hp_cwu_tryb_poza': 'Normalny' };
       if (DEF[eid] === undefined) return;
@@ -1343,8 +1343,10 @@ class HaKartaPompaCiepla extends HTMLElement {
     const sleepNow = Y && Y.ps[wd] && Y.ps[wd][slot] !== null && Y.ps[wd][slot] >= 0.5;
     const wsS = st[E.wstali], wsD = wsS ? new Date(String(wsS.state).replace(' ', 'T')) : null;
     const rano = wsD && !isNaN(wsD) && (now.getDay() === 0 || now.getDay() === 6) && now - wsD >= 0 && wsD.toDateString() === now.toDateString() && now.getHours() < 12;
+    const wy = this._hwcWymus();
     let why;
-    if (!auOn) why = 'automatyzacja wyłączona, cyrkulacją sterujesz ręcznie albo przez harmonogram na głównej';
+    if (wy) why = 'wymuszona ręcznie z karty do ' + new Date(wy * 1000).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ' (automatyzacja w tym czasie nic nie zmienia)';
+    else if (!auOn) why = 'automatyzacja wyłączona, cyrkulacją sterujesz ręcznie albo przez harmonogram na głównej';
     else if (!ktos) why = 'pusty dom (nikogo z telefonem w domu), po ' + (st['input_number.hp_cyrk_po_wyjsciu'] ? Math.round(Number(st['input_number.hp_cyrk_po_wyjsciu'].state)) : 10) + ' min cyrkulacja się wyłącza';
     else if (inWin) why = 'ktoś jest w domu i trwa okno harmonogramu';
     else if (rano) why = 'weekend: wstaliście o ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ' (sygnał: ' + this._nauSig() + ')';
@@ -1355,6 +1357,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!au) h += '<div class="info">Brak przełącznika <code>' + E.auto_cyrk + '</code>. Dodaj pakiet <code>packages/hydrolution_karta.yaml</code> z wersji v1.15 i przeładuj konfigurację HA.</div>';
     const pwy = st['input_number.hp_cyrk_po_wyjsciu'], pwyV = pwy ? Math.round(Number(pwy.state)) : 5;
     h += '<div class="lh wk"><label>Po wyjściu wszystkich wyłącz po <input type="number" min="0" max="60" step="1" data-a="pwy" value="' + pwyV + '"' + (pwy ? '' : ' disabled') + '> min</label>' + (pwy ? '' : '<span class="ds">brak <code>input_number.hp_cyrk_po_wyjsciu</code>: wklej pakiet v1.19 (do tego czasu 10 min)</span>') + '</div>';
+    const wmn = st[E.cyrk_wymus_min], wmnV = wmn ? Math.round(Number(wmn.state)) : 60;
+    h += '<div class="lh wk"><label>Klik w pompkę na głównej włącza cyrkulację na <input type="number" min="15" max="240" step="15" data-a="wmn" value="' + wmnV + '"' + (wmn ? '' : ' disabled') + '> min</label><span class="ds">' + (wmn && st[E.cyrk_wymus] ? 'tyle chodzi bez przerwy, automatyzacja tego nie nadpisuje; drugi klik wyłącza' : 'brak <code>' + E.cyrk_wymus_min + '</code>: wklej pakiet ' + PKG_VER + ' (do tego czasu klik działa jak wcześniej i automatyzacja może go nadpisać)') + '</span></div>';
     if (au) h += '<div class="wn" style="margin:-.3em 0 .8em">Włączona: harmonogram „Cyrkulacja CWU” z głównej zakładki + obecność telefonów. Od wstania do snu chodzi cały czas, dopóki ktoś jest w domu. Wszyscy wyszli (' + pwyV + ' min) = wyłączona, ktoś wrócił = od razu włączona, sen = wyłączona (okno kończy się o porze snu). Zastępuje wtedy przełącznik „Aktywne” cyrkulacji z harmonogramu.</div>';
     if (!Y) return h + '<div class="info">Brak danych obecności (encje person.* z telefonami).</div></div>';
     h += '<div class="lh"><span>W domu: <b>' + homeN + ' z ' + pers.length + '</b> (' + pers.map((i) => esc(((st[i] && st[i].attributes.friendly_name) || i) + ': ' + (st[i] ? (st[i].state === 'home' ? 'w domu' : st[i].state === 'not_home' ? 'poza' : st[i].state) : '?'))).join(', ') + ')</span>' +
@@ -1850,6 +1854,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         if (a === 'cluxmax') { const v = parseInt(t.value, 10), id = this._E.cwu_lux_max; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(15, Math.min(240, v)) }); return; }
         if (a === 'cwait') { const v = parseInt(t.value, 10), id = this._E.cwu_wait; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(0, Math.min(180, v)) }); return; }
         if (a === 'cprog') { const v = parseFloat(String(t.value).replace(',', '.')); if (isFinite(v) && v >= 0 && v <= 20) N.src.cwuProg = v; else delete N.src.cwuProg; this._nauSrcSave(); this._nauRender(); return; }
+        if (a === 'wmn') { const v = parseInt(t.value, 10), id = this._E.cyrk_wymus_min; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(15, Math.min(240, Math.round(v / 15) * 15)) }); return; }
         if (a === 'pwy') { const v = parseInt(t.value, 10), id = 'input_number.hp_cyrk_po_wyjsciu'; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(0, Math.min(60, v)) }); return; }
         if (a === 'wk' || a === 'wt' || a === 'wp' || a === 'won') {
           const w = N.src.wake = Object.assign({}, N.src.wake || {}), k = t.getAttribute('data-k');
@@ -2078,6 +2083,12 @@ class HaKartaPompaCiepla extends HTMLElement {
     };
     p._upd();
   }
+  // v1.33: do kiedy trwa reczne wymuszenie cyrkulacji (sekundy epoch) albo 0
+  _hwcWymus() {
+    const w = this._hass && this._hass.states[this._E.cyrk_wymus];
+    const t = w && w.attributes ? Number(w.attributes.timestamp) : 0;
+    return t > Date.now() / 1000 ? t : 0;
+  }
   _hwc(node) {
     // SMO40 nie ma rejestru wl/wyl cyrkulacji: "wylacz" = praca 1 min / postoj 60 min, "wlacz" = poprzednie czasy
     const hass = this._hass, E = this._E, KEY = 'hkpc_hwc_prev';
@@ -2085,6 +2096,15 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!r || !s) { this._more(E.hwc_run); return; }
     const run = Number(r.state), still = Number(s.state);
     const on = !(run <= 1 && still >= 60);
+    // v1.33: z pakietem 1.33 wlaczenie = wymuszenie na X min (automatyzacje go nie nadpisuja), wylaczenie konczy wymuszenie
+    const wE = hass.states[E.cyrk_wymus], wM = hass.states[E.cyrk_wymus_min];
+    if (wE && !on) {
+      const min = wM ? Math.max(15, Number(wM.state) || 60) : 60;
+      hass.callService('input_datetime', 'set_datetime', { entity_id: E.cyrk_wymus, timestamp: Math.floor(Date.now() / 1000 + min * 60) });
+      this._waitFor(E.hwc_run, (st) => st[E.hwc_run] && Number(st[E.hwc_run].state) === 60 && st[E.hwc_still] && Number(st[E.hwc_still].state) === 0, node);
+      return;
+    }
+    if (wE && on && this._hwcWymus()) hass.callService('input_datetime', 'set_datetime', { entity_id: E.cyrk_wymus, timestamp: Math.floor(Date.now() / 1000) });
     let tr, ts;
     if (on) {
       try { localStorage.setItem(KEY, JSON.stringify({ run, still })); } catch (e) { /* brak */ }

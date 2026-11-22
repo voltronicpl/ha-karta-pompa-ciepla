@@ -273,3 +273,10 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - Zaznaczone: **tania strefa G12** (zielone tło), **teraz** (czerwona kreska), **minimum** (czerwona kropka) i **największy spadek** (czerwona kropkowana). Kafle: najniżej, największy spadek, realnie vs plan, czas pracy sprężarki.
 - Opcjonalne **słupki pracy sprężarki** (minuty w godzinie, niebieskie = CWU), można wyłączyć.
 - Bez nowych encji i bez zmian pakietu (zostaje 1.31). Historia czytana przez API HA. Wykres nic nie zmienia w pompie.
+
+## v1.33: ręczne włączenie cyrkulacji z karty ma pierwszeństwo (pakiet 1.33)
+
+- Klik w pompkę cyrkulacji na głównej włącza ją na X min (domyślnie 60, ustawiasz w Nauka → Cyrkulacja: „Klik w pompkę na głównej włącza cyrkulację na … min”). W tym czasie praca 60 min / postój 0, a automatyzacje „cyrkulacja wg harmonogramu i obecności” i „plan cyrkulacji” jej nie nadpisują (wcześniej automatyzacja co 5 min wyłączała ją z powrotem). Drugi klik wyłącza od razu.
+- Po czasie przejmuje automatyzacja albo plan. Gdy oba są wyłączone, cyrkulacja się wyłącza (praca 1 / postój 60).
+- Pakiet HA **1.33**: nowe `input_datetime.hp_cyrk_wymus_do`, `input_number.hp_cyrk_wymus_min`, automatyzacja `hp_cyrk_wymus`; zmienione `hp_plan_cyrk` i `hp_auto_cyrk` (czekają, dopóki trwa wymuszenie). Nic nie usunięte. Pakiet z karty: karta sama dołoży elementy (konto admina, zakładka Nauka). Pakiet w pliku YAML: wklej nowy `packages/hydrolution_karta.yaml` i zrób **pełny restart HA**.
+- Bez pakietu 1.33 klik działa jak wcześniej.

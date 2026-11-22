@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...).
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.31 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.33 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.31"
+        state: "1.33"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -369,6 +369,12 @@ input_datetime:
     has_date: true
     has_time: true
     icon: mdi:alarm
+  # v1.33: reczne wymuszenie cyrkulacji z karty (klik w pompke) - do kiedy. Wymuszenie ma pierwszenstwo przed automatyzacjami.
+  hp_cyrk_wymus_do:
+    name: "HP cyrkulacja: wymuszona do"
+    has_date: true
+    has_time: true
+    icon: mdi:pump
 
 input_number:
   # v1.27: maks. czas luksusu jednorazowego z wstrzymanym CO (Reczny), potem powrot do Auto. Karta wpisuje 60 przy pierwszym uruchomieniu.
@@ -385,6 +391,14 @@ input_number:
     min: 0
     max: 180
     step: 5
+    mode: box
+    unit_of_measurement: "min"
+  # v1.33: na ile minut klik w pompke na karcie wymusza cyrkulacje (karta przy pierwszym uruchomieniu wpisuje 60)
+  hp_cyrk_wymus_min:
+    name: "HP cyrkulacja: wymuszenie z karty na"
+    min: 15
+    max: 240
+    step: 15
     mode: box
     unit_of_measurement: "min"
   # v1.19: ustawiane z zakladki Nauka (karta przy pierwszym uruchomieniu wpisuje 5)
@@ -624,6 +638,10 @@ automation:
       - trigger: state
         entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_plan_cyrk, input_boolean.hp_auto_cyrk]
       - trigger: state
+        entity_id: input_datetime.hp_cyrk_wymus_do
+      - trigger: time
+        at: input_datetime.hp_cyrk_wymus_do
+      - trigger: state
         entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy
         from: unavailable
       - trigger: homeassistant
@@ -640,6 +658,9 @@ automation:
             state: "on"
       - condition: template
         value_template: "{{ has_value('number.hydrolution_cyrkulacja_cwu_czas_pracy') and has_value('number.hydrolution_cyrkulacja_cwu_czas_postoju') }}"
+      # v1.33: reczne wymuszenie z karty ma pierwszenstwo
+      - condition: template
+        value_template: "{{ (state_attr('input_datetime.hp_cyrk_wymus_do', 'timestamp') | float(0)) <= now().timestamp() }}"
     actions:
       - variables:
           w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
@@ -665,6 +686,10 @@ automation:
       - trigger: state
         entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk, input_datetime.hp_wstalismy, input_number.hp_cyrk_po_wyjsciu]
       - trigger: state
+        entity_id: input_datetime.hp_cyrk_wymus_do
+      - trigger: time
+        at: input_datetime.hp_cyrk_wymus_do
+      - trigger: state
         entity_id: zone.home
         to: "0"
         for: {minutes: "{{ states('input_number.hp_cyrk_po_wyjsciu') | int(5) }}"}
@@ -684,6 +709,9 @@ automation:
         state: "on"
       - condition: template
         value_template: "{{ has_value('number.hydrolution_cyrkulacja_cwu_czas_pracy') and has_value('number.hydrolution_cyrkulacja_cwu_czas_postoju') }}"
+      # v1.33: reczne wymuszenie z karty ma pierwszenstwo (co 5 min go nie nadpisuje)
+      - condition: template
+        value_template: "{{ (state_attr('input_datetime.hp_cyrk_wymus_do', 'timestamp') | float(0)) <= now().timestamp() }}"
     actions:
       - variables:
           ktos: "{{ states('zone.home') | int(0) > 0 }}"
@@ -698,6 +726,46 @@ automation:
           wl: "{{ (w_oknie or rano) and not pusto_dlugo }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if wl else 1 }}"
           postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if wl else 60 }}"
+      - condition: template
+        value_template: "{{ (states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0)) != praca or (states('number.hydrolution_cyrkulacja_cwu_czas_postoju') | float(0)) != postoj }}"
+      - action: number.set_value
+        target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy}
+        data: {value: "{{ praca }}"}
+      - action: number.set_value
+        target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
+        data: {value: "{{ postoj }}"}
+
+  # 3a) v1.33 Reczne wymuszenie cyrkulacji z karty (klik w pompke): do input_datetime.hp_cyrk_wymus_do
+  #     praca 60 min / postoj 0 (chodzi caly czas). Automatyzacje 3) i 3b) w tym czasie nic nie zmieniaja.
+  #     Koniec wymuszenia: przejmuje automatyzacja / plan, a gdy obie wylaczone - wylaczona (praca 1 / postoj 60).
+  - id: hp_cyrk_wymus
+    alias: "HP cyrkulacja: reczne wymuszenie z karty"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: input_datetime.hp_cyrk_wymus_do
+        id: start
+      - trigger: state
+        entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy
+        from: unavailable
+        id: start
+      - trigger: homeassistant
+        event: start
+        id: start
+      - trigger: time
+        at: input_datetime.hp_cyrk_wymus_do
+        id: koniec
+    conditions:
+      - condition: template
+        value_template: "{{ has_value('number.hydrolution_cyrkulacja_cwu_czas_pracy') and has_value('number.hydrolution_cyrkulacja_cwu_czas_postoju') }}"
+    actions:
+      - variables:
+          aktywne: "{{ (state_attr('input_datetime.hp_cyrk_wymus_do', 'timestamp') | float(0)) > now().timestamp() }}"
+          steruje: "{{ is_state('input_boolean.hp_auto_cyrk', 'on') or is_state('input_boolean.hp_plan_cyrk', 'on') }}"
+          praca: "{{ 60 if aktywne else 1 }}"
+          postoj: "{{ 0 if aktywne else 60 }}"
+      - condition: template
+        value_template: "{{ aktywne or (trigger.id == 'koniec' and not steruje) }}"
       - condition: template
         value_template: "{{ (states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0)) != praca or (states('number.hydrolution_cyrkulacja_cwu_czas_postoju') | float(0)) != postoj }}"
       - action: number.set_value
