@@ -171,3 +171,7 @@ Uwaga: jeśli jakieś światło świeci całą noc, sensor aktywności już jest
 - „i __ min po wstaniu” (domyślnie 30): okno po wstaniu trwa od X min przed do Y min po wstaniu (w weekend tyle trwa cyrkulacja po wykryciu wstania, `input_number.hp_cyrk_po_wstaniu`). Jeśli zwykle jesteście wtedy w domu i nie śpicie, łączy się z oknem obecności i wychodzi dłużej.
 - „Przelicz” pokazuje, co się zmieniło od poprzedniego liczenia: lista różnic (punkty krzywej, pora wstawania, okna cyrkulacji dzień po dniu), szara przerywana linia na wykresie krzywej i szare ramki starych okien. Nic się nie zapisuje do harmonogramu bez „Wyślij na główną”.
 - Wymaga wklejenia nowego pakietu (dwa nowe `input_number`). Karta przy pierwszym uruchomieniu wpisze w nie 5 i 30.
+
+## v1.20: po wstaniu cyrkulacja chodzi, dopóki jesteście w domu
+
+Propozycja w Nauce to jedno okno na dzień: od „X min przed wstaniem” aż do pory snu (pora snu z historii, osobno dla każdego dnia tygodnia). W tym oknie automatyzacja trzyma cyrkulację włączoną cały czas, dopóki ktoś jest w domu. Wyłącza się, gdy wszyscy wyjdą (po czasie „po wyjściu”, domyślnie 5 min) albo gdy kończy się okno, czyli zaczyna się pora snu. Gdy ktoś wróci, od razu się włącza. W weekend rusza od wykrytego wstania i chodzi tak samo. Pole „min. __ min pracy po wstaniu” (domyślnie 30) to teraz minimalny czas pracy od startu okna rano albo od wykrycia wstania, nawet jeśli wszyscy wyjdą wcześniej. Automatyzacja sprawdza stan co 5 min. Wymaga wklejenia nowego pakietu.

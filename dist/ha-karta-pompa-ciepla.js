@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.19
+ * ha-karta-pompa-ciepla  v1.20
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,7 +9,7 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.19';
+const VERSION = 'v1.20';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -1599,7 +1599,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (a.wake[0] !== b.wake[0]) out.push('Wstawanie Pn–Pt: ' + f(a.wake[0]) + ' → ' + f(b.wake[0]));
       if (a.wake[1] !== b.wake[1]) out.push('Wstawanie So–Nd: ' + f(a.wake[1]) + ' → ' + f(b.wake[1]));
       if (a.wake[2] !== b.wake[2]) out.push('Przed wstaniem: ' + a.wake[2] + ' → ' + b.wake[2] + ' min');
-      if (a.wake[3] !== b.wake[3]) out.push('Po wstaniu: ' + a.wake[3] + ' → ' + b.wake[3] + ' min');
+      if (a.wake[3] !== b.wake[3]) out.push('Min. czas pracy po wstaniu: ' + a.wake[3] + ' → ' + b.wake[3] + ' min');
     }
     const txt = (d) => (d && d.length ? d.map((x) => f(x.f) + '–' + f(x.t)).join(', ') : 'brak');
     if (a.blocks && b.blocks) for (let i = 0; i < 7; i++) { const x = txt(a.blocks[i]), y = txt(b.blocks[i]); if (x !== y) out.push('Cyrkulacja ' + DL[i] + ': ' + x + ' → ' + y); }
@@ -1619,18 +1619,34 @@ class HaKartaPompaCiepla extends HTMLElement {
     const post = Math.max(0, Math.min(180, Number(w.post !== undefined ? w.post : 30)));
     return { wd: pick(w.wd, aWd, 390), we: pick(w.we, aWe, 480), pre, post, on: w.on !== false, aWd, aWe, nWd: Y ? (Y.wakeWd || []).length : 0, nWe: Y ? (Y.wakeWe || []).length : 0 };
   }
-  _nauBase(Y) {
-    // propozycja + okno cyrkulacji od (wstanie - X min) do wstania + 30 min
-    const out = (Y.blocks || []).map((d) => (d ? JSON.parse(JSON.stringify(d)) : null));
-    const W = this._nauWake(Y);
-    if (!W.on) return out;
+  _nauSleepStart(Y) {
+    // pora snu na kazdy dzien: pierwszy kwadrans po 18:00 z sen >= 50 %, albo po polnocy (nastepny dzien do 6:00)
+    const out = [];
     for (let i = 0; i < 7; i++) {
-      const m = (i >= 5 ? W.we : W.wd).m;
-      const f = Math.max(0, m - W.pre), t = Math.min(1440, m + W.post);
-      out[i] = this._schNorm((out[i] || []).concat([{ f, t }]));
+      const ps = (Y.ps && Y.ps[i]) || [], nx = (Y.ps && Y.ps[(i + 1) % 7]) || [];
+      let end = null, early = null;
+      for (let k = 72; k < 96; k++) if (ps[k] !== null && ps[k] >= 0.5) { end = k * 15; break; }
+      if (end === null) { for (let k = 0; k < 24; k++) if (nx[k] !== null && nx[k] >= 0.5) { end = 1440; early = k * 15; break; } }
+      if (end === null) { const sf = Y.sleepFrom; if (sf !== null && sf >= 720) end = sf; else { end = 1440; early = sf !== null && sf < 360 ? sf : null; } }
+      out.push({ end, early });
     }
     return out;
   }
+  _nauBase(Y) {
+    // v1.20: propozycja = od (wstanie - X min) do pory snu; obecnosc (wszyscy wyszli) wylacza na biezaco automatyzacja w HA
+    const out = (Y.blocks || []).map((d) => (d ? JSON.parse(JSON.stringify(d)) : null));
+    const W = this._nauWake(Y);
+    if (!W.on) return out;
+    const SS = this._nauSleepStart(Y);
+    for (let i = 0; i < 7; i++) {
+      const m = (i >= 5 ? W.we : W.wd).m;
+      const f = Math.max(0, m - W.pre), t = Math.max(f + 15, Math.min(1440, SS[i].end));
+      out[i] = this._schNorm((out[i] || []).concat([{ f, t }]));
+      if (SS[i].early) { const j = (i + 1) % 7; out[j] = this._schNorm((out[j] || []).concat([{ f: 0, t: SS[i].early }])); }
+    }
+    return out;
+  }
+
   _nauEdit() {
     const N = this._nau;
     if (!N.edit) N.edit = (N.res && N.res.cyrk) ? this._nauBase(N.res.cyrk) : [null, null, null, null, null, null, null];
@@ -1693,7 +1709,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!au) h += '<div class="info">Brak przełącznika <code>' + E.auto_cyrk + '</code>. Dodaj pakiet <code>packages/hydrolution_karta.yaml</code> z wersji v1.15 i przeładuj konfigurację HA.</div>';
     const pwy = st['input_number.hp_cyrk_po_wyjsciu'], pwyV = pwy ? Math.round(Number(pwy.state)) : 5;
     h += '<div class="lh wk"><label>Po wyjściu wszystkich wyłącz po <input type="number" min="0" max="60" step="1" data-a="pwy" value="' + pwyV + '"' + (pwy ? '' : ' disabled') + '> min</label>' + (pwy ? '' : '<span class="ds">brak <code>input_number.hp_cyrk_po_wyjsciu</code>: wklej pakiet v1.19 (do tego czasu 10 min)</span>') + '</div>';
-    if (au) h += '<div class="wn" style="margin:-.3em 0 .8em">Włączona: harmonogram „Cyrkulacja CWU” z głównej zakładki + obecność telefonów. Wszyscy wyszli (' + pwyV + ' min) = wyłączona, ktoś wrócił = od razu wg harmonogramu, sen blokuje (okna omijają sen). Zastępuje wtedy przełącznik „Aktywne” cyrkulacji z harmonogramu.</div>';
+    if (au) h += '<div class="wn" style="margin:-.3em 0 .8em">Włączona: harmonogram „Cyrkulacja CWU” z głównej zakładki + obecność telefonów. Od wstania do snu chodzi cały czas, dopóki ktoś jest w domu. Wszyscy wyszli (' + pwyV + ' min) = wyłączona, ktoś wrócił = od razu włączona, sen = wyłączona (okno kończy się o porze snu). Zastępuje wtedy przełącznik „Aktywne” cyrkulacji z harmonogramu.</div>';
     if (!Y) return h + '<div class="info">Brak danych obecności (encje person.* z telefonami).</div></div>';
     h += '<div class="lh"><span>W domu: <b>' + homeN + ' z ' + pers.length + '</b> (' + pers.map((i) => esc(((st[i] && st[i].attributes.friendly_name) || i) + ': ' + (st[i] ? (st[i].state === 'home' ? 'w domu' : st[i].state === 'not_home' ? 'poza' : st[i].state) : '?'))).join(', ') + ')</span>' +
       '<span class="ds">Sen: ' + (Y.actN ? 'wykryty z ' + Y.nights + ' nocy' + (Y.sleepFrom !== null ? ', zwykle ok. ' + fmt(Y.sleepFrom) + '–' + fmt(Y.sleepTo) : '') + (Y.defN ? '; ' + Y.defN + ' nocy bez wyraźnego snu: przyjęte 23:00–6:00' : '') : 'brak encji aktywności, przyjęty 23:00–6:00') +
@@ -1707,9 +1723,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     const wsToday = wsD && !isNaN(wsD) && wsD.toDateString() === new Date().toDateString();
     h += '<div class="lh wk"><b>Pora wstawania</b>' + wOpt('wd', 'Pn–Pt (stała):', ws.wd, W.aWd) + wOpt('we', 'So–Nd (sugestia):', ws.we, W.aWe) +
       '<label>cyrkulacja <input type="number" min="0" max="120" step="5" data-a="wp" value="' + W.pre + '"> min przed</label>' +
-      '<label>i <input type="number" min="0" max="180" step="5" data-a="wpo" value="' + W.post + '"> min po wstaniu</label>' +
+      '<label>min. <input type="number" min="0" max="180" step="5" data-a="wpo" value="' + W.post + '"> min pracy po wstaniu</label>' +
       '<label><input type="checkbox" data-a="won"' + (W.on ? ' checked' : '') + '> dodaj do propozycji</label>' +
-      '<span class="ds">Auto: Pn–Pt ' + (W.aWd !== null ? fmt(W.aWd) + ' (z ' + W.nWd + ' poranków)' : 'brak historii, przyjęte 6:30') + ', So–Nd ' + (W.aWe !== null ? fmt(W.aWe) + ' (z ' + W.nWe + ' poranków)' : 'brak historii, przyjęte 8:00') + '. Okno cyrkulacji: od ' + W.pre + ' min przed wstaniem do ' + W.post + ' min po wstaniu; jeśli zwykle jesteście wtedy w domu i nie śpicie, łączy się z oknem obecności i trwa dłużej. Wstanie = koniec wykrytego snu (telefony + aktywność). W weekend godzina to tylko sugestia: przy włączonej automatyzacji cyrkulacja rusza na ' + W.post + ' min od pierwszej aktywności rano (światła, ruch, ekran telefonu, media; 5:00–11:00), a bez sygnału zostaje okno z sugestii.' +
+      '<span class="ds">Auto: Pn–Pt ' + (W.aWd !== null ? fmt(W.aWd) + ' (z ' + W.nWd + ' poranków)' : 'brak historii, przyjęte 6:30') + ', So–Nd ' + (W.aWe !== null ? fmt(W.aWe) + ' (z ' + W.nWe + ' poranków)' : 'brak historii, przyjęte 8:00') + '. Okno cyrkulacji: od ' + W.pre + ' min przed wstaniem aż do pory snu. W tym czasie cyrkulacja chodzi cały czas, dopóki ktoś jest w domu; gdy wszyscy wyjdą, wyłącza się po czasie „po wyjściu” (automatyzacja), po powrocie wraca. Przez pierwsze ' + W.post + ' min od startu okna / od wstania chodzi zawsze (minimum). Wstanie = koniec wykrytego snu (telefony + aktywność). W weekend godzina to tylko sugestia: przy włączonej automatyzacji cyrkulacja rusza od pierwszej aktywności rano i chodzi, dopóki ktoś jest w domu (min. ' + W.post + ' min) (światła, ruch, ekran telefonu, media; 5:00–11:00), a bez sygnału zostaje okno z sugestii.' +
       (wsS ? ' Weekend, ostatnio wstaliście: <b>' + (wsToday ? 'dziś ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : (isNaN(wsD) || wsD.getFullYear() < 2000 ? '–' : wsD.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }))) + '</b> (z czujników).' : ' Brak <code>' + E.wstali + '</code>: dodaj pakiet v1.18.') + (N.edit ? ' Masz ręczne poprawki okien: zmiana pory wstawania zadziała po „Przywróć propozycję”.' : '') + '</span></div>';
     const S = this._sch, main = S && S.data && S.data.cyrk ? this._schFromItem(S.data.cyrk) : null;
     const grad = (arr, rgb, mx) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(' + rgb + ',' + (v === null ? 0 : (v * mx).toFixed(2)) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
