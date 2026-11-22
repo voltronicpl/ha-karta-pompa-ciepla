@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generator karty HA (picture-elements na tle 1672x941) + podgladu HTML."""
-import json, re, sys, yaml
+import json, os, re, sys, yaml
 
 W, H = 1672, 941
 OUT = sys.argv[1]
@@ -775,7 +775,9 @@ return '<svg viewBox="0 0 484 138" style="position:absolute;inset:0;width:100%;h
             json.dumps(style), json.dumps(keys), json.dumps(ent), json.dumps(tap), 'true' if hist else 'false', body))
     bg = base64.b64encode(open('tlo.jpg', 'rb').read()).decode()
     src = open('card_tpl.js').read()
-    for a, b in [('__VERSION__', VERSION), ('__ENTITIES__', json.dumps(E, indent=1)), ('__TREND__', json.dumps(['bt7', 'bt12', 'bt3', 'bt25'])),
+    import pkgspec
+    PKGSPEC = pkgspec.build(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+    for a, b in [('__PKG__', json.dumps(PKGSPEC, ensure_ascii=False, separators=(',', ':'))), ('__VERSION__', VERSION), ('__ENTITIES__', json.dumps(E, indent=1)), ('__TREND__', json.dumps(['bt7', 'bt12', 'bt3', 'bt25'])),
                  ('__EXTRA__', json.dumps(EXTRA)), ('__FONT__', json.dumps(FONT)), ('__ELEMENTS__', ',\n'.join(out)), ('__BG__', bg)]:
         src = src.replace(a, b)
     open(JSOUT, 'w').write(src)

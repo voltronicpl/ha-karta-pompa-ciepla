@@ -234,3 +234,16 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - **Przycisk „CWU”** na głównej robi to samo (luksus jednorazowy + CO wstrzymane do zagrzania, max czas jak wyżej), już nie wyłącza CO na stałe. **„Auto”** przerywa i od razu wraca na Auto z CO.
 - Nauka → CWU: pole „maks. czas luksusu”, linia stanu (tryb pracy, CO, podgrzanie jednorazowe, ile trwa luksus).
 - Pakiet HA **1.25**: nowe `input_number.hp_cwu_lux_max`, `input_text.hp_cwu_boost`, `input_datetime.hp_cwu_boost_ostatnio`, skrypty `hp_cwu_boost_start` / `hp_cwu_boost_stop`, automatyzacja `hp_cwu_boost_koniec`; zmienione `hp_auto_cwu`, `hp_tryb_auto`, `hp_tryb_co`, `hp_tryb_cwu`. Wklej pakiet i zrób **pełny restart HA**.
+
+## v1.28: karta sama instaluje i aktualizuje pakiet HA (bez wklejania plików)
+
+- **Nauka → „Zainstaluj / napraw pakiet”** (tylko konto administratora HA). Karta najpierw pokazuje listę tego, co dołoży, a zakłada dopiero po kliknięciu. Robi to przez API Home Assistanta, bez restartu:
+  - pomocniki `input_boolean` / `input_number` / `input_text` / `input_datetime` / `input_select` (wartości domyślne tylko dla świeżych: 5 min po wyjściu, 60 min luksus, 30 min czekaj, strefy G12, Luksus / Normalny, −2 / 0, 60 / 0),
+  - skrypty i automatyzacje (do `scripts.yaml` i `automations.yaml`, z opisem „Utworzone przez kartę…”),
+  - czujniki szablonowe, liczniki `utility_meter`, `history_stats` i `derivative` jako pomocnicy z interfejsu (te same nazwy encji co w pakiecie YAML),
+  - czujnik „antylegionella ostatnio” (w YAML jest wyzwalany szablonem, czego API nie umie) karta robi jako pomocnik + automatyzacja + szablon, pod tą samą nazwą encji.
+- **Aktualizacje same z HACS:** gdy pakiet jest zainstalowany przez kartę (`input_text.hp_pakiet_karta` = wersja), po aktualizacji karty dokłada brakujące i poprawia **swoje** elementy zmienione w nowszej wersji, i pokazuje komunikat, co zrobiła. Twoich własnych encji i automatyzacji nie rusza, niczego nie kasuje.
+- **Pakiet YAML ma pierwszeństwo:** gdy w HA jest plik `packages/hydrolution_karta.yaml`, karta niczego nie zakłada (żeby nie było podwójnych encji i automatyzacji). Pokazuje, co jest nowe, i dwie drogi: A) wkleić nowy plik + pełny restart (jak dotąd), B) raz zmienić nazwę pliku na `hydrolution_karta.yaml.bak`, pełny restart, potem „Zainstaluj / napraw pakiet”, i od tej pory aktualizuje się samo.
+- Po pakiecie YAML HA zostawia w rejestrze encji stare wpisy czujników szablonowych (encja „niedostępna”), które trzymają nazwy. Karta je pokazuje i daje przycisk **„Zwolnij nazwy”** (usuwa tylko te osierocone wpisy, na kliknięcie; historia zostaje), albo usuwasz je sam w Ustawienia → Encje.
+- Plik `packages/hydrolution_karta.yaml` zostaje w repo jako plan B (wersja pakietu bez zmian: 1.25). Spis dla karty generuje `tools/pkgspec.py` z tego pliku (wersja każdego elementu z historii gita).
+- Sprawdzone na testowym Home Assistant 2026.2: instalacja od zera, przejście z pakietu YAML (zwolnienie nazw + instalacja, te same nazwy encji) i samoczynna aktualizacja ze starszej wersji (zmiana zachowuje ustawione wartości).

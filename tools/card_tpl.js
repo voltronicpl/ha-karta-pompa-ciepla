@@ -12,6 +12,7 @@
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
 const PKG_VER = '1.25';
+const PKG = __PKG__;   // v1.28: spis pakietu HA (tools/pkgspec.py) - karta zaklada brakujace elementy przez API
 const DEFAULT_E = __ENTITIES__;
 const BG = 'data:image/jpeg;base64,__BG__';
 const TREND = __TREND__;          // klucze encji do wykresu trendow
@@ -80,7 +81,7 @@ const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '.sw .tg i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}' +
   '.sw .tg.on{background:linear-gradient(180deg,#36a3ff,#1a7fe0);box-shadow:0 0 10px rgba(33,150,243,.6)}.sw .tg.on i{left:31px}';
 const NAU_CSS = '#pk{margin:0;padding:.55em 1em;background:rgba(255,160,0,.16);border-top:1px solid rgba(255,180,0,.6);border-bottom:1px solid rgba(255,180,0,.6);color:#ffd9a0;font-size:14px;cursor:pointer}#pk b{color:#ffe2b0}' +
-  '#nau .pkw{margin:0 0 1em;padding:.7em 1em;border-radius:8px;background:rgba(255,160,0,.15);border:1px solid rgba(255,180,0,.6);color:#ffd9a0}#nau .pkw code{color:#fff}' +
+  '#nau .pkw{margin:0 0 1em;padding:.7em 1em;border-radius:8px;background:rgba(255,160,0,.15);border:1px solid rgba(255,180,0,.6);color:#ffd9a0}#nau .pkw code{color:#fff}#nau .pkw.ok{background:rgba(67,194,90,.13);border-color:rgba(100,220,120,.55);color:#cfeed5}#nau .pkw button{margin-top:.5em}' +
   '#sch .au{display:inline-block;margin-left:.4em;padding:0 .45em;border-radius:999px;font-size:.78em;background:#7c4dff;color:#fff;font-weight:600}#sch .tl.lk{cursor:not-allowed}#sch .tl.lk .bk{cursor:default;background:linear-gradient(180deg,#8f6bff,#5a33c9);border-color:#b39dff}' +
   '#nau .ht{position:absolute;bottom:1px;height:4px;background:#ff5a4a;border-radius:2px;pointer-events:none;z-index:2}#nau .bk.cw{background:rgba(31,165,245,.28);border:2px solid #29b6f6;cursor:default}#nau .lg i.cb{border:2px solid #29b6f6;background:rgba(31,165,245,.28);box-sizing:border-box}' +
   '#nau .wk input.g12{width:14em;height:2em;text-align:left;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;padding:0 .5em}#nau .sk{opacity:.75;font-size:.88em}' +
@@ -500,17 +501,213 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
   _pkBar() {
     const el = this._pkEl; if (!el || !this._hass) return;
-    const P = this._pkgCheck(), sig = P.old + '|' + P.ver + '|' + P.miss.join(',');
+    const P = this._pkgCheck(), K = this._pk || {}, mode = this._pkMode();
+    const sig = P.old + '|' + P.ver + '|' + P.miss.join(',') + '|' + mode + '|' + (K.busy ? 1 : 0);
+    this._pkAuto();
     if (el._sig === sig) return; el._sig = sig;
-    el.hidden = !P.old;
-    if (P.old) el.innerHTML = '⚠ <b>Masz stary pakiet w HA</b> (' + (P.ver ? 'v' + P.ver : 'starszy niż v' + P.want) + ', karta chce v' + P.want + '). Brakuje ' + P.miss.length + ' encji. Kliknij, szczegóły w zakładce Nauka.';
+    el.hidden = !P.old && !K.busy;
+    if (K.busy) el.innerHTML = '⏳ <b>Karta instaluje / aktualizuje pakiet HA</b>… szczegóły w zakładce Nauka.';
+    else if (P.old) el.innerHTML = '⚠ <b>' + (P.ver ? 'Masz stary pakiet w HA' : 'Brak pakietu w HA') + '</b> (' + (P.ver ? 'v' + P.ver : 'brak wersji') + ', karta chce v' + P.want + '). Brakuje ' + P.miss.length + ' elementów. Kliknij: zakładka Nauka → ' + (mode === 'yaml' ? 'co zrobić' : '„Zainstaluj / napraw pakiet”') + '.';
   }
   _pkHtml(esc) {
-    const P = this._pkgCheck();
-    if (!P.old) return '';
-    return '<div class="pkw">⚠ <b>Masz stary pakiet w HA</b>: zainstalowany ' + (P.ver ? 'v' + esc(P.ver) : 'starszy niż v' + P.want + ' (brak <code>sensor.hp_pakiet_wersja</code>)') + ', karta oczekuje <b>v' + P.want + '</b>.' +
-      (P.miss.length ? '<br>Brakuje: ' + P.miss.map((m) => m.indexOf('.') > 0 && m.indexOf(' ') < 0 ? '<code>' + esc(m) + '</code>' : esc(m)).join(', ') + '.' : '') +
-      '<br><b>Co zrobić:</b> 1) zrób kopię <code>/config/packages/hydrolution_karta.yaml</code>, 2) wklej tam całą treść pliku <code>packages/hydrolution_karta.yaml</code> z repo (wersja pakietu ' + P.want + ', na górze pliku jest „WERSJA PAKIETU”), 3) Narzędzia deweloperskie → YAML → Sprawdź konfigurację, 4) <b>pełny restart HA</b> (Ustawienia → ⋮ → Uruchom ponownie). Samo przeładowanie nie wystarczy, bo dochodzą nowe pomocniki i sensory szablonów. Do tego czasu suwaki z brakującymi encjami są szare.</div>';
+    const hass = this._hass, P = this._pkgCheck(), K = this._pk || (this._pk = {}), admin = !!(hass.user && hass.user.is_admin);
+    if (admin && !K.reg && !K.regLoading && !K.regFail && !(K.regAt && Date.now() - K.regAt < 60000)) { K.regLoading = true; this._pkReg(true).then(() => { K.regLoading = false; this._nauRender(); }); }
+    const R = this._pkPlan(), nm = (it) => esc(this._pkName(it)), lst = (a) => a.map((it) => nm(it.it || it)).join(', ');
+    let h = '';
+    const log = (K.log && K.log.length) || (K.err && K.err.length);
+    if (K.busy) h += '<div class="pkw">⏳ <b>Instaluję pakiet HA przez API…</b> ' + (K.log ? K.log.length : 0) + ' zrobione' + (K.err && K.err.length ? ', ' + K.err.length + ' błędów' : '') + '. Nie zamykaj strony.</div>';
+    else if (log) {
+      h += '<div class="pkw ok"><b>Pakiet HA: ' + (K.auto ? 'karta sama zaktualizowała' : 'gotowe') + '</b> (' + new Date(K.done).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ').' +
+        (K.log.length ? '<br>' + K.log.map(esc).join('<br>') : '') +
+        (K.err.length ? '<br><b style="color:#ff8a80">Nie wyszło (' + K.err.length + '):</b><br>' + K.err.map(esc).join('<br>') : '') + ' <button data-a="pkok">OK</button></div>';
+    }
+    if (K.busy) return h;
+    if (R.mode === 'yaml') {
+      if (!R.paste.length && !R.restart.length) return h;
+      if (!R.paste.length) return h + '<div class="pkw">⚠ <b>Pakiet YAML v' + esc(R.yv) + ' jest aktualny, ale HA nie załadował ' + R.restart.length + ' jego elementów:</b> ' + lst(R.restart) + '. Zrób <b>pełny restart HA</b> (Ustawienia → ⋮ → Uruchom ponownie). Jeśli po restarcie dalej brakuje, sprawdź log HA (np. zajęta nazwa encji, wtedy HA dokłada „_2”).</div>';
+      return h + '<div class="pkw">⚠ <b>Pakiet masz w pliku YAML</b> (<code>/config/packages/hydrolution_karta.yaml</code>, v' + esc(R.yv) + '), karta oczekuje <b>v' + PKG.ver + '</b>. Karta nie zmienia plików w HA, więc tego sama nie podmieni.' +
+        (R.paste.length ? '<br>Nowe albo zmienione w v' + PKG.ver + ' (' + R.paste.length + '): ' + lst(R.paste) + '.' : '') +
+        (R.restart.length ? '<br>Są w Twoim pliku, ale HA ich nie załadował (zrób pełny restart): ' + lst(R.restart) + '.' : '') +
+        '<br><b>Droga A (jak dotąd):</b> wklej całą treść <code>packages/hydrolution_karta.yaml</code> z repo do tego pliku, Narzędzia deweloperskie → YAML → Sprawdź konfigurację, potem <b>pełny restart HA</b>.' +
+        '<br><b>Droga B (raz, potem samo z HACS):</b> 1) w File editor zmień nazwę pliku na <code>hydrolution_karta.yaml.bak</code> (nic nie kasujesz, HA go po prostu nie wczyta), 2) <b>pełny restart HA</b>, 3) wróć tutaj i kliknij „Zainstaluj / napraw pakiet”. Karta założy wszystko przez API pod tymi samymi nazwami encji, a przy każdej aktualizacji karty z HACS sama dołoży i poprawi swoje elementy.</div>';
+    }
+    if (!R.create.length && !R.update.length && !R.orphan.length) return h;
+    if (!admin) return h + '<div class="pkw">⚠ <b>Pakiet HA trzeba zainstalować albo uzupełnić</b> (' + (R.create.length + R.update.length) + ' elementów). Zrobi to karta, ale tylko na koncie administratora HA: otwórz tę zakładkę jako admin.</div>';
+    h += '<div class="pkw">' + (R.mode === 'card' ? '⚙ <b>Pakiet HA z karty</b> (zainstalowany v' + esc(R.inst || '–') + ', karta ma v' + PKG.ver + ')' : '⚙ <b>Brak pakietu HA</b> (albo niepełny)') + '. Karta założy go sama przez API Home Assistanta, bez wklejania plików i bez restartu. Niczego nie kasuje i nie rusza Twoich własnych encji ani automatyzacji.';
+    if (R.create.length) h += '<br><b>Dołoży (' + R.create.length + '):</b> ' + lst(R.create) + '.';
+    if (R.update.length) h += '<br><b>Zaktualizuje swoje elementy (' + R.update.length + ', zmienione w nowszej wersji):</b> ' + lst(R.update) + '.';
+    if (R.orphan.length) h += '<br><b>Zablokowane (' + R.orphan.length + '):</b> te nazwy encji trzyma jeszcze stary wpis po pakiecie YAML (encja „niedostępna”, nikt jej już nie dostarcza): ' + R.orphan.map((o) => '<code>' + esc(o.r.entity_id) + '</code>').join(', ') + '. Przycisk „Zwolnij nazwy” usunie te stare wpisy z rejestru encji (historia zostaje, bo jest zapisana po nazwie encji), potem karta założy je od nowa pod tą samą nazwą. Możesz też usunąć je sam: Ustawienia → Urządzenia i usługi → Encje.';
+    h += '<br>' + (R.create.length || R.update.length ? '<button class="sv" data-a="pkrun">Zainstaluj / napraw pakiet</button> ' : '') + (R.orphan.length ? '<button data-a="pkfree">Zwolnij nazwy (' + R.orphan.length + ')</button>' : '') + '</div>';
+    return h;
+  }
+  // ====================== v1.28: pakiet HA zakladany przez karte (API HA, tylko admin) ======================
+  // Tryby: 'yaml' = pakiet w pliku (karta tylko podpowiada), 'card' = zainstalowany przez karte (input_text.hp_pakiet_karta),
+  // 'none' = brak pakietu (albo po zmianie nazwy pliku na .bak). Karta niczego nie usuwa (poza "Zwolnij nazwy" na klikniecie).
+  _pkLive(eid) { const s = eid && this._hass.states[eid]; return !!(s && !(s.attributes && s.attributes.restored)); }
+  _pkMode() {
+    const st = this._hass.states;
+    if (st['input_text.hp_pakiet_karta']) return 'card';
+    if (this._pkLive('sensor.hp_pakiet_wersja')) return 'yaml';
+    for (const k in st) if (/^input_[a-z]+\.hp_/.test(k) && st[k].attributes && st[k].attributes.editable === false && !st[k].attributes.restored) return 'yaml';
+    return 'none';
+  }
+  _pkVer(a, b) {
+    const x = String(a || '0').split('.').map((v) => parseInt(v, 10) || 0), y = String(b || '0').split('.').map((v) => parseInt(v, 10) || 0);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return d > 0 ? 1 : -1; }
+    return 0;
+  }
+  _pkAutoEid(id) { const st = this._hass.states; for (const k in st) if (k.startsWith('automation.') && st[k].attributes && st[k].attributes.id === id) return k; return null; }
+  _pkEid(it) { return it.t === 'helper' ? it.d + '.' + it.id : it.t === 'script' ? 'script.' + it.id : it.t === 'auto' ? this._pkAutoEid(it.id) : it.eid; }
+  _pkName(it) {
+    const n = it.t === 'auto' || it.t === 'script' ? it.c.alias : it.c.name;
+    return (n || it.id || it.eid) + ' (' + (it.t === 'auto' ? 'automatyzacja ' + it.id : this._pkEid(it)) + ')';
+  }
+  async _pkReg(force) {
+    const K = this._pk || (this._pk = {});
+    if (!force && K.reg && Date.now() - K.regAt < 60000) return K.reg;
+    try { const r = await this._hass.callWS({ type: 'config/entity_registry/list' }); K.reg = Array.isArray(r) ? r : []; K.regFail = false; } catch (e) { K.reg = null; K.regFail = true; }
+    K.regAt = Date.now();
+    return K.reg;
+  }
+  _pkPlan() {
+    const st = this._hass.states, mode = this._pkMode(), reg = (this._pk && this._pk.reg) || [];
+    const inst = mode === 'card' ? String(st['input_text.hp_pakiet_karta'].state || '') : null;
+    const yv = mode === 'yaml' ? (this._pkLive('sensor.hp_pakiet_wersja') ? String(st['sensor.hp_pakiet_wersja'].state) : '0') : null;
+    const R = { mode, inst: inst && inst !== 'unknown' ? inst : '', yv, create: [], update: [], orphan: [], paste: [], restart: [] };
+    PKG.items.forEach((it) => {
+      if (mode === 'yaml' ? it.only === 'card' : it.only === 'yaml') return;
+      const eid = this._pkEid(it), live = this._pkLive(eid);
+      if (mode === 'yaml') { if (this._pkVer(it.v, yv) > 0) R.paste.push(it); else if (!live) R.restart.push(it); return; }
+      if (!live) {
+        if (it.t !== 'helper' && it.t !== 'script' && it.t !== 'auto') {
+          const r = reg.find((x) => x.entity_id === it.eid);
+          if (r && !r.config_entry_id) { R.orphan.push({ it, r }); return; }
+        }
+        R.create.push(it); return;
+      }
+      if (mode === 'card' && this._pkVer(it.v, R.inst) > 0) R.update.push(it);
+    });
+    return R;
+  }
+  // karta zainstalowana przez siebie: po aktualizacji z HACS sama dokłada / poprawia swoje elementy (z komunikatem)
+  _pkAuto() {
+    const K = this._pk || (this._pk = {}), hass = this._hass;
+    if (K.autoTried || K.busy || !hass.user || !hass.user.is_admin || !hass.states['input_text.hp_pakiet_karta']) return;
+    K.autoTried = true;
+    setTimeout(async () => {
+      await this._pkReg(true);
+      const R = this._pkPlan();
+      if (R.mode === 'card' && (R.create.length || R.update.length)) this._pkRun(true);
+    }, 4000);
+  }
+  async _pkWait(fn, ms) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (fn()) return true; await new Promise((r) => setTimeout(r, 300)); } return !!fn(); }
+  _pkErr(e) { return e && (e.message || (e.body && e.body.message) || e.error || e.code) ? String(e.message || (e.body && e.body.message) || e.error || e.code) : JSON.stringify(e); }
+  async _pkFlow(handler, data, pick, opt) {
+    const hass = this._hass, base = 'config/config_entries/' + (opt ? 'options/' : '') + 'flow';
+    let f = await hass.callApi('POST', base, { handler, show_advanced_options: true });
+    for (let i = 0; i < 8; i++) {
+      if (f.type === 'create_entry') return f;
+      if (f.type === 'abort') throw new Error('HA przerwał: ' + f.reason);
+      if (f.errors && Object.keys(f.errors).length) throw new Error('HA odrzucił: ' + JSON.stringify(f.errors));
+      if (f.type === 'menu') { f = await hass.callApi('POST', base + '/' + f.flow_id, { next_step_id: pick }); continue; }
+      if (f.type !== 'form') throw new Error('nieznany krok ' + f.type);
+      const d = {}; (f.data_schema || []).forEach((s) => { if (data[s.name] !== undefined) d[s.name] = data[s.name]; });
+      f = await hass.callApi('POST', base + '/' + f.flow_id, d);
+    }
+    throw new Error('za dużo kroków konfiguracji');
+  }
+  async _pkDo(it, op) {
+    const hass = this._hass, mark = 'Utworzone przez kartę ha-karta-pompa-ciepla (pakiet ' + PKG.ver + '). Karta poprawi to przy swojej aktualizacji.';
+    if (it.t === 'helper') {
+      const d = it.d, c = Object.assign({}, it.c), eid = d + '.' + it.id;
+      if (op === 'upd') {
+        const s = hass.states[eid]; if (s && s.attributes && s.attributes.editable === false) throw new Error('jest z pliku YAML, nie ruszam');
+        await hass.callWS(Object.assign({ type: d + '/update', [d + '_id']: it.id }, c)); return;
+      }
+      const r = await hass.callWS(Object.assign({ type: d + '/create' }, c, { name: it.id }));
+      if (r && r.id && r.id !== it.id) throw new Error('HA nadał inną nazwę: ' + d + '.' + r.id + ' (ta jest zajęta)');
+      await hass.callWS(Object.assign({ type: d + '/update', [d + '_id']: it.id }, c));
+      // wartosci domyslne tylko dla swiezej encji (nie nadpisuje przywroconej wartosci)
+      const DEF = { 'input_number.hp_cwu_lux_max': 60, 'input_number.hp_cwu_czekaj_min': 30, 'input_number.hp_cyrk_po_wyjsciu': 5, 'input_number.hp_noc_przesuniecie': -2,
+        'input_number.hp_dzien_przesuniecie': 0, 'input_number.hp_cyrk_praca': 60, 'input_number.hp_cyrk_postoj': 0, 'input_text.hp_g12_strefy': '22:00-06:00,13:00-15:00',
+        'input_select.hp_cwu_tryb_w_oknie': 'Luksus', 'input_select.hp_cwu_tryb_poza': 'Normalny' };
+      if (DEF[eid] === undefined) return;
+      let s = null; try { s = await hass.callApi('GET', 'states/' + eid); } catch (e) { s = null; }
+      if (!s) return;
+      if (d === 'input_number' && Number(s.state) === Number(c.min) && Number(c.min) !== DEF[eid]) await hass.callService('input_number', 'set_value', { entity_id: eid, value: DEF[eid] });
+      if (d === 'input_text' && (s.state === '' || s.state === 'unknown')) await hass.callService('input_text', 'set_value', { entity_id: eid, value: DEF[eid] });
+      if (d === 'input_select' && s.state === (c.options || [])[0] && s.state !== DEF[eid]) await hass.callService('input_select', 'select_option', { entity_id: eid, option: DEF[eid] });
+      return;
+    }
+    if (it.t === 'script') {
+      await hass.callApi('POST', 'config/script/config/' + it.id, Object.assign({}, it.c, { description: mark }));
+      if (!(await this._pkWait(() => this._pkLive('script.' + it.id), 8000))) throw new Error('HA nie wczytał skryptu: czy configuration.yaml ma „script: !include scripts.yaml”?');
+      return;
+    }
+    if (it.t === 'auto') {
+      await hass.callApi('POST', 'config/automation/config/' + it.id, Object.assign({}, it.c, { description: mark }));
+      if (!(await this._pkWait(() => !!this._pkAutoEid(it.id), 8000))) throw new Error('HA nie wczytał automatyzacji: czy configuration.yaml ma „automation: !include automations.yaml”?');
+      return;
+    }
+    const H = { tpl: 'template', um: 'utility_meter', hs: 'history_stats', der: 'derivative' }[it.t];
+    if (!H) throw new Error('nie da się przez API');
+    const reg = await this._pkReg(true) || [];
+    if (op === 'upd') {
+      const r = reg.find((x) => x.entity_id === it.eid && x.config_entry_id);
+      if (!r) throw new Error('nie jest z karty (brak wpisu pomocnika), nie ruszam');
+      const c = Object.assign({}, it.c); delete c.name;
+      await this._pkFlow(r.config_entry_id, c, it.d, true);
+      return;
+    }
+    const f = await this._pkFlow(H, it.c, it.d, false);
+    const ent = f.result && f.result.entry_id;
+    let r = null;
+    for (let i = 0; i < 10 && !r; i++) { const l = await this._pkReg(true) || []; r = l.find((x) => x.config_entry_id === ent); if (!r) await new Promise((q) => setTimeout(q, 400)); }
+    if (!r) return;
+    if (r.entity_id !== it.eid) {
+      try { await hass.callWS({ type: 'config/entity_registry/update', entity_id: r.entity_id, new_entity_id: it.eid }); r = Object.assign({}, r, { entity_id: it.eid }); }
+      catch (e) { throw new Error('utworzone jako ' + r.entity_id + ', bo ' + it.eid + ' jest zajęta (' + this._pkErr(e) + ')'); }
+    }
+    if (it.icon) { try { await hass.callWS({ type: 'config/entity_registry/update', entity_id: r.entity_id, icon: it.icon }); } catch (e) { /* tylko ikona */ } }
+  }
+  async _pkRun(auto) {
+    const K = this._pk || (this._pk = {}), hass = this._hass;
+    if (K.busy || !hass.user || !hass.user.is_admin) return;
+    let lock = 0; try { lock = Number(localStorage.getItem('hkpc_pk_lock')) || 0; } catch (e) { lock = 0; }
+    if (Date.now() - lock < 120000) return;
+    try { localStorage.setItem('hkpc_pk_lock', String(Date.now())); } catch (e) { /* brak */ }
+    K.busy = true; K.auto = !!auto; K.log = []; K.err = []; this._pkBar(); if (this._tabCur === 'nau') this._nauRender();
+    let updErr = false;
+    try {
+      await this._pkReg(true);
+      const R = this._pkPlan(), ord = ['helper', 'tpl', 'um', 'hs', 'der', 'script', 'auto'];
+      const list = R.create.map((it) => ({ it, op: 'add' })).concat(R.update.map((it) => ({ it, op: 'upd' })));
+      list.sort((a, b) => ord.indexOf(a.it.t) - ord.indexOf(b.it.t));
+      for (const x of list) {
+        try { await this._pkDo(x.it, x.op); K.log.push((x.op === 'add' ? 'dodane: ' : 'zaktualizowane: ') + this._pkName(x.it)); }
+        catch (e) { if (x.op === 'upd') updErr = true; K.err.push(this._pkName(x.it) + ': ' + this._pkErr(e)); }
+        if (this._tabCur === 'nau') this._nauRender();
+      }
+      if (!updErr && (await this._pkWait(() => !!hass.states['input_text.hp_pakiet_karta'] || !!this._hass.states['input_text.hp_pakiet_karta'], 5000))) {
+        await this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.hp_pakiet_karta', value: PKG.ver });
+        await this._pkWait(() => { const v = this._hass.states['input_text.hp_pakiet_karta']; return v && v.state === PKG.ver; }, 5000);
+      }
+    } catch (e) { K.err.push(this._pkErr(e)); }
+    K.busy = false; K.done = Date.now(); K.reg = null; K.regAt = 0;
+    try { localStorage.removeItem('hkpc_pk_lock'); } catch (e) { /* brak */ }
+    this._pkEl._sig = null; this._pkBar();
+    if (this._tabCur === 'nau') this._nauRender();
+  }
+  async _pkFree() {
+    const K = this._pk || (this._pk = {}), hass = this._hass;
+    await this._pkReg(true);
+    const R = this._pkPlan();
+    K.log = []; K.err = []; K.auto = false;
+    for (const o of R.orphan) {
+      try { await hass.callWS({ type: 'config/entity_registry/remove', entity_id: o.r.entity_id }); K.log.push('zwolniona nazwa (usunięty stary wpis z rejestru): ' + o.r.entity_id); }
+      catch (e) { K.err.push(o.r.entity_id + ': ' + this._pkErr(e)); }
+    }
+    K.done = Date.now(); await this._pkReg(true); this._nauRender();
   }
   _tab(t, user) {
     if (!this._schEl || !this._nauEl) return;
@@ -596,7 +793,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       }
     }
     // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
-    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok]);
+    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja']);
     const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|') + '|' + Math.floor(Date.now() / 300000);
     // v1.25: wstrzymaj odswiezanie tylko przy pisaniu w polu (klikniety suwak ma focus i blokowal odswiezenie, przelacznik wygladal na martwy)
     const ae = this.shadowRoot && this.shadowRoot.activeElement;
@@ -1404,6 +1601,9 @@ class HaKartaPompaCiepla extends HTMLElement {
         else if (a === 'ndel') { const e = this._nauEdit(); if (N.sel && e[N.sel.i]) { e[N.sel.i].splice(N.sel.j, 1); N.sel = null; this._nauRender(); } }
         else if (a === 'nrst') { N.edit = null; N.sel = null; this._nauRender(); }
         else if (a === 'ncp') { const e = this._nauEdit(), d = Number(t.getAttribute('data-d')); if (e[d]) { for (let k = 0; k < 7; k++) if (e[k]) e[k] = JSON.parse(JSON.stringify(e[d])); N.sel = null; this._nauRender(); } }
+        else if (a === 'pkrun') this._pkRun(false);
+        else if (a === 'pkfree') this._pkFree();
+        else if (a === 'pkok') { if (this._pk) { this._pk.log = []; this._pk.err = []; } this._nauRender(); }
         else if (a === 'reload' && !N.loading) { N.cmpFrom = N.base || this._nauSnap(); this._nauLoad(); }
         else if (a === 'dhide') { N.diff = null; this._nauRender(); }
         else if (a === 'more') this._more(t.getAttribute('data-e'));
