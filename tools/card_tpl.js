@@ -598,7 +598,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       await this._pkReg(true);
       const R = this._pkPlan();
       if (R.mode === 'card' && (R.create.length || R.update.length)) this._pkRun(true);
-    }, 4000);
+    }, 4000 + Math.random() * 6000);
   }
   async _pkWait(fn, ms) { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (fn()) return true; await new Promise((r) => setTimeout(r, 300)); } return !!fn(); }
   _pkErr(e) { return e && (e.message || (e.body && e.body.message) || e.error || e.code) ? String(e.message || (e.body && e.body.message) || e.error || e.code) : JSON.stringify(e); }
@@ -659,6 +659,8 @@ class HaKartaPompaCiepla extends HTMLElement {
       await this._pkFlow(r.config_entry_id, c, it.d, true);
       return;
     }
+    // v1.29: ktos (inne urzadzenie) juz to zalozyl w miedzyczasie -> nie zakladaj drugi raz
+    if (reg.some((x) => x.entity_id === it.eid && x.config_entry_id)) return;
     const f = await this._pkFlow(H, it.c, it.d, false);
     const ent = f.result && f.result.entry_id;
     let r = null;
@@ -676,7 +678,21 @@ class HaKartaPompaCiepla extends HTMLElement {
     let lock = 0; try { lock = Number(localStorage.getItem('hkpc_pk_lock')) || 0; } catch (e) { lock = 0; }
     if (Date.now() - lock < 120000) return;
     try { localStorage.setItem('hkpc_pk_lock', String(Date.now())); } catch (e) { /* brak */ }
-    K.busy = true; K.auto = !!auto; K.log = []; K.err = []; this._pkBar(); if (this._tabCur === 'nau') this._nauRender();
+    // v1.29: blokada wspolna dla wszystkich przegladarek / telefonow admina (dane uzytkownika w HA), zeby dwa urzadzenia nie zakladaly naraz (duplikaty "_2")
+    const me = Math.random().toString(36).slice(2), LK = 'hkpc_pk_lock';
+    K.busy = true;
+    try {
+      const g = await hass.callWS({ type: 'frontend/get_user_data', key: LK }), v = g && g.value;
+      let mine = !(v && v.id && Date.now() - (v.ts || 0) < 180000);
+      if (mine) {
+        await hass.callWS({ type: 'frontend/set_user_data', key: LK, value: { id: me, ts: Date.now() } });
+        await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+        const g2 = await hass.callWS({ type: 'frontend/get_user_data', key: LK });
+        mine = !!(g2 && g2.value && g2.value.id === me);
+      }
+      if (!mine) { K.busy = false; try { localStorage.removeItem('hkpc_pk_lock'); } catch (e) { /* brak */ } return; }
+    } catch (e) { /* brak danych uzytkownika: tylko blokada lokalna */ }
+    K.auto = !!auto; K.log = []; K.err = []; this._pkBar(); if (this._tabCur === 'nau') this._nauRender();
     let updErr = false;
     try {
       await this._pkReg(true);
@@ -687,6 +703,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         try { await this._pkDo(x.it, x.op); K.log.push((x.op === 'add' ? 'dodane: ' : 'zaktualizowane: ') + this._pkName(x.it)); }
         catch (e) { if (x.op === 'upd') updErr = true; K.err.push(this._pkName(x.it) + ': ' + this._pkErr(e)); }
         if (this._tabCur === 'nau') this._nauRender();
+        try { await hass.callWS({ type: 'frontend/set_user_data', key: 'hkpc_pk_lock', value: { id: me, ts: Date.now() } }); } catch (e) { /* brak */ }
       }
       if (!updErr && (await this._pkWait(() => !!hass.states['input_text.hp_pakiet_karta'] || !!this._hass.states['input_text.hp_pakiet_karta'], 5000))) {
         await this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.hp_pakiet_karta', value: PKG.ver });
@@ -694,6 +711,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       }
     } catch (e) { K.err.push(this._pkErr(e)); }
     K.busy = false; K.done = Date.now(); K.reg = null; K.regAt = 0;
+    try { await hass.callWS({ type: 'frontend/set_user_data', key: 'hkpc_pk_lock', value: null }); } catch (e) { /* brak */ }
     try { localStorage.removeItem('hkpc_pk_lock'); } catch (e) { /* brak */ }
     this._pkEl._sig = null; this._pkBar();
     if (this._tabCur === 'nau') this._nauRender();

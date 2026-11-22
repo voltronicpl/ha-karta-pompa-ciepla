@@ -247,3 +247,8 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - Po pakiecie YAML HA zostawia w rejestrze encji stare wpisy czujników szablonowych (encja „niedostępna”), które trzymają nazwy. Karta je pokazuje i daje przycisk **„Zwolnij nazwy”** (usuwa tylko te osierocone wpisy, na kliknięcie; historia zostaje), albo usuwasz je sam w Ustawienia → Encje.
 - Plik `packages/hydrolution_karta.yaml` zostaje w repo jako plan B (wersja pakietu bez zmian: 1.25). Spis dla karty generuje `tools/pkgspec.py` z tego pliku (wersja każdego elementu z historii gita).
 - Sprawdzone na testowym Home Assistant 2026.2: instalacja od zera, przejście z pakietu YAML (zwolnienie nazw + instalacja, te same nazwy encji) i samoczynna aktualizacja ze starszej wersji (zmiana zachowuje ustawione wartości).
+
+## v1.29: bez duplikatów przy kilku otwartych urządzeniach
+
+- Instalacja / aktualizacja pakietu przez kartę ma teraz blokadę wspólną dla wszystkich przeglądarek i telefonów admina (w danych użytkownika HA). Wcześniej, gdy karta była otwarta naraz np. na komputerze i telefonie, oba urządzenia zakładały to samo i powstawały duplikaty czujników z „_2” albo „hydrolution_hp_…”.
+- Przed założeniem czujnika karta jeszcze raz sprawdza, czy ktoś go w międzyczasie nie założył.
