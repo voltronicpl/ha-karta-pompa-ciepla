@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...).
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.22 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.23 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -22,12 +22,46 @@ template:
                  | selectattr('state', 'eq', 'on') | list | count > 0)
              or (states.binary_sensor | selectattr('entity_id', 'search', 'interactive') | selectattr('state', 'eq', 'on') | list | count > 0)
              or (states.media_player | selectattr('state', 'in', ['on', 'playing']) | list | count > 0) }}
+  # v1.23: taryfa G12 (PGE, standard): tania strefa wg input_text.hp_g12_strefy (domyslnie 22:00-06:00,13:00-15:00),
+  #        opcjonalnie So-Nd cala doba (input_boolean.hp_g12_weekend_tani, domyslnie wylaczony)
+  - binary_sensor:
+      - name: "HP G12 tania strefa"
+        unique_id: hp_g12_tania
+        icon: mdi:cash-clock
+        state: >
+          {% set s = states('input_text.hp_g12_strefy') %}
+          {% if s in ['', 'unknown', 'unavailable'] %}{% set s = '22:00-06:00,13:00-15:00' %}{% endif %}
+          {% set m = now().hour * 60 + now().minute %}
+          {% set ns = namespace(on = is_state('input_boolean.hp_g12_weekend_tani', 'on') and now().weekday() >= 5) %}
+          {% for z in s.split(',') %}{% set p = z.strip().split('-') %}{% if p | count == 2 and ':' in p[0] and ':' in p[1] %}
+          {% set a = (p[0].split(':')[0] | int(0)) * 60 + (p[0].split(':')[1] | int(0)) %}
+          {% set b = (p[1].split(':')[0] | int(0)) * 60 + (p[1].split(':')[1] | int(0)) %}
+          {% if (a < b and a <= m < b) or (a > b and (m >= a or m < b)) %}{% set ns.on = true %}{% endif %}
+          {% endif %}{% endfor %}
+          {{ ns.on }}
   - sensor:
+      # v1.23: ile minut do poczatku najblizszej taniej strefy G12 (0 = teraz tania)
+      - name: "HP G12 do taniej"
+        unique_id: hp_g12_do_taniej
+        icon: mdi:timer-sand
+        unit_of_measurement: "min"
+        state: >
+          {% if is_state('binary_sensor.hp_g12_tania', 'on') %}0{% else %}
+          {% set s = states('input_text.hp_g12_strefy') %}
+          {% if s in ['', 'unknown', 'unavailable'] %}{% set s = '22:00-06:00,13:00-15:00' %}{% endif %}
+          {% set m = now().hour * 60 + now().minute %}
+          {% set ns = namespace(d = 9999) %}
+          {% for z in s.split(',') %}{% set p = z.strip().split('-') %}{% if p | count == 2 and ':' in p[0] %}
+          {% set a = (p[0].split(':')[0] | int(0)) * 60 + (p[0].split(':')[1] | int(0)) %}
+          {% set ns.d = [ns.d, (a - m) % 1440] | min %}
+          {% endif %}{% endfor %}
+          {% if is_state('input_boolean.hp_g12_weekend_tani', 'on') and now().weekday() < 5 %}{% set ns.d = [ns.d, (5 - now().weekday()) * 1440 - m] | min %}{% endif %}
+          {{ ns.d }}{% endif %}
       # v1.22: wersja pakietu - karta sprawdza, czy w HA jest aktualny pakiet
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.22"
+        state: "1.23"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -260,6 +294,14 @@ input_boolean:
   hp_auto_cyrk:
     name: "HP auto: cyrkulacja wg harmonogramu i obecnosci"
     icon: mdi:home-account
+  # v1.23: suwak "Automatyzacja CWU" w zakladce Nauka (taryfa G12). Domyslnie wylaczony (bez `initial`).
+  hp_auto_cwu:
+    name: "HP auto: CWU wg taryfy G12"
+    icon: mdi:water-boiler-auto
+  # v1.23: G12 - sobota i niedziela cala doba tania (np. taryfa G12w). Domyslnie wylaczony.
+  hp_g12_weekend_tani:
+    name: "HP G12: weekend caly tani"
+    icon: mdi:calendar-weekend
 
 input_datetime:
   # v1.18: kiedy w weekend wstaliscie (pierwsza aktywnosc rano), wpisuje automatyzacja hp_auto_wstali
@@ -270,6 +312,14 @@ input_datetime:
     icon: mdi:alarm
 
 input_number:
+  # v1.23: automatyzacja CWU - gdy do taniej strefy zostalo mniej niz tyle minut, nie grzej (czekaj). Karta wpisuje 30 przy pierwszym uruchomieniu.
+  hp_cwu_czekaj_min:
+    name: "HP auto: CWU czekaj na tania strefe"
+    min: 0
+    max: 180
+    step: 5
+    mode: box
+    unit_of_measurement: "min"
   # v1.19: ustawiane z zakladki Nauka (karta przy pierwszym uruchomieniu wpisuje 5)
   hp_cyrk_po_wyjsciu:
     name: "HP auto: cyrkulacja off po wyjsciu wszystkich"
@@ -308,6 +358,10 @@ input_number:
     unit_of_measurement: "min"
 
 input_text:
+  # v1.23: tanie strefy G12, np. "22:00-06:00,13:00-15:00" (puste = te domyslne). Ustawiane z zakladki Nauka.
+  hp_g12_strefy:
+    name: "HP G12: tanie strefy"
+    max: 100
   # v1.21: ktory sygnal wykryl weekendowe wstanie: aktywnosc / woda
   hp_wstalismy_zrodlo:
     name: "HP auto: weekend - sygnal wstania"
@@ -355,7 +409,7 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [schedule.hp_plan_tryb_cwu, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_boolean.hp_plan_cwu]
+        entity_id: [schedule.hp_plan_tryb_cwu, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_boolean.hp_plan_cwu, input_boolean.hp_auto_cwu]
       - trigger: state
         entity_id: select.hydrolution_tryb_cwu
         from: unavailable
@@ -365,11 +419,60 @@ automation:
       - condition: state
         entity_id: input_boolean.hp_plan_cwu
         state: "on"
+      # v1.23: gdy wlaczona automatyzacja CWU (hp_auto_cwu), steruje ona, a ta czeka
+      - condition: not
+        conditions:
+          - condition: state
+            entity_id: input_boolean.hp_auto_cwu
+            state: "on"
       - condition: template
         value_template: "{{ has_value('select.hydrolution_tryb_cwu') }}"
     actions:
       - variables:
           target: "{{ states('input_select.hp_cwu_tryb_w_oknie') if is_state('schedule.hp_plan_tryb_cwu', 'on') else states('input_select.hp_cwu_tryb_poza') }}"
+      - condition: template
+        value_template: "{{ states('select.hydrolution_tryb_cwu') != target }}"
+      - action: select.select_option
+        target: {entity_id: select.hydrolution_tryb_cwu}
+        data: {option: "{{ target }}"}
+
+  # 2b) v1.23 Automatyzacja CWU (suwak w zakladce Nauka), taryfa G12:
+  #     w oknie harmonogramu "Tryb CWU" (okna = tanie strefy z Nauki) -> tryb "w oknie" (domyslnie Luksus, nagrzewa w taniej),
+  #     poza oknem -> tryb "poza oknem" (domyslnie Normalny: pompa dogrzeje dopiero, gdy woda spadnie ponizej progu Normalnego),
+  #     ale gdy do okna zostalo mniej niz hp_cwu_czekaj_min (30 min) -> Ekonomiczny (czeka na tania strefe).
+  #     Pusty harmonogram -> okna = binary_sensor.hp_g12_tania. Dziala tylko przy hp_auto_cwu = on.
+  - id: hp_auto_cwu
+    alias: "HP auto: CWU wg taryfy G12"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [input_boolean.hp_auto_cwu, schedule.hp_plan_tryb_cwu, binary_sensor.hp_g12_tania, input_number.hp_cwu_czekaj_min, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza]
+      - trigger: state
+        entity_id: select.hydrolution_tryb_cwu
+        from: unavailable
+      - trigger: time_pattern
+        minutes: "/1"
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_auto_cwu
+        state: "on"
+      - condition: template
+        value_template: "{{ has_value('select.hydrolution_tryb_cwu') }}"
+    actions:
+      - variables:
+          ne: "{{ state_attr('schedule.hp_plan_tryb_cwu', 'next_event') }}"
+          ma_plan: "{{ ne is not none and ne != '' and states('schedule.hp_plan_tryb_cwu') in ['on', 'off'] }}"
+          okno: "{{ is_state('schedule.hp_plan_tryb_cwu', 'on') if ma_plan else is_state('binary_sensor.hp_g12_tania', 'on') }}"
+          do_okna: >
+            {% if okno %}0
+            {% elif ma_plan %}{{ (((ne if ne is datetime else as_datetime(ne)) - now()).total_seconds() / 60) | round(0) }}
+            {% else %}{{ states('sensor.hp_g12_do_taniej') | float(9999) }}{% endif %}
+          czekaj: "{{ states('input_number.hp_cwu_czekaj_min') | float(30) }}"
+          w_oknie: "{{ states('input_select.hp_cwu_tryb_w_oknie') if states('input_select.hp_cwu_tryb_w_oknie') not in ['unknown', 'unavailable', ''] else 'Luksus' }}"
+          poza: "{{ states('input_select.hp_cwu_tryb_poza') if states('input_select.hp_cwu_tryb_poza') not in ['unknown', 'unavailable', ''] else 'Normalny' }}"
+          target: "{{ w_oknie if okno else ('Ekonomiczny' if (do_okna | float(9999)) <= czekaj else poza) }}"
       - condition: template
         value_template: "{{ states('select.hydrolution_tryb_cwu') != target }}"
       - action: select.select_option

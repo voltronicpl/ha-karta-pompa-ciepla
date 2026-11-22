@@ -193,3 +193,17 @@ Jeśli czegoś brakuje albo wersja jest starsza, na górze karty pojawia się ż
 2. Wklej tam całą treść `packages/hydrolution_karta.yaml` z repo.
 3. Narzędzia deweloperskie → YAML → Sprawdź konfigurację.
 4. **Pełny restart HA** (Ustawienia → ⋮ → Uruchom ponownie). Samo przeładowanie nie wystarcza, bo dochodzą nowe pomocniki i sensory szablonów.
+
+## v1.23: harmonogram „Automatyczny” i CWU wg taryfy G12
+
+**Wersja pakietu HA: 1.23.** Trzeba wkleić nowy pakiet i zrobić **pełny restart HA**.
+
+- **Główna → Harmonogram:** gdy w Nauce jest włączona „Automatyzacja cyrkulacji” (albo nowa „Automatyzacja CWU”), zakładka „Cyrkulacja CWU” (albo „Tryb CWU”) ma znaczek **auto** i napis **Automatyczny**. Karta sama wpisuje do harmonogramu w HA plan z Nauki (sprawdza co kilka minut, zapisuje tylko, gdy plan się zmienił). Ręczna edycja tego harmonogramu jest wtedy zablokowana. Wyłączysz automatyzację w Nauce i znowu edytujesz sam.
+- **Nauka → CWU: grzanie wody w taniej taryfie G12:** wykres Pn–Nd z tanimi strefami G12, zużyciem ciepłej wody (szybkie spadki BT6 z ostatnich 14 dni), pracą sprężarki na CWU (ostatni tydzień) i propozycją okien grzania. Propozycja = tanie strefy, po których do następnej taniej zużywacie wodę (próg 0,5 °C, do zmiany). Każdy dzień ma co najmniej jedną strefę. „Wyślij na główną” wpisuje to do harmonogramu „Tryb CWU” (bez auto trzeba kliknąć „Zapisz harmonogram”).
+- **Taryfa:** PGE G12 standard, codziennie cały rok 22:00–6:00 i 13:00–15:00. Godziny zmieniasz w Nauce (`input_text.hp_g12_strefy`, format `22:00-06:00,13:00-15:00`), jest też opcja „So–Nd cała doba tania” (`input_boolean.hp_g12_weekend_tani`, domyślnie wyłączona).
+- **Automatyzacja CWU** (`input_boolean.hp_auto_cwu`, domyślnie wyłączona, suwak w Nauce), automatyzacja „HP auto: CWU wg taryfy G12”:
+  - w oknie harmonogramu „Tryb CWU” (tania strefa) ustawia tryb „w oknie” (domyślnie **Luksus**), czyli nagrzewa na zapas;
+  - poza oknem ustawia tryb „poza oknem” (domyślnie **Normalny**), więc pompa dogrzeje drugi raz dopiero, gdy woda spadnie poniżej progu Normalnego;
+  - gdy do okna zostało ≤ 30 min (`input_number.hp_cwu_czekaj_min`, do zmiany w Nauce), ustawia **Ekonomiczny** i czeka na tanią strefę;
+  - pusty harmonogram = okna z samej taryfy (`binary_sensor.hp_g12_tania`). Gdy jest włączona, stara „HP plan: tryb CWU wg godzin” czeka.
+- Nowe w pakiecie: `binary_sensor.hp_g12_tania`, `sensor.hp_g12_do_taniej`, `input_boolean.hp_auto_cwu`, `input_boolean.hp_g12_weekend_tani`, `input_number.hp_cwu_czekaj_min` (karta wpisze 30 przy pierwszym uruchomieniu), `input_text.hp_g12_strefy`, automatyzacja `hp_auto_cwu`. W „HP plan: tryb CWU wg godzin” doszedł warunek „czekaj, gdy auto CWU włączone”.

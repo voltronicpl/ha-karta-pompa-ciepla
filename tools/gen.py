@@ -71,6 +71,13 @@ E = dict(
     auto_cyrk='input_boolean.hp_auto_cyrk',
     wstali='input_datetime.hp_wstalismy',
     aktyw='binary_sensor.hp_aktywnosc_w_domu',
+    auto_cwu='input_boolean.hp_auto_cwu',
+    g12='input_text.hp_g12_strefy',
+    g12_we='input_boolean.hp_g12_weekend_tani',
+    g12_tania='binary_sensor.hp_g12_tania',
+    g12_do='sensor.hp_g12_do_taniej',
+    cwu_wait='input_number.hp_cwu_czekaj_min',
+    cpr_cwu='binary_sensor.hp_sprezarka_cwu',
 )
 
 # cyrkulacja CWU "wlaczona" = nie jest w stanie praca 1 min / postoj 60 min (brak rejestru wl/wyl w SMO40)

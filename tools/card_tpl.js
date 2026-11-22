@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.22';
+const PKG_VER = '1.23';
 const DEFAULT_E = __ENTITIES__;
 const BG = 'data:image/jpeg;base64,__BG__';
 const TREND = __TREND__;          // klucze encji do wykresu trendow
@@ -81,6 +81,9 @@ const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '.sw .tg.on{background:linear-gradient(180deg,#36a3ff,#1a7fe0);box-shadow:0 0 10px rgba(33,150,243,.6)}.sw .tg.on i{left:31px}';
 const NAU_CSS = '#pk{margin:0;padding:.55em 1em;background:rgba(255,160,0,.16);border-top:1px solid rgba(255,180,0,.6);border-bottom:1px solid rgba(255,180,0,.6);color:#ffd9a0;font-size:14px;cursor:pointer}#pk b{color:#ffe2b0}' +
   '#nau .pkw{margin:0 0 1em;padding:.7em 1em;border-radius:8px;background:rgba(255,160,0,.15);border:1px solid rgba(255,180,0,.6);color:#ffd9a0}#nau .pkw code{color:#fff}' +
+  '#sch .au{display:inline-block;margin-left:.4em;padding:0 .45em;border-radius:999px;font-size:.78em;background:#7c4dff;color:#fff;font-weight:600}#sch .tl.lk{cursor:not-allowed}#sch .tl.lk .bk{cursor:default;background:linear-gradient(180deg,#8f6bff,#5a33c9);border-color:#b39dff}' +
+  '#nau .ht{position:absolute;bottom:1px;height:4px;background:#ff5a4a;border-radius:2px;pointer-events:none;z-index:2}#nau .bk.cw{background:rgba(31,165,245,.28);border:2px solid #29b6f6;cursor:default}#nau .lg i.cb{border:2px solid #29b6f6;background:rgba(31,165,245,.28);box-sizing:border-box}' +
+  '#nau .wk input.g12{width:14em;height:2em;text-align:left;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;padding:0 .5em}#nau .sk{opacity:.75;font-size:.88em}' +
   '#tb{display:flex;gap:.5em;padding-top:.8em;background:#0e1013}#tb button{font:inherit;font-size:1.05em;color:#eef2f6;cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(62,70,82,.85);border-radius:8px 8px 0 0;padding:.5em 1.4em}' +
   '#tb button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
   '#nau{box-sizing:border-box;padding:12px;color:#eef2f6;font-family:' + FONT + ';font-size:13px;background:#0e1013}#nau[hidden],#sch[hidden]{display:none}' +
@@ -210,6 +213,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._pkBar();
     this._schTick();
     this._nauTick();
+    this._autoSync();
   }
 
 
@@ -219,10 +223,10 @@ class HaKartaPompaCiepla extends HTMLElement {
       { k: 'noc', n: 'Obniżenie CO', sch: 'schedule.hp_plan_obnizenie_co', en: 'input_boolean.hp_plan_noc', t: 'HP plan obnizenie CO', ic: 'mdi:weather-night', c: '#3f7cff', c2: '#2a56c9',
         d: 'W oknie przesuwa krzywą grzewczą, poza oknem wraca do wartości dziennej.',
         p: [{ e: 'input_number.hp_noc_przesuniecie', l: 'Przesunięcie w oknie', u: '°C', def: -2 }, { e: 'input_number.hp_dzien_przesuniecie', l: 'Przesunięcie poza oknem', u: '°C', def: 0 }] },
-      { k: 'cwu', n: 'Tryb CWU', sch: 'schedule.hp_plan_tryb_cwu', en: 'input_boolean.hp_plan_cwu', t: 'HP plan tryb CWU', ic: 'mdi:water-boiler', c: '#1fa5f5', c2: '#0f74b8',
+      { k: 'cwu', n: 'Tryb CWU', sch: 'schedule.hp_plan_tryb_cwu', en: 'input_boolean.hp_plan_cwu', au: 'input_boolean.hp_auto_cwu', an: 'Automatyzacja CWU', t: 'HP plan tryb CWU', ic: 'mdi:water-boiler', c: '#1fa5f5', c2: '#0f74b8',
         d: 'W oknie ustawia wybrany tryb CWU, poza oknem drugi.',
         p: [{ e: 'input_select.hp_cwu_tryb_w_oknie', l: 'Tryb w oknie', def: 'Luksus' }, { e: 'input_select.hp_cwu_tryb_poza', l: 'Tryb poza oknem', def: 'Normalny' }] },
-      { k: 'cyrk', n: 'Cyrkulacja CWU', sch: 'schedule.hp_plan_cyrkulacja_cwu', en: 'input_boolean.hp_plan_cyrk', t: 'HP plan cyrkulacja CWU', ic: 'mdi:autorenew', c: '#43c25a', c2: '#2a8a3c',
+      { k: 'cyrk', n: 'Cyrkulacja CWU', sch: 'schedule.hp_plan_cyrkulacja_cwu', en: 'input_boolean.hp_plan_cyrk', au: 'input_boolean.hp_auto_cyrk', an: 'Automatyzacja cyrkulacji', t: 'HP plan cyrkulacja CWU', ic: 'mdi:autorenew', c: '#43c25a', c2: '#2a8a3c',
         d: 'W oknie cyrkulacja pracuje wg czasów poniżej. Poza oknem: praca 1 min / postój 60 min (sterownik nie ma pełnego wyłączenia).',
         p: [{ e: 'input_number.hp_cyrk_praca', l: 'Praca w oknie', u: 'min', def: 60 }, { e: 'input_number.hp_cyrk_postoj', l: 'Postój w oknie', u: 'min', def: 0 }] },
       { k: 'grz', n: 'Grzałka', sch: 'schedule.hp_plan_grzalka', en: 'input_boolean.hp_plan_grz', t: 'HP plan grzalka', ic: 'mdi:flash', c: '#ffb300', c2: '#c27d00',
@@ -270,7 +274,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!S.loaded && !S.loading) { S.loading = true; this._schLoad().then(() => { S.loading = false; S.t = Date.now(); }); return; }
     if (S.loaded && Date.now() - (S.t || 0) > 300000 && !S.loading) { S.loading = true; this._schLoad().then(() => { S.loading = false; S.t = Date.now(); }); }
     const st = this._hass.states, E = this._E;
-    const ids = []; this._schLanes().forEach((l) => { ids.push(l.sch, l.en); l.p.forEach((q) => ids.push(q.e)); });
+    const ids = []; this._schLanes().forEach((l) => { ids.push(l.sch, l.en); if (l.au) ids.push(l.au); l.p.forEach((q) => ids.push(q.e)); });
     ids.push(E.sch_n, E.sch_hw);
     const sig = ids.map((i) => (st[i] ? st[i].state + (st[i].attributes && st[i].attributes.next_event || '') : '?')).join('|');
     const busy = S.drag || (this._schEl.shadowRoot ? false : false) || (this._root && this._root.activeElement && this._schEl.contains(this._root.activeElement));
@@ -289,7 +293,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (espOn) h += '<div class="warn">⚠ Na ESP jest włączony własny harmonogram („Harmonogram nocny / CWU aktywny”). Planem ma rządzić Home Assistant, więc wyłącz go, bo będą się gryźć. <button data-a="more" data-e="' + (st[E.sch_n] && st[E.sch_n].state === 'on' ? E.sch_n : E.sch_hw) + '">Pokaż przełącznik</button></div>';
     h += '<div class="tabs">' + lanes.map((l) => {
       const on = st[l.en] && st[l.en].state === 'on', inw = st[l.sch] && st[l.sch].state === 'on';
-      return '<button class="tab' + (l.k === lane.k ? ' on' : '') + '" data-a="lane" data-k="' + l.k + '"><span class="dot' + (on ? (inw ? ' w' : ' a') : '') + '"></span>' + esc(l.n) + (S.dirty[l.k] ? ' •' : '') + '</button>';
+      const au = this._schAuto(l);
+      return '<button class="tab' + (l.k === lane.k ? ' on' : '') + '" data-a="lane" data-k="' + l.k + '"><span class="dot' + ((on || au) ? (inw ? ' w' : ' a') : '') + '"></span>' + esc(l.n) + (au ? '<span class="au">auto</span>' : '') + (S.dirty[l.k] && !au ? ' •' : '') + '</button>';
     }).join('') + '</div>';
     if (S.err) h += '<div class="info">' + esc(S.err) + '</div>';
     if (S.note && S.note.k === lane.k) h += '<div class="info">' + esc(S.note.t) + '</div>';
@@ -303,8 +308,10 @@ class HaKartaPompaCiepla extends HTMLElement {
     const ne = st[lane.sch].attributes && st[lane.sch].attributes.next_event;
     let nxt = '';
     if (ne) { const d = new Date(ne); if (!isNaN(d)) nxt = ' · najbliższa zmiana: ' + d.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }); }
-    h += '<div class="lh"><button class="tg' + (on ? ' on' : '') + '" data-a="en" title="Włącz / wyłącz tę funkcję"><i></i></button><b>' + (on ? 'Aktywne' : 'Wyłączone') + '</b>' +
+    h += '<div class="lh"><button class="tg' + (on ? ' on' : '') + '" data-a="en" title="Włącz / wyłącz tę funkcję"><i></i></button><b>' + (this._schAuto(lane) ? 'Automatyczny' : on ? 'Aktywne' : 'Wyłączone') + '</b>' +
       '<span>Teraz: <b>' + (inw ? 'w oknie' : 'poza oknem') + '</b>' + esc(nxt) + '</span><span class="ds">' + esc(lane.d) + '</span></div>';
+    const lk = this._schAuto(lane);
+    if (lk) h += '<div class="info"><b>Automatyczny</b>: ten harmonogram ustawia zakładka Nauka (włączona „' + esc(lane.an) + '”) i automatyzacja w HA. Okna niżej to plan z Nauki, odświeżany sam' + (S.syncAt && S.syncAt[lane.k] ? ' (ostatnio ' + new Date(S.syncAt[lane.k]).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ')' : '') + '. Ręczna edycja jest zablokowana, żeby się nie gryzło: wyłącz automatyzację w Nauce, jeśli chcesz ustawiać sam. <button data-a="gonau">Pokaż w Nauce</button></div>';
     if (!st[lane.en]) h += '<div class="info">Brak przełącznika <code>' + lane.en + '</code>. Dodaj pakiet HA z repozytorium (packages/hydrolution_karta.yaml) i przeładuj konfigurację.</div>';
     if (lane.p.length) {
       h += '<div class="pr">' + lane.p.map((q) => {
@@ -317,14 +324,15 @@ class HaKartaPompaCiepla extends HTMLElement {
     const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes(), wd = (now.getDay() + 6) % 7;
     h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
     days.forEach((d, i) => {
-      h += '<div class="dr"><span class="dn' + (i === wd ? ' td' : '') + '">' + DL[i] + '</span><div class="tl" data-day="' + d + '" style="--c:' + lane.c + ';--c2:' + lane.c2 + '">';
+      h += '<div class="dr"><span class="dn' + (i === wd ? ' td' : '') + '">' + DL[i] + '</span><div class="tl' + (lk ? ' lk' : '') + '" data-day="' + d + '" style="--c:' + lane.c + ';--c2:' + lane.c2 + '">';
       dr[d].forEach((b, j) => {
         const sel = S.sel && S.sel.d === d && S.sel.i === j;
         h += '<div class="bk' + (sel ? ' sel' : '') + '" data-a="bk" data-d="' + d + '" data-i="' + j + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '</div>';
       });
       if (i === wd) h += '<div class="nw" style="left:' + (nowMin / 14.4) + '%"></div>';
-      h += '</div><button class="cp" data-a="cp" data-d="' + d + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button></div>';
+      h += '</div>' + (lk ? '<span class="cp"></span>' : '<button class="cp" data-a="cp" data-d="' + d + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button>') + '</div>';
     });
+    if (lk) { el.innerHTML = h + '<div class="ft"><span class="hint">Automatyczny harmonogram z Nauki. Czerwona kreska = teraz.</span></div></div>'; return; }
     if (S.sel && dr[S.sel.d] && dr[S.sel.d][S.sel.i]) {
       const b = dr[S.sel.d][S.sel.i];
       h += '<div class="ed">Okno <b>' + DL[days.indexOf(S.sel.d)] + '</b>: od <input type="time" data-a="tf" value="' + this._schFmt(b.f) + '"> do <input type="time" data-a="tt" value="' + this._schFmt(b.t === 1440 ? 1440 : b.t) + '"> <button data-a="del">Usuń okno</button><span style="opacity:.6">(koniec 00:00 = do północy)</span></div>';
@@ -343,7 +351,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const mark = () => { S().dirty[lane().k] = true; };
     el.addEventListener('pointerdown', (ev) => {
       const tl = ev.target.closest && ev.target.closest('.tl');
-      if (!tl || (ev.target.closest('.bk'))) return;
+      if (!tl || (ev.target.closest('.bk')) || this._schAuto(lane())) return;
       ev.preventDefault();
       const d = tl.getAttribute('data-day'), a = snap(ev, tl);
       S().drag = { tl, d, a, b: a, tmp: null };
@@ -373,6 +381,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     el.addEventListener('click', (ev) => {
       const t = ev.target.closest && ev.target.closest('[data-a]'); if (!t) return;
       const a = t.getAttribute('data-a'), hass = this._hass, l = lane(), dr = this._schDraft(l);
+      if (this._schAuto(l) && ['bk', 'cp', 'del', 'undo', 'save'].indexOf(a) >= 0) return;
+      if (a === 'gonau') { this._tab('nau', true); return; }
       if (a === 'lane') { S().lane = t.getAttribute('data-k'); S().sel = null; S().note = null; this._schRender(); }
       else if (a === 'more') this._more(t.getAttribute('data-e'));
       else if (a === 'bk') { S().sel = { d: t.getAttribute('data-d'), i: Number(t.getAttribute('data-i')) }; this._schRender(); }
@@ -403,6 +413,31 @@ class HaKartaPompaCiepla extends HTMLElement {
         S().sel = { d: s.d, i: Math.max(0, dr[s.d].findIndex((x) => x.f <= b.f && x.t >= b.t)) };
         mark(); this._schRender();
       }
+    });
+  }
+  // v1.23: harmonogram prowadzony automatycznie z Nauki (wlaczony suwak automatyzacji)
+  _schAuto(l) { const s = l && l.au && this._hass && this._hass.states[l.au]; return !!(s && s.state === 'on'); }
+  _autoAny() { return this._schLanes().some((l) => this._schAuto(l)); }
+  _autoSync() {
+    const S = this._sch, N = this._nau, hass = this._hass;
+    if (!S || !S.loaded || !N || !N.res || N.loading || !hass || !(hass.user && hass.user.is_admin)) return;
+    S.syncAt = S.syncAt || {}; S.syncing = S.syncing || {};
+    this._schLanes().filter((l) => this._schAuto(l)).forEach((l) => {
+      if (!S.data[l.k] || S.syncing[l.k]) return;
+      let bl = null;
+      if (l.k === 'cyrk' && N.res.cyrk) bl = N.edit || this._nauBase(N.res.cyrk);
+      if (l.k === 'cwu') bl = this._nauCwuPlan(N.res.cwu).blocks;
+      if (!bl) return;
+      const cur = this._schFromItem(S.data[l.k]), days = this._schDays(), tgt = {};
+      days.forEach((d, i) => { tgt[d] = bl[i] ? this._schNorm(JSON.parse(JSON.stringify(bl[i]))) : cur[d]; });
+      delete S.dirty[l.k]; delete S.draft[l.k];
+      if (JSON.stringify(tgt) === JSON.stringify(cur)) { if (!S.syncAt[l.k]) S.syncAt[l.k] = N.at; return; }
+      if (Date.now() - (S.syncTry && S.syncTry[l.k] || 0) < 120000) return;
+      S.syncTry = S.syncTry || {}; S.syncTry[l.k] = Date.now(); S.syncing[l.k] = true;
+      const body = { type: 'schedule/update', schedule_id: S.data[l.k].id, name: l.t, icon: l.ic };
+      days.forEach((d) => { body[d] = tgt[d].map((b) => ({ from: this._schFmt(b.f, true), to: this._schFmt(b.t, true) })); });
+      hass.callWS(body).then(() => { S.syncAt[l.k] = Date.now(); S.syncing[l.k] = false; return this._schLoad(); })
+        .catch((e) => { S.syncing[l.k] = false; S.err = 'Automatyczny harmonogram: nie udało się zapisać (' + (e && (e.message || e.code) || e) + ').'; this._schRender(); });
     });
   }
   async _schSave(l) {
@@ -440,11 +475,12 @@ class HaKartaPompaCiepla extends HTMLElement {
   _pkgCheck() {
     const st = this._hass.states, E = this._E;
     const need = [E.auto_cyrk, 'input_number.hp_cyrk_po_wyjsciu', E.wstali, 'input_text.hp_wstalismy_zrodlo',
-      'sensor.hp_cwu_srodek_zmiana', E.aktyw, 'sensor.hp_temperatura_zewnetrzna_bt1', 'sensor.hp_pakiet_wersja'];
+      'sensor.hp_cwu_srodek_zmiana', E.aktyw, 'sensor.hp_temperatura_zewnetrzna_bt1', 'sensor.hp_pakiet_wersja',
+      E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.g12_do, E.cwu_wait];
     const miss = need.filter((i) => !st[i]);
     const autoIds = {};
     Object.keys(st).forEach((k) => { if (k.startsWith('automation.') && st[k].attributes && st[k].attributes.id) autoIds[st[k].attributes.id] = 1; });
-    [['hp_auto_cyrk', 'automatyzacja „HP auto: cyrkulacja CWU wg harmonogramu i obecnosci”'], ['hp_auto_wstali', 'automatyzacja „HP auto: weekend - wstalismy (cyrkulacja)”']]
+    [['hp_auto_cyrk', 'automatyzacja „HP auto: cyrkulacja CWU wg harmonogramu i obecnosci”'], ['hp_auto_wstali', 'automatyzacja „HP auto: weekend - wstalismy (cyrkulacja)”'], ['hp_auto_cwu', 'automatyzacja „HP auto: CWU wg taryfy G12”']]
       .forEach(([id, n]) => { if (!autoIds[id]) miss.push(n); });
     const vs = st['sensor.hp_pakiet_wersja'], ver = vs ? String(vs.state) : null;
     const num = (v) => String(v).split('.').map((x) => parseInt(x, 10) || 0);
@@ -523,7 +559,7 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
   _nauTick() {
     const N = this._nau;
-    if (!N || !this._hass || this._tabCur !== 'nau') return;
+    if (!N || !this._hass || (this._tabCur !== 'nau' && !this._autoAny())) return;
     if (!N.loading && (!N.res || Date.now() - N.at > 30 * 60000)) { this._nauLoad(); return; }
     if (N.srcLoaded && N.src && !N.src.initV119) {
       // jednorazowo: domyslne 5 min po wyjsciu (pomocnik HA startuje od 0)
@@ -533,8 +569,16 @@ class HaKartaPompaCiepla extends HTMLElement {
         N.src.initV119 = true; this._nauSrcSave();
       }
     }
+    if (N.srcLoaded && N.src && !N.src.initV123) {
+      // jednorazowo: domyslnie czekaj 30 min na tania strefe G12 (pomocnik HA startuje od 0)
+      const a = this._hass.states[this._E.cwu_wait];
+      if (a) {
+        if (Number(a.state) === 0) this._hass.callService('input_number', 'set_value', { entity_id: this._E.cwu_wait, value: 30 });
+        N.src.initV123 = true; this._nauSrcSave();
+      }
+    }
     // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
-    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu']);
+    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu]);
     const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|') + '|' + Math.floor(Date.now() / 300000);
     const busy = N.drag || (this._nauEl && this._nauEl.contains(this.shadowRoot && this.shadowRoot.activeElement));
     if (sig !== N.sig && !busy) { N.sig = sig; this._nauRender(); }
@@ -664,6 +708,10 @@ class HaKartaPompaCiepla extends HTMLElement {
       const dc = Math.max(3, Math.min(60, Number(c.dni_cyrkulacja) || 28));
       res.cyrk = await this._nauCyrkLoad(now - dc * 864e5);
     } catch (e) { res.errs.push('Cyrkulacja: ' + (e && e.message || e)); }
+    try {
+      const dw = Math.max(3, Math.min(30, Number(c.dni_cwu) || 14));
+      res.cwu = await this._nauCwuLoad(now - dw * 864e5);
+    } catch (e) { res.errs.push('CWU: ' + (e && e.message || e)); }
     N.res = res; N.at = Date.now(); N.loading = false;
     const sn = this._nauSnap();
     if (N.cmpFrom && sn) { N.diff = this._nauDiff(N.cmpFrom, sn); N.cmpFrom = null; }
@@ -1112,12 +1160,179 @@ class HaKartaPompaCiepla extends HTMLElement {
     const N = this._nau, r = N.res && N.res.cyrk;
     if (!r) return;
     const S = this._sch, lane = this._schLanes().find((l) => l.k === 'cyrk');
+    if (this._schAuto(lane)) { S.lane = 'cyrk'; this._tab('sch', true); this._schRender(); return; }
     const dr = this._schDraft(lane);
     let n = 0;
     const bl = N.edit || this._nauBase(r);
     this._schDays().forEach((d, i) => { if (bl[i]) { dr[d] = this._schNorm(JSON.parse(JSON.stringify(bl[i]))); n++; } });
     S.dirty.cyrk = true; S.lane = 'cyrk'; S.sel = null;
     S.note = { k: 'cyrk', t: 'Wpisano propozycję z zakładki Nauka (' + n + ' z 7 dni). Sprawdź i kliknij „Zapisz harmonogram”, albo „Cofnij zmiany”. Przełącznik Aktywne nie był ruszany.' };
+    this._tab('sch', true);
+    this._schRender();
+    if (this._schEl.scrollIntoView) this._schEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  // ====================== v1.23: CWU wg taryfy G12 ======================
+  _g12Parse(txt) {
+    const out = [];
+    String(txt || '').split(',').forEach((z) => {
+      const m = /^\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$/.exec(z);
+      if (!m) return;
+      const f = Number(m[1]) * 60 + Number(m[2]), t = Number(m[3]) * 60 + Number(m[4]);
+      if (f <= 1440 && t <= 1440 && f !== t) out.push({ f, t });
+    });
+    return out;
+  }
+  _g12() {
+    const st = this._hass.states, E = this._E, s = st[E.g12];
+    let txt = s && s.state && s.state !== 'unknown' && s.state !== 'unavailable' ? s.state : '';
+    let z = this._g12Parse(txt);
+    if (!z.length) { txt = '22:00-06:00,13:00-15:00'; z = this._g12Parse(txt); }
+    const we = !!(st[E.g12_we] && st[E.g12_we].state === 'on');
+    const day = [];
+    for (let i = 0; i < 7; i++) {
+      let b = [];
+      if (we && i >= 5) b = [{ f: 0, t: 1440 }];
+      else z.forEach((x) => { if (x.f < x.t) b.push({ f: x.f, t: x.t }); else { b.push({ f: x.f, t: 1440 }); b.push({ f: 0, t: x.t }); } });
+      day.push(this._schNorm(b));
+    }
+    return { txt, z, we, day };
+  }
+  async _nauCwuLoad(startMs) {
+    const hass = this._hass, E = this._E, now = Date.now();
+    if (!hass.states[E.bt6]) throw new Error('brak czujnika ' + E.bt6);
+    const ids = [E.bt6].concat(hass.states[E.cpr_cwu] ? [E.cpr_cwu] : []);
+    const r = (await hass.callApi('GET', 'history/period/' + new Date(startMs).toISOString() + '?filter_entity_id=' + ids.join(',') +
+      '&end_time=' + encodeURIComponent(new Date(now).toISOString()) + '&minimal_response&no_attributes')) || [];
+    const by = {}; r.forEach((a) => { if (a && a.length) by[a[0].entity_id] = a; });
+    const pts = (by[E.bt6] || []).map((p) => [Date.parse(p.last_changed || p.last_updated), parseFloat(p.state)]).filter((p) => !isNaN(p[0]) && isFinite(p[1])).sort((x, y) => x[0] - y[0]);
+    if (pts.length < 20) throw new Error('za mało historii temperatury CWU (BT6)');
+    const use = [], cnt = [0, 0, 0, 0, 0, 0, 0];
+    for (let i = 0; i < 7; i++) use.push(new Array(96).fill(0));
+    const t0 = pts[0][0], seen = {};
+    for (let d = new Date(t0); d.getTime() < now; d.setDate(d.getDate() + 1)) { const k = d.toDateString(); if (!seen[k]) { seen[k] = 1; cnt[(d.getDay() + 6) % 7]++; } }
+    let tot = 0;
+    for (let k = 1; k < pts.length; k++) {
+      const [ta, va] = pts[k - 1], [tb, vb] = pts[k], dt = (tb - ta) / 60000, dv = va - vb;
+      if (dv <= 0 || dt <= 0 || dt > 30) continue;
+      // pobor wody = szybki spadek (straty postojowe to ok. 0,01 °C/min)
+      if (dv / dt < 0.03 && !(dv >= 0.5 && dt <= 10)) continue;
+      const d = new Date(tb), wd = (d.getDay() + 6) % 7, sl = d.getHours() * 4 + Math.floor(d.getMinutes() / 15);
+      use[wd][sl] += dv; tot += dv;
+    }
+    for (let i = 0; i < 7; i++) for (let k = 0; k < 96; k++) use[i][k] = cnt[i] ? use[i][k] / cnt[i] : 0;
+    const runs = [];
+    let on = null;
+    (by[E.cpr_cwu] || []).forEach((p) => { const t = Date.parse(p.last_changed || p.last_updated); if (isNaN(t)) return; if (p.state === 'on' && on === null) on = t; else if (p.state !== 'on' && on !== null) { runs.push([on, t]); on = null; } });
+    if (on !== null) runs.push([on, now]);
+    const days = Object.keys(seen).length;
+    return { use, cnt, runs, days, perDay: days ? tot / days : 0, start: t0, hasRuns: !!by[E.cpr_cwu] };
+  }
+  _nauCwuPlan(R) {
+    // tanie strefy jako ciagle odcinki w tygodniu (minuty od Pn 0:00); grzej w strefie, po ktorej do nastepnej taniej jest zuzycie >= prog
+    const G = this._g12(), N = this._nau, prog = N.src && isFinite(Number(N.src.cwuProg)) && N.src.cwuProg !== undefined ? Number(N.src.cwuProg) : 0.5;
+    const W = 7 * 1440, mark = new Uint8Array(W / 15);
+    G.day.forEach((bl, i) => bl.forEach((b) => { for (let m = b.f; m < b.t; m += 15) mark[(i * 1440 + m) / 15] = 1; }));
+    const n = mark.length, segs = [];
+    if (mark.every((x) => x)) segs.push({ a: 0, b: n, after: 0, inc: true });
+    else {
+      let s0 = 0; while (mark[s0]) s0++;
+      for (let k = 0, i = s0; k < n; k++, i = (i + 1) % n) {
+        if (mark[i] && !mark[(i - 1 + n) % n]) { let j = i; while (mark[j % n] && j - i < n) j++; segs.push({ a: i, b: j }); }
+      }
+      const has = R && R.use && R.perDay > 0.05;
+      segs.forEach((s, k) => {
+        const nx = segs[(k + 1) % segs.length]; let after = 0;
+        const st0 = s.b % n, end = nx.a >= st0 ? nx.a : nx.a + n;
+        for (let j = st0; j < end; j++) { const q = j % n; after += R && R.use ? R.use[Math.floor(q / 96)][q % 96] : 0; }
+        s.after = after; s.inc = !has || after >= prog;
+      });
+      // co najmniej jeden odcinek na dobe: ten z najwiekszym zuzyciem po nim
+      if (has) for (let d = 0; d < 7; d++) {
+        const mine = segs.filter((s) => Math.floor((s.a % n) / 96) === d);
+        if (mine.length && !mine.some((s) => s.inc)) mine.reduce((x, y) => (y.after > x.after ? y : x)).inc = true;
+      }
+    }
+    const blocks = []; for (let i = 0; i < 7; i++) blocks.push([]);
+    segs.filter((s) => s.inc).forEach((s) => { for (let j = s.a; j < s.b; j++) { const q = j % n, d = Math.floor(q / 96), m = (q % 96) * 15; blocks[d].push({ f: m, t: m + 15 }); } });
+    for (let i = 0; i < 7; i++) blocks[i] = this._schNorm(blocks[i]);
+    return { blocks, segs, prog, G };
+  }
+  _nauCwuHtml(R, esc, fmt) {
+    const st = this._hass.states, E = this._E, N = this._nau;
+    let h = '<div class="sec"><div class="st2">CWU: grzanie wody w taniej taryfie G12 (Pn–Nd)</div>';
+    const au = st[E.auto_cwu], auOn = au && au.state === 'on';
+    const P = this._nauCwuPlan(R), G = P.G;
+    const now = new Date(), wd = (now.getDay() + 6) % 7, nm = now.getHours() * 60 + now.getMinutes();
+    const cheapNow = st[E.g12_tania] ? st[E.g12_tania].state === 'on' : G.day[wd].some((b) => b.f <= nm && nm < b.t);
+    const doT = st[E.g12_do] ? parseFloat(st[E.g12_do].state) : NaN;
+    const wait = st[E.cwu_wait] ? Math.round(Number(st[E.cwu_wait].state)) : 30;
+    const plOn = st[E.pl_cwu] && st[E.pl_cwu].state === 'on';
+    const ne = st[E.pl_cwu] && st[E.pl_cwu].attributes && st[E.pl_cwu].attributes.next_event;
+    const toWin = plOn ? 0 : (ne ? Math.round((new Date(ne) - now) / 60000) : (isNaN(doT) ? null : doT));
+    const mode = st[E.hwmode] ? st[E.hwmode].state : '–';
+    const tw = (st['input_select.hp_cwu_tryb_w_oknie'] || {}).state || 'Luksus', tp = (st['input_select.hp_cwu_tryb_poza'] || {}).state || 'Normalny';
+    let why;
+    if (!auOn) why = 'automatyzacja wyłączona, trybem CWU sterujesz ręcznie albo harmonogramem „Tryb CWU” na głównej';
+    else if (plOn) why = 'okno grzania w taniej strefie: ' + tw;
+    else if (toWin !== null && toWin <= wait) why = 'do okna w taniej strefie zostało ' + toWin + ' min (≤ ' + wait + '): Ekonomiczny, czekam';
+    else why = 'droga strefa: ' + tp + ' (dogrzeje tylko, gdy woda spadnie poniżej progu trybu ' + tp + ')';
+    const bt6 = parseFloat((st[E.bt6] || {}).state), bt7 = parseFloat((st[E.bt7] || {}).state);
+    h += '<div class="lh"><button class="tg' + (auOn ? ' on' : '') + '" data-a="autocwu"' + (au ? '' : ' disabled') + ' title="Automatyzacja CWU"><i></i></button><b>Automatyzacja CWU: ' + (au ? (auOn ? 'włączona' : 'wyłączona') : 'brak') + '</b>' +
+      '<span>Teraz: <b style="color:' + (cheapNow ? '#7ee04a' : '#ffb74d') + '">' + (cheapNow ? 'tania strefa' : 'droga strefa') + '</b>' + (!cheapNow && !isNaN(doT) && doT < 9999 ? ' (tania za ' + (doT >= 60 ? Math.floor(doT / 60) + ' h ' : '') + Math.round(doT % 60) + ' min)' : '') +
+      ' · tryb CWU: <b>' + esc(mode) + '</b> · woda BT6 ' + (isNaN(bt6) ? '–' : bt6.toFixed(1) + ' °C') + ', BT7 ' + (isNaN(bt7) ? '–' : bt7.toFixed(1) + ' °C') + ' · powód: ' + esc(why) + '</span></div>';
+    h += '<div class="lh wk"><label>Tanie strefy G12: <input class="g12" type="text" data-a="g12" value="' + esc(G.txt) + '"' + (st[E.g12] ? '' : ' disabled') + '></label>' +
+      '<label><input type="checkbox" data-a="g12we"' + (G.we ? ' checked' : '') + (st[E.g12_we] ? '' : ' disabled') + '> So–Nd cała doba tania</label>' +
+      '<label>czekaj na tanią, gdy zostało ≤ <input type="number" min="0" max="180" step="5" data-a="cwait" value="' + wait + '"' + (st[E.cwu_wait] ? '' : ' disabled') + '> min</label>' +
+      '<label>grzej w strefie, gdy potem zużycie ≥ <input type="number" min="0" max="20" step="0.1" data-a="cprog" value="' + P.prog + '"> °C</label>' +
+      '<span class="ds">PGE G12 standard: tanio 22:00–6:00 i 13:00–15:00 codziennie, cały rok (format: 22:00-06:00,13:00-15:00). Logika automatyzacji: w oknie (tania strefa) tryb „' + esc(tw) + '”, czyli nagrzewa na zapas. Poza oknem „' + esc(tp) + '”: pompa dogrzeje drugi raz dopiero, gdy woda spadnie poniżej progu tego trybu. Gdy do taniej zostało ≤ ' + wait + ' min, ustawia „Ekonomiczny” i czeka na tanią. Tryby w oknie / poza zmieniasz na głównej w „Tryb CWU”.' +
+      (st[E.auto_cwu] ? '' : ' Brak encji automatyzacji CWU: wklej pakiet v1.23 i zrób pełny restart HA.') + '</span></div>';
+    if (!R) return h + '<div class="info">Brak historii temperatury CWU (BT6), propozycja = wszystkie tanie strefy.</div>' + this._nauCwuRows(P, null, esc, fmt) + '</div>';
+    h += '<div class="lh"><span>Zużycie ciepłej wody: średnio <b>' + R.perDay.toFixed(1) + ' °C</b> spadku BT6 na dobę (z ' + R.days + ' dni)</span>' + this._nauCwuStat(R, G) + '</div>';
+    h += this._nauCwuRows(P, R, esc, fmt);
+    return h + '</div>';
+  }
+  _nauCwuStat(R, G) {
+    if (!R.hasRuns || !R.runs.length) return '<span class="ds">Brak historii pracy sprężarki na CWU (binary_sensor.hp_sprezarka_cwu).</span>';
+    let all = 0, cheap = 0;
+    R.runs.forEach(([a, b]) => { for (let t = a; t < b; t += 60000) { const d = new Date(t), m = d.getHours() * 60 + d.getMinutes(), i = (d.getDay() + 6) % 7; all++; if (G.day[i].some((x) => x.f <= m && m < x.t)) cheap++; } });
+    return '<span>Grzanie CWU w taniej strefie dotąd: <b>' + (all ? Math.round(cheap / all * 100) : 0) + ' %</b> czasu (' + Math.round(all / 60) + ' h pracy na CWU w ' + R.days + ' dni)</span>';
+  }
+  _nauCwuRows(P, R, esc, fmt) {
+    const DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'], days = this._schDays(), G = P.G;
+    const now = new Date(), wd = (now.getDay() + 6) % 7, nm = now.getHours() * 60 + now.getMinutes();
+    const S = this._sch, main = S && S.data && S.data.cwu ? this._schFromItem(S.data.cwu) : null;
+    let mx = 0; if (R) R.use.forEach((d) => d.forEach((v) => { mx = Math.max(mx, v); }));
+    const grad = (arr) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(255,152,0,' + (mx ? Math.min(0.85, v / mx * 0.85) : 0).toFixed(2) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
+    let h = '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
+    const wk0 = new Date(now); wk0.setHours(0, 0, 0, 0); wk0.setDate(wk0.getDate() - wd);
+    DL.forEach((dn, i) => {
+      h += '<div class="dr"><span class="dn' + (i === wd ? ' td' : '') + '">' + dn + '</span><div class="tl ro">';
+      G.day[i].forEach((b) => { h += '<div class="lay" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%;right:auto;background:rgba(67,194,90,.22);border-radius:0"></div>'; });
+      if (R) h += '<div class="lay" style="background:' + grad(R.use[i]) + '"></div>';
+      if (R && R.runs) {
+        // praca sprezarki na CWU w ostatnim tygodniu tego dnia (do 7 dni wstecz)
+        const d0 = new Date(wk0); d0.setDate(d0.getDate() + i - (i > wd ? 7 : 0)); const a0 = d0.getTime(), a1 = a0 + 864e5;
+        R.runs.forEach(([a, b]) => { if (b <= a0 || a >= a1) return; const f = Math.max(a, a0), t = Math.min(b, a1); h += '<div class="ht" style="left:' + ((f - a0) / 864e5 * 100) + '%;width:' + Math.max(0.3, (t - f) / 864e5 * 100) + '%"></div>'; });
+      }
+      if (main) main[days[i]].forEach((b) => { h += '<div class="mn" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%;bottom:6px"></div>'; });
+      P.blocks[i].forEach((b) => { h += '<div class="bk cw" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%">' + fmt(b.f) + '–' + fmt(b.t) + '</div>'; });
+      if (i === wd) h += '<div class="nw" style="left:' + (nm / 14.4) + '%"></div>';
+      h += '</div><span class="cp"></span></div>';
+    });
+    const skip = P.segs.filter((s) => !s.inc);
+    h += '<div class="lg"><span><i style="background:rgba(67,194,90,.35)"></i>tania strefa G12</span><span><i style="background:rgba(255,152,0,.7)"></i>zużycie ciepłej wody (im mocniej, tym więcej)</span><span><i class="cb"></i>grzanie na ' + esc((this._hass.states['input_select.hp_cwu_tryb_w_oknie'] || {}).state || 'Luksus') + ' (propozycja)</span><span><i style="background:#ff5a4a;height:.3em"></i>grzało CWU (ostatni tydzień)</span><span><i style="background:#ffd54f;height:.25em"></i>obecny harmonogram na głównej</span></div>';
+    if (skip.length) h += '<div class="wn sk">Pominięte tanie strefy (po nich do następnej taniej zużycie poniżej ' + P.prog + ' °C): ' + skip.map((s) => { const q = s.a % (7 * 96); return DL[Math.floor(q / 96)] + ' ' + fmt((q % 96) * 15) + ' (' + s.after.toFixed(1) + ' °C)'; }).join(', ') + '.</div>';
+    h += '<div class="ft"><span class="hint">Propozycja = tanie strefy, po których zużywacie wodę. „Wyślij na główną” wpisze je do harmonogramu „Tryb CWU” (zapisujesz tam „Zapisz harmonogram”). Przy włączonej automatyzacji CWU harmonogram ustawia się sam.</span><button class="sv" data-a="sendcwu">Wyślij na główną</button></div>';
+    return h;
+  }
+  _nauSendCwu() {
+    const N = this._nau, P = this._nauCwuPlan(N.res && N.res.cwu);
+    const S = this._sch, lane = this._schLanes().find((l) => l.k === 'cwu');
+    if (this._schAuto(lane)) { this._tab('sch', true); S.lane = 'cwu'; this._schRender(); return; }
+    const dr = this._schDraft(lane);
+    this._schDays().forEach((d, i) => { dr[d] = this._schNorm(JSON.parse(JSON.stringify(P.blocks[i]))); });
+    S.dirty.cwu = true; S.lane = 'cwu'; S.sel = null;
+    S.note = { k: 'cwu', t: 'Wpisano propozycję grzania CWU w taniej taryfie z zakładki Nauka. Sprawdź i kliknij „Zapisz harmonogram”, albo „Cofnij zmiany”. Przełącznik Aktywne nie był ruszany.' };
     this._tab('sch', true);
     this._schRender();
     if (this._schEl.scrollIntoView) this._schEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1131,6 +1346,8 @@ class HaKartaPompaCiepla extends HTMLElement {
         const t = ev.target.closest && ev.target.closest('[data-a]'); if (!t) return;
         const a = t.getAttribute('data-a');
         if (a === 'send') this._nauSend();
+        else if (a === 'sendcwu') this._nauSendCwu();
+        else if (a === 'autocwu') { const id = this._E.auto_cwu; if (this._hass.states[id]) this._hass.callService('input_boolean', 'toggle', { entity_id: id }); }
         else if (a === 'celx') { delete N.src.cel; this._nauSrcSave(); this._nauRecalc(); }
         else if (a === 'auto') { const id = this._E.auto_cyrk; if (this._hass.states[id]) this._hass.callService('input_boolean', 'toggle', { entity_id: id }); }
         else if (a === 'nbk') { N.sel = { i: Number(t.getAttribute('data-d')), j: Number(t.getAttribute('data-i')) }; this._nauRender(); }
@@ -1168,6 +1385,10 @@ class HaKartaPompaCiepla extends HTMLElement {
       el.addEventListener('pointercancel', () => { const g = N.drag; if (g && g.tmp) g.tmp.remove(); N.drag = null; });
       el.addEventListener('change', (ev) => {
         const t = ev.target, a = t.getAttribute && t.getAttribute('data-a');
+        if (a === 'g12') { const v = String(t.value).replace(/\s+/g, ''); if (this._g12Parse(v).length && this._hass.states[this._E.g12]) this._hass.callService('input_text', 'set_value', { entity_id: this._E.g12, value: v }); else this._nauRender(); return; }
+        if (a === 'g12we') { const id = this._E.g12_we; if (this._hass.states[id]) this._hass.callService('input_boolean', t.checked ? 'turn_on' : 'turn_off', { entity_id: id }); return; }
+        if (a === 'cwait') { const v = parseInt(t.value, 10), id = this._E.cwu_wait; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(0, Math.min(180, v)) }); return; }
+        if (a === 'cprog') { const v = parseFloat(String(t.value).replace(',', '.')); if (isFinite(v) && v >= 0 && v <= 20) N.src.cwuProg = v; else delete N.src.cwuProg; this._nauSrcSave(); this._nauRender(); return; }
         if (a === 'pwy') { const v = parseInt(t.value, 10), id = 'input_number.hp_cyrk_po_wyjsciu'; if (!isNaN(v) && this._hass.states[id]) this._hass.callService('input_number', 'set_value', { entity_id: id, value: Math.max(0, Math.min(60, v)) }); return; }
         if (a === 'wk' || a === 'wt' || a === 'wp' || a === 'won') {
           const w = N.src.wake = Object.assign({}, N.src.wake || {}), k = t.getAttribute('data-k');
@@ -1196,7 +1417,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const fmt = (m) => this._schFmt(m);
     const R = N.res;
-    let h = '<div class="sh"><div class="sht">Nauka<small>podgląd: ustawień pompy nie zmienia (poza suwakiem automatyzacji cyrkulacji)</small><span style="flex:1"></span>' +
+    let h = '<div class="sh"><div class="sht">Nauka<small>podgląd: ustawień pompy nie zmienia (poza suwakami automatyzacji cyrkulacji i CWU)</small><span style="flex:1"></span>' +
       '<button data-a="reload"' + (N.loading ? ' disabled' : '') + '>' + (N.loading ? 'Liczę…' : 'Przelicz') + '</button></div>';
     h += this._pkHtml(esc);
     if (!R) { el.innerHTML = h + '<div class="info">' + (N.loading ? 'Pobieram historię z Home Assistant i pogodę z Open-Meteo…' : 'Brak danych.') + '</div></div>'; return; }
@@ -1246,6 +1467,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (C) h += this._nauOutHtml(C, R.wx || {});
     if (C) h += this._nauFcHtml(C, R.prev);
     h += this._nauCyrkHtml(Y, esc, fmt);
+    h += this._nauCwuHtml(R.cwu, esc, fmt);
     if (N.srcLoaded) h += this._nauSrcHtml(esc);
     if (N.at) h += '<div class="wn" style="margin-top:.8em">Policzone ' + new Date(N.at).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ', odświeżane co 30 min. Pogoda: Open-Meteo (api.open-meteo.com, położenie domu z HA).</div>';
     el.innerHTML = h + '</div>';
