@@ -205,5 +205,9 @@ Jeśli czegoś brakuje albo wersja jest starsza, na górze karty pojawia się ż
   - w oknie harmonogramu „Tryb CWU” (tania strefa) ustawia tryb „w oknie” (domyślnie **Luksus**), czyli nagrzewa na zapas;
   - poza oknem ustawia tryb „poza oknem” (domyślnie **Normalny**), więc pompa dogrzeje drugi raz dopiero, gdy woda spadnie poniżej progu Normalnego;
   - gdy do okna zostało ≤ 30 min (`input_number.hp_cwu_czekaj_min`, do zmiany w Nauce), ustawia **Ekonomiczny** i czeka na tanią strefę;
-  - pusty harmonogram = okna z samej taryfy (`binary_sensor.hp_g12_tania`). Gdy jest włączona, stara „HP plan: tryb CWU wg godzin” czeka.
-- Nowe w pakiecie: `binary_sensor.hp_g12_tania`, `sensor.hp_g12_do_taniej`, `input_boolean.hp_auto_cwu`, `input_boolean.hp_g12_weekend_tani`, `input_number.hp_cwu_czekaj_min` (karta wpisze 30 przy pierwszym uruchomieniu), `input_text.hp_g12_strefy`, automatyzacja `hp_auto_cwu`. W „HP plan: tryb CWU wg godzin” doszedł warunek „czekaj, gdy auto CWU włączone”.
+  - pusty harmonogram = okna z samej taryfy (`binary_sensor.hp_g12_tania_strefa`). Gdy jest włączona, stara „HP plan: tryb CWU wg godzin” czeka.
+- Nowe w pakiecie: `binary_sensor.hp_g12_tania_strefa`, `sensor.hp_g12_do_taniej`, `input_boolean.hp_auto_cwu`, `input_boolean.hp_g12_weekend_tani`, `input_number.hp_cwu_czekaj_min` (karta wpisze 30 przy pierwszym uruchomieniu), `input_text.hp_g12_strefy`, automatyzacja `hp_auto_cwu`. W „HP plan: tryb CWU wg godzin” doszedł warunek „czekaj, gdy auto CWU włączone”.
+
+## v1.24: poprawka nazwy encji taryfy G12
+
+W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_strefa` (HA bierze ID z nazwy „HP G12 tania strefa”), a pakiet i karta szukały `binary_sensor.hp_g12_tania`. Przez to „do taniej” liczyło źle w taniej strefie i karta pokazywała stary pakiet. Teraz wszędzie jest `binary_sensor.hp_g12_tania_strefa`. **Wersja pakietu: 1.24.** Po wklejeniu wystarczy przeładować „Encje szablonów” i „Automatyzacje” (pełny restart też jest OK).

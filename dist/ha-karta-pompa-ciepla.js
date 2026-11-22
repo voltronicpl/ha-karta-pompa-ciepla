@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.23
+ * ha-karta-pompa-ciepla  v1.24
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,9 +9,9 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.23';
+const VERSION = 'v1.24';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.23';
+const PKG_VER = '1.24';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -85,7 +85,7 @@ const DEFAULT_E = {
  "auto_cwu": "input_boolean.hp_auto_cwu",
  "g12": "input_text.hp_g12_strefy",
  "g12_we": "input_boolean.hp_g12_weekend_tani",
- "g12_tania": "binary_sensor.hp_g12_tania",
+ "g12_tania": "binary_sensor.hp_g12_tania_strefa",
  "g12_do": "sensor.hp_g12_do_taniej",
  "cwu_wait": "input_number.hp_cwu_czekaj_min",
  "cpr_cwu": "binary_sensor.hp_sprezarka_cwu"
