@@ -255,6 +255,21 @@ input_datetime:
     icon: mdi:alarm
 
 input_number:
+  # v1.19: ustawiane z zakladki Nauka (karta przy pierwszym uruchomieniu wpisuje 5 i 30)
+  hp_cyrk_po_wyjsciu:
+    name: "HP auto: cyrkulacja off po wyjsciu wszystkich"
+    min: 0
+    max: 60
+    step: 1
+    mode: box
+    unit_of_measurement: "min"
+  hp_cyrk_po_wstaniu:
+    name: "HP auto: cyrkulacja po wstaniu (weekend)"
+    min: 0
+    max: 180
+    step: 5
+    mode: box
+    unit_of_measurement: "min"
   hp_noc_przesuniecie:
     name: "HP plan: przesuniecie krzywej w oknie"
     min: -10
@@ -386,7 +401,7 @@ automation:
         data: {value: "{{ postoj }}"}
 
   # 3b) v1.15 Automatyzacja cyrkulacji (suwak w zakladce Nauka): harmonogram + obecnosc telefonow.
-  #     Wszyscy poza domem (zone.home = 0 przez 10 min) = wylaczona, ktos wrocil = od razu wg harmonogramu.
+  #     Wszyscy poza domem (zone.home = 0 przez hp_cyrk_po_wyjsciu min, domyslnie 5) = wylaczona, ktos wrocil = od razu wg harmonogramu.
   #     Pora snu blokuje wlaczanie, bo okna harmonogramu z Nauki omijaja sen.
   #     "Wylaczona" = praca 1 min / postoj 60 min (SMO40 nie ma wl/wyl). Dziala tylko przy hp_auto_cyrk = on.
   - id: hp_auto_cyrk
@@ -394,11 +409,11 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk, input_datetime.hp_wstalismy]
+        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk, input_datetime.hp_wstalismy, input_number.hp_cyrk_po_wyjsciu, input_number.hp_cyrk_po_wstaniu]
       - trigger: state
         entity_id: zone.home
         to: "0"
-        for: {minutes: 10}
+        for: {minutes: "{{ states('input_number.hp_cyrk_po_wyjsciu') | int(5) }}"}
       - trigger: state
         entity_id: zone.home
         from: "0"
@@ -418,11 +433,11 @@ automation:
     actions:
       - variables:
           ktos: "{{ states('zone.home') | int(0) > 0 }}"
-          pusto_dlugo: "{{ not ktos and (now() - states.zone.home.last_changed).total_seconds() >= 600 }}"
+          pusto_dlugo: "{{ not ktos and (now() - states.zone.home.last_changed).total_seconds() >= (states('input_number.hp_cyrk_po_wyjsciu') | int(5)) * 60 }}"
           w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
-          # v1.18: weekend - 60 min cyrkulacji od pierwszej aktywnosci rano (input_datetime.hp_wstalismy)
+          # v1.18: weekend - cyrkulacja przez hp_cyrk_po_wstaniu min od pierwszej aktywnosci rano (input_datetime.hp_wstalismy)
           wst: "{{ states('input_datetime.hp_wstalismy') | as_datetime(none) }}"
-          rano: "{{ wst is not none and now().isoweekday() >= 6 and 0 <= (now() - (wst | as_local)).total_seconds() < 3600 }}"
+          rano: "{{ wst is not none and now().isoweekday() >= 6 and 0 <= (now() - (wst | as_local)).total_seconds() < (states('input_number.hp_cyrk_po_wstaniu') | int(30)) * 60 }}"
           wl: "{{ (w_oknie or rano) and not pusto_dlugo }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if wl else 1 }}"
           postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if wl else 60 }}"
@@ -435,7 +450,7 @@ automation:
         target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
         data: {value: "{{ postoj }}"}
 
-  # 3c) v1.18 Weekend: pierwsza aktywnosc rano (5:00-11:00, ktos w domu) = wstalismy -> cyrkulacja 60 min.
+  # 3c) v1.18 Weekend: pierwsza aktywnosc rano (5:00-11:00, ktos w domu) = wstalismy -> cyrkulacja przez hp_cyrk_po_wstaniu min (domyslnie 30).
   #     Raz na dzien. Dziala tylko przy wlaczonej automatyzacji cyrkulacji (hp_auto_cyrk).
   #     Bez sygnalu zostaje okno z harmonogramu (sugestia z Nauki, ok. 8:00).
   - id: hp_auto_wstali

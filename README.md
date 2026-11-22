@@ -164,3 +164,10 @@ W Nauce przy cyrkulacji jest „Pora wstawania”, osobno Pn–Pt i So–Nd: **A
 
 Pora wstawania Pn–Pt jest stała (z historii albo ręcznie). W weekend godzina to tylko sugestia: pakiet dodaje `binary_sensor.hp_aktywnosc_w_domu` (światła, ruch/obecność, ekran telefonu, media), `input_datetime.hp_wstalismy` i automatyzację „HP auto: weekend - wstalismy (cyrkulacja)”. Przy włączonej automatyzacji cyrkulacji pierwsza aktywność rano w So/Nd (5:00–11:00, ktoś w domu) zapisuje godzinę wstania i włącza cyrkulację na 60 min. Bez sygnału zostaje okno z sugestii w harmonogramie. Wymaga wklejenia nowego pakietu (kroki jak wyżej, przeładuj też „Pomocnicy daty/czasu”).
 Uwaga: jeśli jakieś światło świeci całą noc, sensor aktywności już jest „on” i rano nie zmieni stanu; wtedy działa tylko okno z sugestii.
+
+## v1.19: po wyjściu / po wstaniu / Przelicz ze zmianami
+
+- „Po wyjściu wszystkich wyłącz po __ min” (domyślnie 5) w Nauce, zapisywane w `input_number.hp_cyrk_po_wyjsciu` i używane przez automatyzację cyrkulacji.
+- „i __ min po wstaniu” (domyślnie 30): okno po wstaniu trwa od X min przed do Y min po wstaniu (w weekend tyle trwa cyrkulacja po wykryciu wstania, `input_number.hp_cyrk_po_wstaniu`). Jeśli zwykle jesteście wtedy w domu i nie śpicie, łączy się z oknem obecności i wychodzi dłużej.
+- „Przelicz” pokazuje, co się zmieniło od poprzedniego liczenia: lista różnic (punkty krzywej, pora wstawania, okna cyrkulacji dzień po dniu), szara przerywana linia na wykresie krzywej i szare ramki starych okien. Nic się nie zapisuje do harmonogramu bez „Wyślij na główną”.
+- Wymaga wklejenia nowego pakietu (dwa nowe `input_number`). Karta przy pierwszym uruchomieniu wpisze w nie 5 i 30.
