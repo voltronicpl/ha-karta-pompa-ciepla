@@ -81,6 +81,9 @@ E = dict(
     opmode='select.hydrolution_tryb_pracy',
     heat_ok='switch.hydrolution_ogrzewanie_dozwolone',
     hw_prod='switch.hydrolution_produkcja_cwu',
+    cwu_boost='input_text.hp_cwu_boost',
+    cwu_lux_max='input_number.hp_cwu_lux_max',
+    tmp_lux='select.hydrolution_podgrzanie_cwu_jednorazowe',
 )
 
 # cyrkulacja CWU "wlaczona" = nie jest w stanie praca 1 min / postoj 60 min (brak rejestru wl/wyl w SMO40)

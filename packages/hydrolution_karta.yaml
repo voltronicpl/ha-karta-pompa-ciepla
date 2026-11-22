@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...).
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.24 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.25 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.24"
+        state: "1.25"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -237,6 +237,12 @@ script:
       - action: select.select_option
         target: {entity_id: select.hydrolution_tryb_pracy}
         data: {option: "Auto"}
+      # v1.27: CO zawsze z powrotem dozwolone, koniec ewentualnego grzania CWU luksusem
+      - action: switch.turn_on
+        target: {entity_id: switch.hydrolution_ogrzewanie_dozwolone}
+      - action: input_text.set_value
+        target: {entity_id: input_text.hp_cwu_boost}
+        data: {value: ""}
   hp_tryb_co:
     alias: "HP tryb CO"
     icon: mdi:thermometer-lines
@@ -248,17 +254,60 @@ script:
         data: {option: "Reczny"}
       - action: switch.turn_on
         target: {entity_id: switch.hydrolution_ogrzewanie_dozwolone}
+      - action: input_text.set_value
+        target: {entity_id: input_text.hp_cwu_boost}
+        data: {value: ""}
+  # v1.27: CWU = jednorazowe grzanie wody na luksus z wstrzymanym CO; automatyzacja hp_cwu_boost_koniec
+  #        wraca do Auto (CO wl.), gdy woda sie zagrzeje, luksus sie skonczy albo minie hp_cwu_lux_max (domyslnie 60 min).
+  #        (do v1.26: Reczny + CO wyl. NA STALE - to zostawialo pompe bez CO i bez CWU)
   hp_tryb_cwu:
     alias: "HP tryb CWU"
     icon: mdi:water-outline
     sequence:
       - action: switch.turn_off
         target: {entity_id: switch.hydrolution_tryb_urlopowy}
+      - action: script.hp_cwu_boost_start
+        data: {zrodlo: "przycisk"}
+  # v1.27: start jednorazowego luksusu: podgrzanie CWU jednorazowe + Reczny + CO wyl. (cala moc na wode)
+  hp_cwu_boost_start:
+    alias: "HP CWU: start luksusu jednorazowego"
+    icon: mdi:water-boiler-alert
+    fields:
+      zrodlo: {description: "auto / przycisk"}
+    sequence:
+      - action: select.select_option
+        target: {entity_id: select.hydrolution_podgrzanie_cwu_jednorazowe}
+        data: {option: "Jednorazowo"}
       - action: select.select_option
         target: {entity_id: select.hydrolution_tryb_pracy}
         data: {option: "Reczny"}
       - action: switch.turn_off
         target: {entity_id: switch.hydrolution_ogrzewanie_dozwolone}
+      - action: input_text.set_value
+        target: {entity_id: input_text.hp_cwu_boost}
+        data: {value: "{{ zrodlo | default('przycisk') }}"}
+  # v1.27: koniec luksusu: Auto + CO wl.; przerwij = wylacz tez podgrzanie jednorazowe (gdy woda jeszcze nie zagrzana)
+  hp_cwu_boost_stop:
+    alias: "HP CWU: koniec luksusu jednorazowego"
+    icon: mdi:water-boiler-off
+    fields:
+      przerwij: {description: "true = wylacz tez podgrzanie jednorazowe"}
+    sequence:
+      - action: select.select_option
+        target: {entity_id: select.hydrolution_tryb_pracy}
+        data: {option: "Auto"}
+      - action: switch.turn_on
+        target: {entity_id: switch.hydrolution_ogrzewanie_dozwolone}
+      - if:
+          - condition: template
+            value_template: "{{ przerwij | default(false) and not is_state('select.hydrolution_podgrzanie_cwu_jednorazowe', 'Wylaczone') }}"
+        then:
+          - action: select.select_option
+            target: {entity_id: select.hydrolution_podgrzanie_cwu_jednorazowe}
+            data: {option: "Wylaczone"}
+      - action: input_text.set_value
+        target: {entity_id: input_text.hp_cwu_boost}
+        data: {value: ""}
   hp_tryb_urlop:
     alias: "HP tryb Urlop"
     icon: mdi:briefcase-outline
@@ -304,6 +353,12 @@ input_boolean:
     icon: mdi:calendar-weekend
 
 input_datetime:
+  # v1.27: kiedy automatyzacja CWU ostatnio wlaczyla luksus jednorazowy (najwyzej raz na 1,5 h)
+  hp_cwu_boost_ostatnio:
+    name: "HP CWU: luksus jednorazowy ostatnio"
+    has_date: true
+    has_time: true
+    icon: mdi:history
   # v1.18: kiedy w weekend wstaliscie (pierwsza aktywnosc rano), wpisuje automatyzacja hp_auto_wstali
   hp_wstalismy:
     name: "HP auto: weekend - wstalismy o"
@@ -312,6 +367,14 @@ input_datetime:
     icon: mdi:alarm
 
 input_number:
+  # v1.27: maks. czas luksusu jednorazowego z wstrzymanym CO (Reczny), potem powrot do Auto. Karta wpisuje 60 przy pierwszym uruchomieniu.
+  hp_cwu_lux_max:
+    name: "HP CWU: maks. czas luksusu (CO wstrzymane)"
+    min: 0
+    max: 240
+    step: 5
+    mode: box
+    unit_of_measurement: "min"
   # v1.23: automatyzacja CWU - gdy do taniej strefy zostalo mniej niz tyle minut, nie grzej (czekaj). Karta wpisuje 30 przy pierwszym uruchomieniu.
   hp_cwu_czekaj_min:
     name: "HP auto: CWU czekaj na tania strefe"
@@ -358,6 +421,10 @@ input_number:
     unit_of_measurement: "min"
 
 input_text:
+  # v1.27: trwa luksus jednorazowy z wstrzymanym CO: "" = nie, "auto" = z automatyzacji G12, "przycisk" = przycisk CWU
+  hp_cwu_boost:
+    name: "HP CWU: luksus jednorazowy trwa"
+    max: 20
   # v1.23: tanie strefy G12, np. "22:00-06:00,13:00-15:00" (puste = te domyslne). Ustawiane z zakladki Nauka.
   hp_g12_strefy:
     name: "HP G12: tanie strefy"
@@ -437,7 +504,9 @@ automation:
         data: {option: "{{ target }}"}
 
   # 2b) v1.23 Automatyzacja CWU (suwak w zakladce Nauka), taryfa G12:
-  #     w oknie harmonogramu "Tryb CWU" (okna = tanie strefy z Nauki) -> tryb "w oknie" (domyslnie Luksus, nagrzewa w taniej),
+  #     v1.27: tryb CWU zawsze "poza oknem" (Normalny); w oknie (tania strefa), gdy BT7 < cel Luksusu - 2 °C:
+  #     luksus jednorazowy + Reczny + CO wyl. (script.hp_cwu_boost_start), koniec w hp_cwu_boost_koniec.
+  #     (do v1.26: w oknie harmonogramu "Tryb CWU" (okna = tanie strefy z Nauki) -> tryb "w oknie" (domyslnie Luksus, nagrzewa w taniej),
   #     poza oknem -> tryb "poza oknem" (domyslnie Normalny: pompa dogrzeje dopiero, gdy woda spadnie ponizej progu Normalnego),
   #     ale gdy do okna zostalo mniej niz hp_cwu_czekaj_min (30 min) -> Ekonomiczny (czeka na tania strefe).
   #     Pusty harmonogram -> okna = binary_sensor.hp_g12_tania_strefa. Dziala tylko przy hp_auto_cwu = on.
@@ -472,12 +541,66 @@ automation:
           czekaj: "{{ states('input_number.hp_cwu_czekaj_min') | float(30) }}"
           w_oknie: "{{ states('input_select.hp_cwu_tryb_w_oknie') if states('input_select.hp_cwu_tryb_w_oknie') not in ['unknown', 'unavailable', ''] else 'Luksus' }}"
           poza: "{{ states('input_select.hp_cwu_tryb_poza') if states('input_select.hp_cwu_tryb_poza') not in ['unknown', 'unavailable', ''] else 'Normalny' }}"
-          target: "{{ w_oknie if okno else ('Ekonomiczny' if (do_okna | float(9999)) <= czekaj else poza) }}"
+          target: "{{ poza if okno else ('Ekonomiczny' if (do_okna | float(9999)) <= czekaj else poza) }}"
+          bt7: "{{ states('sensor.hydrolution_cwu_gora_bt7') | float(99) }}"
+          cel: "{{ states('number.hydrolution_cwu_temp_stop_luksus') | float(53) }}"
+          boost: "{{ states('input_text.hp_cwu_boost') not in ['', 'unknown', 'unavailable'] }}"
+          ost: "{{ states('input_datetime.hp_cwu_boost_ostatnio') | as_datetime(none) }}"
+          moze: "{{ ost is none or (now() - (ost | as_local)).total_seconds() > 5400 }}"
+      - if:
+          - condition: template
+            value_template: "{{ states('select.hydrolution_tryb_cwu') != target }}"
+        then:
+          - action: select.select_option
+            target: {entity_id: select.hydrolution_tryb_cwu}
+            data: {option: "{{ target }}"}
+      # v1.27: tania strefa i woda ponizej celu Luksusu -> luksus jednorazowy z wstrzymanym CO (najwyzej raz na 1,5 h)
+      - if:
+          - condition: template
+            value_template: "{{ okno and not boost and moze and bt7 < cel - 2 and has_value('select.hydrolution_podgrzanie_cwu_jednorazowe') and has_value('select.hydrolution_tryb_pracy') }}"
+        then:
+          - action: input_datetime.set_datetime
+            target: {entity_id: input_datetime.hp_cwu_boost_ostatnio}
+            data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
+          - action: script.hp_cwu_boost_start
+            data: {zrodlo: "auto"}
+
+  # 2c) v1.27 Koniec luksusu jednorazowego (dziala zawsze, tez bez automatyzacji CWU): wraca do Auto i CO wl., gdy
+  #     woda zagrzana (BT7 >= cel Luksusu - 0,5), luksus sie skonczyl, minal hp_cwu_lux_max (60 min), restart HA,
+  #     a dla startu z automatyzacji tez: koniec taniej strefy albo wylaczenie automatyzacji CWU. CO nie zostaje wylaczone na stale.
+  - id: hp_cwu_boost_koniec
+    alias: "HP CWU: koniec luksusu jednorazowego"
+    mode: single
+    triggers:
+      - trigger: time_pattern
+        minutes: "/1"
+      - trigger: state
+        entity_id: [sensor.hydrolution_cwu_gora_bt7, select.hydrolution_podgrzanie_cwu_jednorazowe, input_boolean.hp_auto_cwu, binary_sensor.hp_g12_tania_strefa, schedule.hp_plan_tryb_cwu]
+      - trigger: homeassistant
+        event: start
+        id: start
+    conditions:
       - condition: template
-        value_template: "{{ states('select.hydrolution_tryb_cwu') != target }}"
-      - action: select.select_option
-        target: {entity_id: select.hydrolution_tryb_cwu}
-        data: {option: "{{ target }}"}
+        value_template: "{{ states('input_text.hp_cwu_boost') not in ['', 'unknown', 'unavailable'] }}"
+    actions:
+      - variables:
+          zr: "{{ states('input_text.hp_cwu_boost') }}"
+          min_trwa: "{{ ((now() - states.input_text.hp_cwu_boost.last_changed).total_seconds() / 60) | round(0) }}"
+          maks: "{{ states('input_number.hp_cwu_lux_max') | float(60) if states('input_number.hp_cwu_lux_max') | float(0) > 0 else 60 }}"
+          bt7: "{{ states('sensor.hydrolution_cwu_gora_bt7') | float(0) }}"
+          cel: "{{ states('number.hydrolution_cwu_temp_stop_luksus') | float(53) }}"
+          ma_plan: "{{ state_attr('schedule.hp_plan_tryb_cwu', 'next_event') not in [none, ''] }}"
+          okno: "{{ is_state('schedule.hp_plan_tryb_cwu', 'on') if ma_plan else is_state('binary_sensor.hp_g12_tania_strefa', 'on') }}"
+          zagrzana: "{{ bt7 >= cel - 0.5 }}"
+          lux_koniec: "{{ is_state('select.hydrolution_podgrzanie_cwu_jednorazowe', 'Wylaczone') and min_trwa >= 5 }}"
+          przerwij: >
+            {{ trigger.id == 'start' or min_trwa >= maks
+               or (zr == 'auto' and (not okno or is_state('input_boolean.hp_auto_cwu', 'off'))) }}
+      - condition: template
+        value_template: "{{ zagrzana or lux_koniec or przerwij }}"
+      - action: script.hp_cwu_boost_stop
+        data:
+          przerwij: "{{ przerwij and not zagrzana }}"
 
   # 3) Cyrkulacja CWU: w oknie czasy "w oknie", poza oknem praca 1 min / postoj 60 min (SMO40 nie ma wl/wyl)
   - id: hp_plan_cyrk

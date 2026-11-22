@@ -224,3 +224,13 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - **Główna → Harmonogram → Tryb CWU:** pod osią każdego dnia pasek z tymi samymi kolorami (Ekonomiczny tylko przy włączonej automatyzacji CWU, bo tylko ona go ustawia).
 - **Priorytet pracy** (lista statusów w panelu po prawej): kliknięcie otwiera wybór **Auto** / **Ręcznie** (`select.hydrolution_tryb_pracy`, rejestr 47137). Auto = pompa sama decyduje CO/CWU. Po wybraniu Ręcznie są dwa przełączniki: **CO** (`switch.hydrolution_ogrzewanie_dozwolone`, 47371) i **CWU** (`switch.hydrolution_produkcja_cwu`, 47387). CO wł/wył działa tylko w trybie Ręczny / Tylko grzałka; „Produkcja CWU” na SMO40 może nie działać. Sam „Priorytet pracy” (43086) to tylko odczyt tego, co pompa robi teraz.
 - Pakiet HA i ESP bez zmian (pakiet 1.24).
+
+## v1.27: woda zawsze Normalny, w taniej strefie luksus jednorazowy z wstrzymanym CO (pakiet 1.25)
+
+- **Tryb CWU zawsze Normalny** (tryb „poza oknem”). ≤ 30 min przed tanią strefą: **Ekonomiczny**, czeka.
+- **Wejście w tanią strefę G12** (22–6, 13–15), gdy BT7 < cel luksusu − 2 °C: **luksus jednorazowy** (`select.hydrolution_podgrzanie_cwu_jednorazowe` = Jednorazowo, rejestr 48132), **tryb pracy Ręczny** i **ogrzewanie CO wyłączone**, cała moc idzie w wodę. Najwyżej raz na 90 min.
+- **Koniec:** BT7 doszło do celu luksusu albo luksus się skończył → **tryb pracy Auto + ogrzewanie dozwolone**.
+- **Bezpieczniki (CO nie zostaje wyłączone na stałe):** maks. czas luksusu (Nauka → CWU, domyślnie **60 min**, `input_number.hp_cwu_lux_max`), restart HA, wyjście z taniej strefy, wyłączenie automatyzacji CWU → wraca na Auto + CO.
+- **Przycisk „CWU”** na głównej robi to samo (luksus jednorazowy + CO wstrzymane do zagrzania, max czas jak wyżej), już nie wyłącza CO na stałe. **„Auto”** przerywa i od razu wraca na Auto z CO.
+- Nauka → CWU: pole „maks. czas luksusu”, linia stanu (tryb pracy, CO, podgrzanie jednorazowe, ile trwa luksus).
+- Pakiet HA **1.25**: nowe `input_number.hp_cwu_lux_max`, `input_text.hp_cwu_boost`, `input_datetime.hp_cwu_boost_ostatnio`, skrypty `hp_cwu_boost_start` / `hp_cwu_boost_stop`, automatyzacja `hp_cwu_boost_koniec`; zmienione `hp_auto_cwu`, `hp_tryb_auto`, `hp_tryb_co`, `hp_tryb_cwu`. Wklej pakiet i zrób **pełny restart HA**.
