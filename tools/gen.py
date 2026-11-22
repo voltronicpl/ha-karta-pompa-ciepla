@@ -73,6 +73,15 @@ E = dict(
     cyrk_wymus_min='input_number.hp_cyrk_wymus_min',  # v1.33: na ile minut
     esp_plan='text.hydrolution_plan_offline_parametry',  # v1.34: plan tygodnia w ESP v5.5 (parametry + data)
     esp_off='binary_sensor.hydrolution_plan_z_esp_steruje_brak_ha',  # v1.34: ESP steruje sam (brak HA)
+    esp_cwu='text.hydrolution_plan_offline_cwu',  # v1.35: maski planu w ESP (znacznik "zapisany do ESP")
+    esp_cyrk='text.hydrolution_plan_offline_cyrkulacja',
+    esp_noc='text.hydrolution_plan_offline_noc',
+    esp_grz='text.hydrolution_plan_offline_grzalka',
+    cyrk_model='input_text.hp_cyrk_model',  # v1.35: model cyrkulacji z Nauki (karta -> HA)
+    cyrk_obec='input_text.hp_cyrk_obecnosc',  # v1.35: okna z obecnosci (hex)
+    cyrk_plan='input_text.hp_cyrk_plan',  # v1.35: plan cyrkulacji policzony w HA (hex)
+    cyrk_plan_at='input_datetime.hp_cyrk_plan_przeliczony',
+    prad='sensor.hp_prad_wybrany',  # v1.36: karta podstawia encje pradu wybrana w Nauce (input_text.hp_energia_encja); mozna nadpisac w entities: prad
     wstali='input_datetime.hp_wstalismy',
     aktyw='binary_sensor.hp_aktywnosc_w_domu',
     auto_cwu='input_boolean.hp_auto_cwu',
@@ -200,6 +209,13 @@ kpi(15, 172, 'mdi:power', '#7ee04a', 'Tryb pracy',
     "(()=>{const p=st(@prio);return st(@defrost)==='Aktywne'?'#81d4fa':p==='Ogrzewanie'?'#7ee04a':p==='CWU'?'#29b6f6':'#b0bac5'})()",
     'prio')
 kpi(193, 148, 'mdi:flash', '#ffc21a', 'Moc grzewcza', "f(@pwr,2)+' kW'", ent='pwr')
+# v1.36: pod "Moc grzewcza" prad z encji wybranej w Nauce (bez wyboru: nic)
+el(193, 184, 148, 30, """
+const s=states[@prad]; if(!s||s.state==='unknown'||s.state==='unavailable') return '';
+const v=parseFloat(s.state), un=(s.attributes&&s.attributes.unit_of_measurement)||'';
+const t=isNaN(v)?s.state:(Math.abs(v)>=100?v.toFixed(0):v.toFixed(2));
+return %s + P(207,199,I('mdi:transmission-tower',18,'#ffc21a')) + P(231,199,'Prąd: <b>'+t+' '+un+'</b>',F(14,400,'#e9eef3'));
+""" % glass(), template='hp_hit', tap=more('prad'))
 kpi(347, 158, 'mdi:leaf', '#7ee04a', 'COP (chwilowy)', "f(@cop,2)", ent='cop')
 kpi(511, 153, 'mdi:chart-bar', '#ffa31a', 'Energia dziś', "f(@e_day,1)+' kWh'", ent='e_day')
 kpi(670, 146, 'mdi:water-outline', '#29b6f6', 'CWU dziś', "f(@e_cwu,1)+' kWh'", ent='e_cwu')
@@ -298,16 +314,18 @@ return '<div class="g" style="background:linear-gradient(180deg,rgba(32,58,36,.9
 """, template='hp_hit', tap=more('dom'))
 
 # pompy (wskaznik pracy)
-def pump(cx, cy, cond, ent, jstap=None):
-    el(cx - 16, cy - 16, 32, 32, """
+def pump(cx, cy, cond, ent, jstap=None, sc=1):
+    # v1.35: sc = skala (pompka cyrkulacji 2x wieksza)
+    r = 16 * sc
+    el(cx - r, cy - r, 2 * r, 2 * r, """
 const on=%s;
-return '<div style="position:absolute;inset:0;border-radius:50%%;background:radial-gradient(circle,#1d2229 55%%,#0f1216 100%%);border:2px solid '+(on?'#43d343':'#59626d')+';box-shadow:'+(on?'0 0 '+u(8)+' rgba(67,211,67,.7)':'none')+'"></div>'
- + C(%d,%d,I('mdi:play',22,on?'#43d343':'#7d8894'));
-""" % (cond, cx + 1, cy), template='hp_hit', tap=more(ent), jstap=jstap)
+return '<div style="position:absolute;inset:0;border-radius:50%%;background:radial-gradient(circle,#1d2229 55%%,#0f1216 100%%);border:%dpx solid '+(on?'#43d343':'#59626d')+';box-shadow:'+(on?'0 0 '+u(%d)+' rgba(67,211,67,.7)':'none')+'"></div>'
+ + C(%d,%d,I('mdi:play',%d,on?'#43d343':'#7d8894'));
+""" % (cond, 2 if sc == 1 else 3, 8 * sc, cx + sc, cy, 22 * sc), template='hp_hit', tap=more(ent), jstap=jstap)
 
 pump(857, 491, "(n(@gp12)||0)>0", 'gp12')
 pump(1187, 493, DIST, 'prio')
-pump(1197, 236, "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)", 'hwc_run', jstap={'a': 'hwc'})
+pump(1197, 236, "!((n(@hwc_run)||0)<=1&&(n(@hwc_still)||0)>=60)", 'hwc_run', jstap={'a': 'hwc', 'rd': 1}, sc=2)
 
 # strzalki przeplywu: zastapione animowanymi paskami (FLOW na dole pliku)
 
@@ -323,10 +341,12 @@ for (bx, bw, name, icon, script) in [(1335, 81, 'Auto', 'mdi:alpha-a-circle-outl
                                      (1576, 76, 'Urlop', 'mdi:briefcase-outline', 'hp_tryb_urlop')]:
     el(bx, 98, bw, 62, """
 const a=st(@mode)==='%s';
-return '<div class="g" style="border-radius:'+u(7)+';'+(a?'background:linear-gradient(180deg,#2b8cf2,#1260bf);border:1px solid #6ec1ff;box-shadow:0 0 '+u(12)+' rgba(33,150,243,.65)':'background:rgba(48,54,64,.8)')+'"></div>'
+// v1.35: zielony = HA/pompa potwierdzila ten tryb (sensor.hp_tryb_systemu); fioletowy (karta JS) = kliknieto, czeka na potwierdzenie
+return '<div class="g" style="border-radius:'+u(7)+';'+(a?'background:linear-gradient(180deg,#34b84f,#1d7f33);border:1px solid #8ee69c;box-shadow:0 0 '+u(12)+' rgba(67,211,67,.6)':'background:rgba(48,54,64,.8)')+'"></div>'
  + C(%d,117,I('%s',24,'#fff')) + C(%d,143,'%s',F(15,a?600:400,'#fff'));
 """ % (name, bx + bw / 2, icon, bx + bw / 2, name), template='hp_hit',
-       tap={'action': 'call-service', 'service': 'script.turn_on', 'target': {'entity_id': 'script.' + script}})
+       tap={'action': 'call-service', 'service': 'script.turn_on', 'target': {'entity_id': 'script.' + script}},
+       jstap={'a': 'mode', 's': script, 'v': name})
 
 # lista statusow
 ROWS = [('mdi:layers-outline', '#29b6f6', 'Priorytet pracy',

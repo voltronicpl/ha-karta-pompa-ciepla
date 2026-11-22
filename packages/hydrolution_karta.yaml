@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.34 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.36 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.34"
+        state: "1.36"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -96,6 +96,76 @@ template:
         state: >
           {{ (states('sensor.hydrolution_prad_jednostki_zewn') | float(0) * 230 / 1000
               + states('sensor.hydrolution_grzalka_moc') | float(0)) | round(2) }}
+
+      # v1.36: historia planu i pracy (0 / 100 %). state_class: measurement => HA trzyma godzinowe statystyki
+      #        dlugoterminowo (nie kasuje po 10 dniach). Karta: ostatnie ~10 dni z historii, starsze godzinowo ze statystyk.
+      - name: "HP hist CWU plan"
+        unique_id: hp_hist_cwu_plan
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:water-boiler
+        state: >
+          {{ 100 if is_state('schedule.hp_plan_tryb_cwu', 'on') and (is_state('input_boolean.hp_plan_cwu', 'on') or is_state('input_boolean.hp_auto_cwu', 'on'))
+             or (is_state('input_boolean.hp_auto_cwu', 'on') and is_state('binary_sensor.hp_g12_tania_strefa', 'on')) else 0 }}
+      - name: "HP hist CWU praca"
+        unique_id: hp_hist_cwu_praca
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:water-boiler
+        state: "{{ 100 if is_state('binary_sensor.hp_sprezarka_cwu', 'on') else 0 }}"
+      - name: "HP hist cyrkulacja plan"
+        unique_id: hp_hist_cyrkulacja_plan
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:autorenew
+        state: >
+          {%- set pl = states('input_text.hp_cyrk_plan') -%}
+          {%- if is_state('input_boolean.hp_auto_cyrk', 'on') and pl | length == 168 -%}
+          {%- set q = now().weekday() * 96 + now().hour * 4 + now().minute // 15 -%}
+          {%- set c = '0123456789abcdef'.find(pl[q // 4]) -%}
+          {{ 100 if c >= 0 and (c // (2 ** (3 - q % 4))) % 2 == 1 else 0 }}
+          {%- else -%}
+          {{ 100 if is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') and is_state('input_boolean.hp_plan_cyrk', 'on') else 0 }}
+          {%- endif -%}
+      # pompa cyrkulacji nie ma czujnika pracy: "praca" = sterownik ma ja wlaczona (czas pracy > 1 min)
+      - name: "HP hist cyrkulacja praca"
+        unique_id: hp_hist_cyrkulacja_praca
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:autorenew
+        state: "{{ 100 if states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0) > 1 else 0 }}"
+      - name: "HP hist grzalka plan"
+        unique_id: hp_hist_grzalka_plan
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:flash
+        state: "{{ 100 if is_state('schedule.hp_plan_grzalka', 'on') and is_state('input_boolean.hp_plan_grz', 'on') else 0 }}"
+      - name: "HP hist grzalka praca"
+        unique_id: hp_hist_grzalka_praca
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:flash
+        state: "{{ 100 if states('sensor.hydrolution_grzalka_moc') | float(0) > 0.05 else 0 }}"
+      - name: "HP hist podgrzanie plan"
+        unique_id: hp_hist_podgrzanie_plan
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:water-thermometer
+        state: "{{ 100 if is_state('schedule.hp_plan_podgrzanie_cwu', 'on') and is_state('input_boolean.hp_plan_boost', 'on') else 0 }}"
+      - name: "HP hist podgrzanie praca"
+        unique_id: hp_hist_podgrzanie_praca
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:water-thermometer
+        state: >
+          {{ 100 if states('select.hydrolution_podgrzanie_cwu_jednorazowe') not in ['Wylaczone', 'unknown', 'unavailable']
+             and (is_state('binary_sensor.hp_sprezarka_cwu', 'on') or states('sensor.hydrolution_grzalka_moc') | float(0) > 0.05) else 0 }}
+      - name: "HP hist sprezarka"
+        unique_id: hp_hist_sprezarka
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:heat-pump
+        state: "{{ 100 if is_state('binary_sensor.hydrolution_sprezarka_pracuje', 'on') else 0 }}"
 
       - name: "HP COP chwilowy"
         unique_id: hp_cop_chwilowy
@@ -375,6 +445,23 @@ input_datetime:
     has_date: true
     has_time: true
     icon: mdi:pump
+  # v1.35: kiedy HA ostatnio przeliczyl plan cyrkulacji (automatyzacja hp_cyrk_przelicz, bez otwierania karty)
+  hp_cyrk_plan_przeliczony:
+    name: "HP cyrkulacja: plan przeliczony"
+    has_date: true
+    has_time: true
+    icon: mdi:calendar-sync
+  # v1.35: nauka po stronie HA - ostatnio wykryty sen / wstanie (raz na noc / dzien)
+  hp_nauka_sen:
+    name: "HP nauka: ostatnio sen"
+    has_date: true
+    has_time: true
+    icon: mdi:sleep
+  hp_nauka_wstanie:
+    name: "HP nauka: ostatnio wstanie"
+    has_date: true
+    has_time: true
+    icon: mdi:weather-sunset-up
 
 input_number:
   # v1.27: maks. czas luksusu jednorazowego z wstrzymanym CO (Reczny), potem powrot do Auto. Karta wpisuje 60 przy pierwszym uruchomieniu.
@@ -430,9 +517,10 @@ input_number:
     step: 1
     mode: box
     unit_of_measurement: "min"
+  # v1.35: postoj min. 1 min (sterownik nie przyjmuje 0)
   hp_cyrk_postoj:
     name: "HP plan: cyrkulacja w oknie - czas postoju"
-    min: 0
+    min: 1
     max: 60
     step: 1
     mode: box
@@ -451,6 +539,32 @@ input_text:
   hp_wstalismy_zrodlo:
     name: "HP auto: weekend - sygnal wstania"
     max: 20
+  # v1.35: model cyrkulacji z Nauki, wpisuje karta (z historii) i automatyzacja hp_cyrk_nauka (sen / wstanie):
+  #        "1;przed;wstanie_pn_pt;wstanie_so_nd;okno_od_wstania(1/0);recznie_pn_pt;recznie_so_nd;sen_pn,..,sen_nd"
+  #        minuty od polnocy, sen > 1440 = po polnocy (np. 1470 = 0:30 nastepnego dnia)
+  hp_cyrk_model:
+    name: "HP cyrkulacja: model z Nauki"
+    max: 255
+  # v1.35: okna z obecnosci telefonow (albo reczne poprawki z Nauki), 7 dni x 96 kwadransow hex (Pn..Nd)
+  hp_cyrk_obecnosc:
+    name: "HP cyrkulacja: okna z obecnosci"
+    max: 255
+  # v1.35: plan cyrkulacji policzony w HA (hex jak wyzej). Przy wlaczonej automatyzacji cyrkulacji steruje nim hp_auto_cyrk i idzie do ESP.
+  hp_cyrk_plan:
+    name: "HP cyrkulacja: plan (HA)"
+    max: 255
+  # v1.35: dwie pamieci krzywej grzewczej z Nauki (P1..P7 po przecinku, np. "40,30,29,28,25,18,5").
+  #        Do pompy ida dopiero po "Wyslij na glowna" + potwierdzeniu w karcie. Fabryczna jest w kodzie karty (nie do zmiany).
+  hp_krzywa_wzorcowa:
+    name: "HP krzywa: wzorcowa"
+    max: 100
+  hp_krzywa_robocza:
+    name: "HP krzywa: robocza"
+    max: 100
+  # v1.36: encja pradu wybrana w Nauce (moc W/kW albo energia kWh); puste = kafel "Prad" na glownej ukryty
+  hp_energia_encja:
+    name: "HP energia: encja pradu"
+    max: 100
 
 input_select:
   hp_cwu_tryb_w_oknie:
@@ -665,7 +779,7 @@ automation:
       - variables:
           w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if w_oknie else 1 }}"
-          postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if w_oknie else 60 }}"
+          postoj: "{{ [1, states('input_number.hp_cyrk_postoj') | float(1)] | max if w_oknie else 60 }}"
       - condition: template
         value_template: "{{ (states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0)) != praca or (states('number.hydrolution_cyrkulacja_cwu_czas_postoju') | float(0)) != postoj }}"
       - action: number.set_value
@@ -684,7 +798,7 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk, input_datetime.hp_wstalismy, input_number.hp_cyrk_po_wyjsciu]
+        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk, input_datetime.hp_wstalismy, input_number.hp_cyrk_po_wyjsciu, input_text.hp_cyrk_plan]
       - trigger: state
         entity_id: input_datetime.hp_cyrk_wymus_do
       - trigger: time
@@ -716,7 +830,16 @@ automation:
       - variables:
           ktos: "{{ states('zone.home') | int(0) > 0 }}"
           pusto_dlugo: "{{ not ktos and (now() - states.zone.home.last_changed).total_seconds() >= (states('input_number.hp_cyrk_po_wyjsciu') | int(5)) * 60 }}"
-          w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
+          # v1.35: okno z planu policzonego w HA (input_text.hp_cyrk_plan, 168 znakow hex), bez planu jak dawniej z harmonogramu
+          w_oknie: >-
+            {%- set pl = states('input_text.hp_cyrk_plan') -%}
+            {%- if pl | length == 168 -%}
+            {%- set q = now().weekday() * 96 + now().hour * 4 + now().minute // 15 -%}
+            {%- set c = '0123456789abcdef'.find(pl[q // 4]) -%}
+            {{ c >= 0 and (c // (2 ** (3 - q % 4))) % 2 == 1 }}
+            {%- else -%}
+            {{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}
+            {%- endif -%}
           # v1.20: po wstaniu cyrkulacja chodzi caly czas, dopoki ktos jest w domu i nie spimy
           #        (okno w harmonogramie: od wstania do pory snu). Wylacza: wszyscy wyszli (po hp_cyrk_po_wyjsciu min) albo koniec okna (sen).
           # weekend: od pierwszej aktywnosci rano (input_datetime.hp_wstalismy) do poludnia, potem przejmuje okno z harmonogramu
@@ -725,7 +848,7 @@ automation:
           rano: "{{ now().isoweekday() >= 6 and od_wst >= 0 and now().hour < 12 }}"
           wl: "{{ (w_oknie or rano) and not pusto_dlugo }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if wl else 1 }}"
-          postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if wl else 60 }}"
+          postoj: "{{ [1, states('input_number.hp_cyrk_postoj') | float(1)] | max if wl else 60 }}"
       - condition: template
         value_template: "{{ (states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0)) != praca or (states('number.hydrolution_cyrkulacja_cwu_czas_postoju') | float(0)) != postoj }}"
       - action: number.set_value
@@ -736,7 +859,7 @@ automation:
         data: {value: "{{ postoj }}"}
 
   # 3a) v1.33 Reczne wymuszenie cyrkulacji z karty (klik w pompke): do input_datetime.hp_cyrk_wymus_do
-  #     praca 60 min / postoj 0 (chodzi caly czas). Automatyzacje 3) i 3b) w tym czasie nic nie zmieniaja.
+  #     praca 60 min / postoj 1 (v1.35: min. postoj sterownika = 1 min; prawie caly czas). Automatyzacje 3) i 3b) w tym czasie nic nie zmieniaja.
   #     Koniec wymuszenia: przejmuje automatyzacja / plan, a gdy obie wylaczone - wylaczona (praca 1 / postoj 60).
   - id: hp_cyrk_wymus
     alias: "HP cyrkulacja: reczne wymuszenie z karty"
@@ -763,7 +886,7 @@ automation:
           aktywne: "{{ (state_attr('input_datetime.hp_cyrk_wymus_do', 'timestamp') | float(0)) > now().timestamp() }}"
           steruje: "{{ is_state('input_boolean.hp_auto_cyrk', 'on') or is_state('input_boolean.hp_plan_cyrk', 'on') }}"
           praca: "{{ 60 if aktywne else 1 }}"
-          postoj: "{{ 0 if aktywne else 60 }}"
+          postoj: "{{ 1 if aktywne else 60 }}"
       - condition: template
         value_template: "{{ aktywne or (trigger.id == 'koniec' and not steruje) }}"
       - condition: template
@@ -774,6 +897,154 @@ automation:
       - action: number.set_value
         target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
         data: {value: "{{ postoj }}"}
+
+  # 3d) v1.35 Plan cyrkulacji liczony w HA (bez otwierania karty). Dziala tylko przy hp_auto_cyrk = on.
+  #     Z modelu (input_text.hp_cyrk_model: pora wstawania Pn-Pt / So-Nd, ile min przed, pora snu na kazdy dzien)
+  #     i okien z obecnosci (input_text.hp_cyrk_obecnosc) liczy to samo co karta: okno od (wstanie - przed) do snu,
+  #     sen po polnocy = okno 0:00-sen nastepnego dnia. Wynik -> input_text.hp_cyrk_plan (hex 7 x 96 kwadransow).
+  #     Przelicza: zmiana modelu (karta / nauka snu i wstawania), wlaczenie automatyzacji, wyjscie / powrot telefonow,
+  #     raz na dobe (0:05) i po starcie HA. Wpisuje tylko, gdy plan sie zmienil. Plan idzie dalej do ESP (hp_esp_plan).
+  - id: hp_cyrk_przelicz
+    alias: "HP auto: przelicz plan cyrkulacji (bez karty)"
+    mode: restart
+    triggers:
+      - trigger: state
+        entity_id: [input_text.hp_cyrk_model, input_text.hp_cyrk_obecnosc]
+      - trigger: state
+        entity_id: input_boolean.hp_auto_cyrk
+        to: "on"
+      - trigger: state
+        entity_id: zone.home
+      - trigger: time
+        at: "00:05:00"
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_auto_cyrk
+        state: "on"
+      - condition: template
+        value_template: "{{ states('input_text.hp_cyrk_model').startswith('1;') and states('input_text.hp_cyrk_model').split(';') | count >= 8 }}"
+    actions:
+      - delay: {seconds: 3}
+      - variables:
+          plan: >-
+            {%- set p = states('input_text.hp_cyrk_model').split(';') -%}
+            {%- set pre = p[1] | int(20) -%}{%- set wd = p[2] | int(390) -%}{%- set we = p[3] | int(480) -%}{%- set on = p[4] == '1' -%}
+            {%- set ss = p[7].split(',') -%}
+            {%- set ob = states('input_text.hp_cyrk_obecnosc') -%}
+            {%- set obok = ob | length == 168 -%}
+            {%- set hx = '0123456789abcdef' -%}
+            {%- set ns = namespace(h='') -%}
+            {%- for d in range(7) -%}
+            {%- set f = [0, (we if d >= 5 else wd) - pre] | max -%}
+            {%- set s = ss[d] | int(1440) if ss | count == 7 else 1440 -%}
+            {%- set t = [f + 15, [1440, s] | min] | max -%}
+            {%- set sp = ss[(d + 6) % 7] | int(1440) if ss | count == 7 else 1440 -%}
+            {%- set e = sp - 1440 if sp > 1440 else 0 -%}
+            {%- for q in range(24) -%}
+            {%- set nb = namespace(v=0) -%}
+            {%- set c = [0, hx.find(ob[d * 24 + q])] | max if obok else 0 -%}
+            {%- for i in range(4) -%}
+            {%- set m = (q * 4 + i) * 15 -%}
+            {%- if (c // (2 ** (3 - i))) % 2 == 1 or (on and ((m + 15 > f and m < t) or m < e)) -%}{%- set nb.v = nb.v + 2 ** (3 - i) -%}{%- endif -%}
+            {%- endfor -%}
+            {%- set ns.h = ns.h ~ hx[nb.v] -%}
+            {%- endfor -%}
+            {%- endfor -%}
+            {{- ns.h -}}
+      - condition: template
+        value_template: "{{ plan | length == 168 }}"
+      - if:
+          - condition: template
+            value_template: "{{ states('input_text.hp_cyrk_plan') != plan }}"
+        then:
+          - action: input_text.set_value
+            target: {entity_id: input_text.hp_cyrk_plan}
+            data: {value: "{{ plan }}"}
+      - action: input_datetime.set_datetime
+        target: {entity_id: input_datetime.hp_cyrk_plan_przeliczony}
+        data: {timestamp: "{{ now().timestamp() }}"}
+
+  # 3e) v1.35 Nauka po stronie HA (gdy karta zamknieta): poprawia model po kazdej nocy.
+  #     Sen = brak aktywnosci w domu (binary_sensor.hp_aktywnosc_w_domu) przez 30 min, 19:00-3:00, ktos w domu (raz na noc).
+  #     Wstanie = pierwsza aktywnosc albo pobor cieplej wody 4:00-11:00 po wykrytym snie (raz na dzien).
+  #     Nowa wartosc = 3/4 starej + 1/4 dzisiejszej (pory ustawione w Nauce recznie nie sa ruszane).
+  #     Po otwarciu karty model nadpisuje Nauka z karty (liczona z calej historii). Dziala tylko przy hp_auto_cyrk = on.
+  - id: hp_cyrk_nauka
+    alias: "HP auto: nauka snu i wstawania (cyrkulacja, bez karty)"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.hp_aktywnosc_w_domu
+        to: "off"
+        for: {minutes: 30}
+        id: sen
+      - trigger: state
+        entity_id: binary_sensor.hp_aktywnosc_w_domu
+        from: "off"
+        to: "on"
+        id: wstanie
+      - trigger: numeric_state
+        entity_id: sensor.hp_cwu_srodek_zmiana
+        below: -0.06
+        for: {seconds: 30}
+        id: wstanie
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_auto_cyrk
+        state: "on"
+      - condition: template
+        value_template: "{{ states('input_text.hp_cyrk_model').startswith('1;') and states('input_text.hp_cyrk_model').split(';') | count >= 8 and states('input_text.hp_cyrk_model').split(';')[7].split(',') | count == 7 }}"
+      - condition: template
+        value_template: "{{ states('zone.home') | int(0) > 0 }}"
+      - condition: template
+        value_template: >-
+          {%- set sen = states('input_datetime.hp_nauka_sen') | as_datetime(none) -%}
+          {%- set wst = states('input_datetime.hp_nauka_wstanie') | as_datetime(none) -%}
+          {%- if trigger.id == 'sen' -%}
+          {%- set o = now() - timedelta(minutes=30) -%}
+          {{ (o.hour >= 19 or o.hour < 3) and (sen is none or (now() - (sen | as_local)).total_seconds() > 12 * 3600) }}
+          {%- else -%}
+          {{ 4 <= now().hour < 11 and sen is not none and (now() - (sen | as_local)).total_seconds() < 14 * 3600
+             and (wst is none or (wst | as_local).date() != now().date()) }}
+          {%- endif -%}
+    actions:
+      - variables:
+          p: "{{ states('input_text.hp_cyrk_model').split(';') }}"
+          nowy: >-
+            {%- set ss = p[7].split(',') | map('int', 1440) | list -%}
+            {%- if trigger.id == 'sen' -%}
+            {%- set o = now() - timedelta(minutes=30) -%}
+            {%- set m = o.hour * 60 + o.minute -%}
+            {%- set d = o.weekday() if o.hour >= 12 else (o.weekday() + 6) % 7 -%}
+            {%- set v = m if o.hour >= 12 else m + 1440 -%}
+            {%- set nv = (((ss[d] * 3 + v) / 4 / 15) | round(0) * 15) | int -%}
+            {%- set out = namespace(l=[]) -%}
+            {%- for i in range(7) -%}{%- set out.l = out.l + [nv if i == d else ss[i]] -%}{%- endfor -%}
+            {{ p[:7] | join(';') }};{{ out.l | join(',') }}
+            {%- else -%}
+            {%- set m = now().hour * 60 + now().minute -%}
+            {%- set wkd = now().weekday() >= 5 -%}
+            {%- set k = 3 if wkd else 2 -%}
+            {%- set man = p[6] if wkd else p[5] -%}
+            {%- if man == '1' -%}{{ p | join(';') }}{%- else -%}
+            {%- set nv = (((p[k] | int(m)) * 3 + m) / 4 / 5) | round(0) * 5 -%}
+            {%- set out = namespace(l=[]) -%}
+            {%- for i in range(p | count) -%}{%- set out.l = out.l + [(nv | int) | string if i == k else p[i]] -%}{%- endfor -%}
+            {{ out.l | join(';') }}
+            {%- endif -%}
+            {%- endif -%}
+      - action: input_datetime.set_datetime
+        target: {entity_id: "{{ 'input_datetime.hp_nauka_sen' if trigger.id == 'sen' else 'input_datetime.hp_nauka_wstanie' }}"}
+        data: {timestamp: "{{ now().timestamp() }}"}
+      - if:
+          - condition: template
+            value_template: "{{ nowy | length <= 255 and nowy != states('input_text.hp_cyrk_model') }}"
+        then:
+          - action: input_text.set_value
+            target: {entity_id: input_text.hp_cyrk_model}
+            data: {value: "{{ nowy }}"}
 
   # 3c) v1.18 Weekend: pierwsza aktywnosc rano (5:00-11:00, ktos w domu) = wstalismy -> cyrkulacja (v1.20: dopoki ktos w domu).
   #     v1.21: drugi sygnal = pobor cieplej wody (szybki spadek BT6 w zasobniku CWU), zapisuje zrodlo w input_text.hp_wstalismy_zrodlo.
@@ -869,7 +1140,7 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [input_boolean.hp_plan_cwu, input_boolean.hp_auto_cwu, input_boolean.hp_plan_cyrk, input_boolean.hp_auto_cyrk, input_boolean.hp_plan_noc, input_boolean.hp_plan_grz, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_select.hp_cwu_tryb_tania, input_number.hp_cwu_czekaj_min, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_text.hp_g12_strefy, input_boolean.hp_g12_weekend_tani]
+        entity_id: [input_boolean.hp_plan_cwu, input_boolean.hp_auto_cwu, input_boolean.hp_plan_cyrk, input_boolean.hp_auto_cyrk, input_boolean.hp_plan_noc, input_boolean.hp_plan_grz, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_select.hp_cwu_tryb_tania, input_number.hp_cwu_czekaj_min, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_text.hp_g12_strefy, input_boolean.hp_g12_weekend_tani, input_text.hp_cyrk_plan]
       - trigger: state
         entity_id: text.hydrolution_plan_offline_parametry
         from: unavailable
@@ -931,6 +1202,10 @@ automation:
             {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
             {{- ns.h -}}
           m_cyrk: >-
+            {%- set pl = states('input_text.hp_cyrk_plan') -%}
+            {%- if is_state('input_boolean.hp_auto_cyrk', 'on') and pl | length == 168 -%}
+            {{- pl -}}
+            {%- else -%}
             {%- set sd = (sch.get('schedule.hp_plan_cyrkulacja_cwu') or {}) if sch is mapping else {} -%}
             {%- set acc = namespace(l=[]) -%}
             {%- for dn in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] -%}{%- set ws = namespace(l=[]) -%}
@@ -947,6 +1222,7 @@ automation:
             {%- if on.b -%}{%- set nb.v = nb.v + 2 ** (3 - i) -%}{%- endif -%}
             {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
             {{- ns.h -}}
+            {%- endif -%}
           m_noc: >-
             {%- set sd = (sch.get('schedule.hp_plan_obnizenie_co') or {}) if sch is mapping else {} -%}
             {%- set acc = namespace(l=[]) -%}
@@ -990,7 +1266,7 @@ automation:
             {{ '1' if is_state('input_boolean.hp_plan_noc', 'on') else '0' -}}
             {{ '1' if is_state('input_boolean.hp_plan_grz', 'on') else '0' }}
           tresc: >-
-            {{ c_in }},{{ c_out }},{{ (states('input_number.hp_cwu_czekaj_min') | int(30)) if auto_cwu else 0 }},{{ states('input_number.hp_cyrk_praca') | int(60) }},{{ states('input_number.hp_cyrk_postoj') | int(0) }},{{ states('input_number.hp_noc_przesuniecie') | int(0) }},{{ states('input_number.hp_dzien_przesuniecie') | int(0) }},{{ flagi }}
+            {{ c_in }},{{ c_out }},{{ (states('input_number.hp_cwu_czekaj_min') | int(30)) if auto_cwu else 0 }},{{ states('input_number.hp_cyrk_praca') | int(60) }},{{ [1, states('input_number.hp_cyrk_postoj') | int(1)] | max }},{{ states('input_number.hp_noc_przesuniecie') | int(0) }},{{ states('input_number.hp_dzien_przesuniecie') | int(0) }},{{ flagi }}
           zmiany: >-
             {{ (states('text.hydrolution_plan_offline_cwu') != m_cwu) or (states('text.hydrolution_plan_offline_cyrkulacja') != m_cyrk) or (states('text.hydrolution_plan_offline_noc') != m_noc) or (states('text.hydrolution_plan_offline_grzalka') != m_grz) or ((states('text.hydrolution_plan_offline_parametry').split(',')[:8] | join(',')) != tresc) }}
       - condition: template
