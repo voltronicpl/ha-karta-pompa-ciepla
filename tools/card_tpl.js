@@ -968,10 +968,13 @@ class HaKartaPompaCiepla extends HTMLElement {
     const inWin = st[E.pl_cyrk] && st[E.pl_cyrk].state === 'on';
     const now = new Date(), wd = (now.getDay() + 6) % 7, slot = now.getHours() * 4 + Math.floor(now.getMinutes() / 15);
     const sleepNow = Y && Y.ps[wd] && Y.ps[wd][slot] !== null && Y.ps[wd][slot] >= 0.5;
+    const wsS = st[E.wstali], wsD = wsS ? new Date(String(wsS.state).replace(' ', 'T')) : null;
+    const rano = wsD && !isNaN(wsD) && (now.getDay() === 0 || now.getDay() === 6) && now - wsD >= 0 && now - wsD < 3600000;
     let why;
     if (!auOn) why = 'automatyzacja wyłączona, cyrkulacją sterujesz ręcznie albo przez harmonogram na głównej';
     else if (!ktos) why = 'pusty dom (nikogo z telefonem w domu), po 10 min cyrkulacja się wyłącza';
     else if (inWin) why = 'ktoś jest w domu i trwa okno harmonogramu';
+    else if (rano) why = 'weekend: wstaliście o ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ' (czujniki), 60 min cyrkulacji';
     else if (sleepNow) why = 'pora snu (poza oknem harmonogramu)';
     else why = 'ktoś jest, ale teraz nie ma okna w harmonogramie';
     h += '<div class="lh"><button class="tg' + (auOn ? ' on' : '') + '" data-a="auto"' + (au ? '' : ' disabled') + ' title="Automatyzacja cyrkulacji"><i></i></button><b>Automatyzacja cyrkulacji: ' + (au ? (auOn ? 'włączona' : 'wyłączona') : 'brak') + '</b>' +
@@ -988,10 +991,12 @@ class HaKartaPompaCiepla extends HTMLElement {
     const wOpt = (k, lab, cur, auto) => '<label>' + lab + ' <select data-a="wk" data-k="' + k + '"><option value="auto"' + (cur ? '' : ' selected') + '>Auto</option><option value="man"' + (cur ? ' selected' : '') + '>Ręcznie</option></select>' +
       (cur ? ' <input type="time" data-a="wt" data-k="' + k + '" value="' + esc(cur) + '">' : ' <b>' + fmt((k === 'wd' ? W.wd : W.we).m) + '</b>') + '</label>';
     const ws = (N.src && N.src.wake) || {};
-    h += '<div class="lh wk"><b>Pora wstawania</b>' + wOpt('wd', 'Pn–Pt:', ws.wd, W.aWd) + wOpt('we', 'So–Nd:', ws.we, W.aWe) +
+    const wsToday = wsD && !isNaN(wsD) && wsD.toDateString() === new Date().toDateString();
+    h += '<div class="lh wk"><b>Pora wstawania</b>' + wOpt('wd', 'Pn–Pt (stała):', ws.wd, W.aWd) + wOpt('we', 'So–Nd (sugestia):', ws.we, W.aWe) +
       '<label>cyrkulacja <input type="number" min="0" max="120" step="5" data-a="wp" value="' + W.pre + '"> min przed</label>' +
       '<label><input type="checkbox" data-a="won"' + (W.on ? ' checked' : '') + '> dodaj do propozycji</label>' +
-      '<span class="ds">Auto: Pn–Pt ' + (W.aWd !== null ? fmt(W.aWd) + ' (z ' + W.nWd + ' poranków)' : 'brak historii, przyjęte 6:30') + ', So–Nd ' + (W.aWe !== null ? fmt(W.aWe) + ' (z ' + W.nWe + ' poranków)' : 'brak historii, przyjęte 8:00') + '. Wstanie = koniec wykrytego snu (telefony + aktywność).' + (N.edit ? ' Masz ręczne poprawki okien: zmiana pory wstawania zadziała po „Przywróć propozycję”.' : '') + '</span></div>';
+      '<span class="ds">Auto: Pn–Pt ' + (W.aWd !== null ? fmt(W.aWd) + ' (z ' + W.nWd + ' poranków)' : 'brak historii, przyjęte 6:30') + ', So–Nd ' + (W.aWe !== null ? fmt(W.aWe) + ' (z ' + W.nWe + ' poranków)' : 'brak historii, przyjęte 8:00') + '. Wstanie = koniec wykrytego snu (telefony + aktywność). W weekend godzina to tylko sugestia: przy włączonej automatyzacji cyrkulacja rusza na 60 min od pierwszej aktywności rano (światła, ruch, ekran telefonu, media; 5:00–11:00), a bez sygnału zostaje okno z sugestii.' +
+      (wsS ? ' Weekend, ostatnio wstaliście: <b>' + (wsToday ? 'dziś ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : (isNaN(wsD) || wsD.getFullYear() < 2000 ? '–' : wsD.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }))) + '</b> (z czujników).' : ' Brak <code>' + E.wstali + '</code>: dodaj pakiet v1.18.') + (N.edit ? ' Masz ręczne poprawki okien: zmiana pory wstawania zadziała po „Przywróć propozycję”.' : '') + '</span></div>';
     const S = this._sch, main = S && S.data && S.data.cyrk ? this._schFromItem(S.data.cyrk) : null;
     const grad = (arr, rgb, mx) => 'linear-gradient(90deg,' + arr.map((v, k) => { const c = 'rgba(' + rgb + ',' + (v === null ? 0 : (v * mx).toFixed(2)) + ')'; return c + ' ' + (k / 96 * 100).toFixed(2) + '%,' + c + ' ' + ((k + 1) / 96 * 100).toFixed(2) + '%'; }).join(',') + ')';
     h += '<div class="hr">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';

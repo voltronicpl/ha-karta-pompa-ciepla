@@ -8,6 +8,18 @@
 # =====================================================================
 
 template:
+  # v1.18: aktywnosc w domu (swiatla, ruch/obecnosc, ekran telefonu, media) - do wykrycia weekendowego wstania
+  - binary_sensor:
+      - name: "HP aktywnosc w domu"
+        unique_id: hp_aktywnosc_w_domu
+        icon: mdi:human-greeting
+        state: >
+          {{ (states.light | selectattr('state', 'eq', 'on') | list | count > 0)
+             or (states.binary_sensor | selectattr('attributes.device_class', 'defined')
+                 | selectattr('attributes.device_class', 'in', ['motion', 'occupancy', 'presence'])
+                 | selectattr('state', 'eq', 'on') | list | count > 0)
+             or (states.binary_sensor | selectattr('entity_id', 'search', 'interactive') | selectattr('state', 'eq', 'on') | list | count > 0)
+             or (states.media_player | selectattr('state', 'in', ['on', 'playing']) | list | count > 0) }}
   - sensor:
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
@@ -234,6 +246,14 @@ input_boolean:
     name: "HP auto: cyrkulacja wg harmonogramu i obecnosci"
     icon: mdi:home-account
 
+input_datetime:
+  # v1.18: kiedy w weekend wstaliscie (pierwsza aktywnosc rano), wpisuje automatyzacja hp_auto_wstali
+  hp_wstalismy:
+    name: "HP auto: weekend - wstalismy o"
+    has_date: true
+    has_time: true
+    icon: mdi:alarm
+
 input_number:
   hp_noc_przesuniecie:
     name: "HP plan: przesuniecie krzywej w oknie"
@@ -374,7 +394,7 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk]
+        entity_id: [schedule.hp_plan_cyrkulacja_cwu, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_boolean.hp_auto_cyrk, input_datetime.hp_wstalismy]
       - trigger: state
         entity_id: zone.home
         to: "0"
@@ -400,7 +420,10 @@ automation:
           ktos: "{{ states('zone.home') | int(0) > 0 }}"
           pusto_dlugo: "{{ not ktos and (now() - states.zone.home.last_changed).total_seconds() >= 600 }}"
           w_oknie: "{{ is_state('schedule.hp_plan_cyrkulacja_cwu', 'on') }}"
-          wl: "{{ w_oknie and not pusto_dlugo }}"
+          # v1.18: weekend - 60 min cyrkulacji od pierwszej aktywnosci rano (input_datetime.hp_wstalismy)
+          wst: "{{ states('input_datetime.hp_wstalismy') | as_datetime(none) }}"
+          rano: "{{ wst is not none and now().isoweekday() >= 6 and 0 <= (now() - (wst | as_local)).total_seconds() < 3600 }}"
+          wl: "{{ (w_oknie or rano) and not pusto_dlugo }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if wl else 1 }}"
           postoj: "{{ states('input_number.hp_cyrk_postoj') | float(0) if wl else 60 }}"
       - condition: template
@@ -411,6 +434,34 @@ automation:
       - action: number.set_value
         target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
         data: {value: "{{ postoj }}"}
+
+  # 3c) v1.18 Weekend: pierwsza aktywnosc rano (5:00-11:00, ktos w domu) = wstalismy -> cyrkulacja 60 min.
+  #     Raz na dzien. Dziala tylko przy wlaczonej automatyzacji cyrkulacji (hp_auto_cyrk).
+  #     Bez sygnalu zostaje okno z harmonogramu (sugestia z Nauki, ok. 8:00).
+  - id: hp_auto_wstali
+    alias: "HP auto: weekend - wstalismy (cyrkulacja)"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: binary_sensor.hp_aktywnosc_w_domu
+        from: "off"
+        to: "on"
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_auto_cyrk
+        state: "on"
+      - condition: time
+        after: "05:00:00"
+        before: "11:00:00"
+        weekday: [sat, sun]
+      - condition: template
+        value_template: "{{ states('zone.home') | int(0) > 0 }}"
+      - condition: template
+        value_template: "{{ (states('input_datetime.hp_wstalismy') | as_datetime(none)) is none or (states('input_datetime.hp_wstalismy') | as_datetime | as_local).date() != now().date() }}"
+    actions:
+      - action: input_datetime.set_datetime
+        target: {entity_id: input_datetime.hp_wstalismy}
+        data: {datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"}
 
   # 4) Grzalka dozwolona tylko w oknach
   - id: hp_plan_grz

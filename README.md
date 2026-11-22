@@ -159,3 +159,8 @@ dopasuj_ekran: true  # false = stare zachowanie (karta na całą szerokość)
 ## v1.17: pora wstawania
 
 W Nauce przy cyrkulacji jest „Pora wstawania”, osobno Pn–Pt i So–Nd: **Auto** (mediana końca wykrytego snu z historii telefonów i aktywności; bez historii 6:30 w tygodniu i 8:00 w weekend) albo **Ręcznie** (godzina). Cyrkulacja dostaje okno od „wstanie − X min” (domyślnie 20, do zmiany) do pół godziny po wstaniu. Na wykresie jest znacznik ⏰ z godziną. Ustawienia zapisują się w HA razem ze „Źródłami nauki”. Pakietu HA nie trzeba zmieniać.
+
+## v1.18: weekend = wstanie z czujników
+
+Pora wstawania Pn–Pt jest stała (z historii albo ręcznie). W weekend godzina to tylko sugestia: pakiet dodaje `binary_sensor.hp_aktywnosc_w_domu` (światła, ruch/obecność, ekran telefonu, media), `input_datetime.hp_wstalismy` i automatyzację „HP auto: weekend - wstalismy (cyrkulacja)”. Przy włączonej automatyzacji cyrkulacji pierwsza aktywność rano w So/Nd (5:00–11:00, ktoś w domu) zapisuje godzinę wstania i włącza cyrkulację na 60 min. Bez sygnału zostaje okno z sugestii w harmonogramie. Wymaga wklejenia nowego pakietu (kroki jak wyżej, przeładuj też „Pomocnicy daty/czasu”).
+Uwaga: jeśli jakieś światło świeci całą noc, sensor aktywności już jest „on” i rano nie zmieni stanu; wtedy działa tylko okno z sugestii.
