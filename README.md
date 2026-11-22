@@ -147,3 +147,11 @@ dopasuj_ekran: true  # false = stare zachowanie (karta na całą szerokość)
 - **Temperatura zewnętrzna z pompy (BT1)** idzie do nauki. Pakiet dodaje `sensor.hp_temperatura_zewnetrzna_bt1` (statystyki długoterminowe, własna historia). Open-Meteo jest tylko symulacją tam, gdzie pomiaru brak, i prognozą. Wykres: pomiar pompy vs symulacja, 7 dni wstecz + 2 dni do przodu.
 - **Prognoza vs rzeczywistość:** prognoza Open-Meteo wydana dobę wcześniej (archiwum `previous-runs-api.open-meteo.com`) na tle pomiaru BT1, średni błąd, przechył i największa pomyłka.
 - **„Chcę w domu: __ °C”** przy wykresie krzywej: proponowana krzywa liczy się dla tej temperatury w domu. Temperatura w domu z czujnika salonu (osobna pozycja w „Źródłach nauki”, wykrywany po nazwie „salon”, można zmienić).
+
+### Co wkleić w HA (v1.15+), krok po kroku
+
+1. HACS → „Karta pompy ciepła” → ⋮ → Pobierz najnowszą wersję → odśwież przeglądarkę (Ctrl+F5).
+2. Zrób kopię `/config/packages/hydrolution_karta.yaml` (np. File editor → zapisz jako `hydrolution_karta.yaml.bak`), potem wklej tam całą treść `packages/hydrolution_karta.yaml` z repo. Dochodzi: `input_boolean.hp_auto_cyrk` (wyłączony), automatyzacja „HP auto: cyrkulacja CWU wg harmonogramu i obecności”, `sensor.hp_temperatura_zewnetrzna_bt1`. W starej automatyzacji „HP plan: cyrkulacja CWU” dochodzi tylko warunek „czekaj, gdy auto włączone”.
+3. Narzędzia deweloperskie → YAML → „Sprawdź konfigurację”, potem przeładuj: Przełączniki (input boolean), Encje szablonów, Automatyzacje. Restart nie jest potrzebny.
+4. Karta → zakładka **Nauka** → na dole „Źródła nauki” → „Czujnik salonu”: wpisz albo wybierz swój czujnik salonu (np. `sensor.czujnik_temperatury_salon_temperature`) → **Ustaw**. Karta sama szuka encji z „salon” w nazwie, więc zwykle jest już ustawiony.
+5. Suwak „Automatyzacja cyrkulacji” w Nauce włączasz sam, kiedy chcesz.

@@ -1,5 +1,5 @@
 /*
- * ha-karta-pompa-ciepla  v1.15
+ * ha-karta-pompa-ciepla  v1.16
  * Karta Home Assistant dla pompy ciepla MHI Hydrolution (NIBE SMO 40) z ESPHome "hydrolution" v5.3.
  * Jeden plik, bez zaleznosci (nie wymaga button-card / apexcharts-card / card-mod).
  *   type: custom:ha-karta-pompa-ciepla
@@ -9,7 +9,7 @@
  * Plik generowany przez tools/gen.py - nie edytuj recznie.
  */
 (() => {
-const VERSION = 'v1.15';
+const VERSION = 'v1.16';
 const DEFAULT_E = {
  "bt1": "sensor.hydrolution_temperatura_zewnetrzna_bt1",
  "bt12": "sensor.hydrolution_zasilanie_z_pompy_bt12",
@@ -1395,6 +1395,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (sSun) why.push({ t: 'Słońce: prognoza 12 h śr. ' + Math.round(fc.sun) + ' W/m² (zachmurzenie ' + Math.round(fc.cloud) + ' %), zwykle ' + Math.round(sunMean) + ' W/m²', v: (sSun > 0 ? '+' : '−') + Math.abs(sSun) + ' °C' });
       if (sWind) why.push({ t: 'Wiatr: prognoza 12 h śr. ' + fc.wind.toFixed(1) + ' m/s, zwykle ' + windMean.toFixed(1) + ' m/s', v: (sWind > 0 ? '+' : '−') + Math.abs(sWind) + ' °C' });
     }
+    if (mx !== null) P.forEach((v, k) => { if (v + off + delta[k].d + ws > mx) why.push({ t: 'Max. zasilania ' + mx + ' °C obcina punkt P' + (k + 1), v: 'P' + (k + 1) + ' ≤ ' + mx + ' °C' }); });
     const prop = P.map((v, k) => {
       let y = v + off + delta[k].d + ws;
       if (mx !== null) y = Math.min(mx, y);      // min. zasilania pompa i tak pilnuje sama, nie przycinam (zeby nie mylilo)
@@ -1437,19 +1438,26 @@ class HaKartaPompaCiepla extends HTMLElement {
     });
     const actv = new Uint8Array(n);
     let actN = 0;
+    const nightsAll = Math.max(1, Math.round((now - t0) / 864e5));
+    const noisy = [];
     ha.forEach((a) => {
       if (!a || a.length < 2) return;
-      actN++;
+      const ev = [];
       for (let k = 1; k < a.length; k++) {
         const p = a[k], t = Date.parse(p.last_changed || p.last_updated);
         if (isNaN(t) || p.state === 'unavailable' || p.state === 'unknown') continue;
         const pv = a[k - 1].state; if (pv === 'unavailable' || pv === 'unknown') continue;
-        const i = Math.floor((t - t0) / SL); if (i >= 0 && i < n) actv[i] = 1;
+        ev.push(t);
       }
+      // encje "szumiace" (zmieniaja sie prawie co noc 1:00-5:00, np. automatyczne swiatla, czujniki) nie mowia nic o snie
+      const nn = new Set(ev.filter((t) => { const hr = new Date(t).getHours(); return hr >= 1 && hr < 5; }).map((t) => new Date(t - 6 * 36e5).toDateString())).size;
+      if (nn / nightsAll > 0.5) { noisy.push(a[0].entity_id); return; }
+      actN++;
+      ev.forEach((t) => { const i = Math.floor((t - t0) / SL); if (i >= 0 && i < n) actv[i] = 1; });
     });
     // sen: najdluzsze okno "w domu i brak aktywnosci" w nocy (18:00 -> 12:00), obejmujace 1:00-5:00, min. 4 h
     const sleep = new Uint8Array(n);
-    const nights = [];
+    const nights = []; let defN = 0;
     const d0 = new Date(t0); d0.setHours(18, 0, 0, 0); if (d0.getTime() > t0) d0.setDate(d0.getDate() - 1);
     for (let d = new Date(d0); d.getTime() < now; d.setDate(d.getDate() + 1)) {
       const a = Math.max(0, Math.round((d.getTime() - t0) / SL)), b = Math.min(n, Math.round((d.getTime() + 18 * 36e5 - t0) / SL));
@@ -1469,6 +1477,13 @@ class HaKartaPompaCiepla extends HTMLElement {
         const s = Math.round((d.getTime() + 5 * 36e5 - t0) / SL), e = Math.round((d.getTime() + 12 * 36e5 - t0) / SL);
         let any = false; for (let k = Math.max(a, s); k < Math.min(b, e); k++) if (home[k]) any = true;
         if (any) best = [Math.max(a, s), Math.min(b, e)];
+      }
+      if (!best && actN) {
+        // nie wykryto snu tej nocy: przyjmuje 23:00-6:00, gdy ktos byl w domu (zeby cyrkulacja nie chodzila w nocy)
+        const s = Math.round((d.getTime() + 5 * 36e5 - t0) / SL), e = Math.round((d.getTime() + 12 * 36e5 - t0) / SL);
+        let any = false; for (let k = Math.max(a, s); k < Math.min(b, e); k++) if (home[k]) any = true;
+        if (any) { for (let k = Math.max(a, s); k < Math.min(b, e); k++) if (home[k]) sleep[k] = 1; defN++; }
+        continue;
       }
       if (best) { for (let k = best[0]; k < best[1]; k++) if (home[k]) sleep[k] = 1; nights.push(best); }
     }
@@ -1491,7 +1506,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const circ = (arr) => { if (!arr.length) return null; const a = arr.map((m) => m / 1440 * 2 * Math.PI); const x = a.reduce((s, v) => s + Math.cos(v), 0), y = a.reduce((s, v) => s + Math.sin(v), 0); let m = Math.atan2(y, x) / 2 / Math.PI * 1440; if (m < 0) m += 1440; return Math.round(m / 15) * 15; };
     return {
       blocks, ph: ph.map((r, wd) => r.map((v, k) => (cnt[wd][k] ? v / cnt[wd][k] : null))), ps: ps.map((r, wd) => r.map((v, k) => (cnt[wd][k] ? v / cnt[wd][k] : null))),
-      days: Math.floor((now - t0) / 864e5), pers, actN, sleepFrom: circ(nights.map((b) => mins(b[0]))), sleepTo: circ(nights.map((b) => mins(b[1]))), nights: nights.length,
+      days: Math.floor((now - t0) / 864e5), pers, actN, noisy, defN, sleepFrom: circ(nights.map((b) => mins(b[0]))), sleepTo: circ(nights.map((b) => mins(b[1]))), nights: nights.length,
     };
   }
   async _nauSrcLoad() {
@@ -1616,7 +1631,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     else h += '<div class="wn" style="margin:-.3em 0 .8em">Włączona: harmonogram „Cyrkulacja CWU” z głównej zakładki + obecność telefonów. Wszyscy wyszli (10 min) = wyłączona, ktoś wrócił = od razu wg harmonogramu, sen blokuje (okna omijają sen). Zastępuje wtedy przełącznik „Aktywne” cyrkulacji z harmonogramu.</div>';
     if (!Y) return h + '<div class="info">Brak danych obecności (encje person.* z telefonami).</div></div>';
     h += '<div class="lh"><span>W domu: <b>' + homeN + ' z ' + pers.length + '</b> (' + pers.map((i) => esc(((st[i] && st[i].attributes.friendly_name) || i) + ': ' + (st[i] ? (st[i].state === 'home' ? 'w domu' : st[i].state === 'not_home' ? 'poza' : st[i].state) : '?'))).join(', ') + ')</span>' +
-      '<span class="ds">Sen: ' + (Y.actN ? 'wykryty z ' + Y.nights + ' nocy, zwykle ok. ' + (Y.sleepFrom !== null ? fmt(Y.sleepFrom) + '–' + fmt(Y.sleepTo) : '–') : 'brak encji aktywności, przyjęty 23:00–6:00') + '.</span></div>';
+      '<span class="ds">Sen: ' + (Y.actN ? 'wykryty z ' + Y.nights + ' nocy' + (Y.sleepFrom !== null ? ', zwykle ok. ' + fmt(Y.sleepFrom) + '–' + fmt(Y.sleepTo) : '') + (Y.defN ? '; ' + Y.defN + ' nocy bez wyraźnego snu: przyjęte 23:00–6:00' : '') : 'brak encji aktywności, przyjęty 23:00–6:00') +
+      (Y.noisy && Y.noisy.length ? '. Pominięte encje zmieniające się co noc: ' + Y.noisy.length : '') + '.</span></div>';
     const DL = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd'], days = this._schDays();
     const bl = N.edit || Y.blocks;
     const S = this._sch, main = S && S.data && S.data.cyrk ? this._schFromItem(S.data.cyrk) : null;
