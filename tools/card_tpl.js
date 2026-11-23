@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.45';
+const PKG_VER = '1.46';
 const PKG_YAML = __PKGYAML__;   // v1.41: pelna tresc pakietu YAML tej wersji (naprawa starego pliku przez File editor)
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];
@@ -292,7 +292,7 @@ class HaKartaPompaCiepla extends HTMLElement {
   // ====================== HARMONOGRAM (tydzien) ======================
   _schLanes() {
     return [
-      { k: 'noc', n: 'Obniżenie CO', sch: 'schedule.hp_plan_obnizenie_co', en: 'input_boolean.hp_plan_noc', t: 'HP plan obnizenie CO', ic: 'mdi:weather-night', c: '#3f7cff', c2: '#2a56c9',
+      { k: 'noc', n: 'Obniżenie CO', sch: 'schedule.hp_plan_obnizenie_co', en: 'input_boolean.hp_plan_noc', au: 'input_boolean.hp_auto_noc', an: 'Automatyzacja obniżenia CO', t: 'HP plan obnizenie CO', ic: 'mdi:weather-night', c: '#3f7cff', c2: '#2a56c9',
         d: 'W oknie przesuwa krzywą grzewczą, poza oknem wraca do wartości dziennej.',
         p: [{ e: 'input_number.hp_noc_przesuniecie', l: 'Przesunięcie w oknie', u: '°C', def: -2 }, { e: 'input_number.hp_dzien_przesuniecie', l: 'Przesunięcie poza oknem', u: '°C', def: 0 }] },
       { k: 'cwu', n: 'Tryb CWU', sch: 'schedule.hp_plan_tryb_cwu', en: 'input_boolean.hp_plan_cwu', au: 'input_boolean.hp_auto_cwu', an: 'Automatyzacja CWU', t: 'HP plan tryb CWU', ic: 'mdi:water-boiler', c: '#1fa5f5', c2: '#0f74b8',
@@ -398,7 +398,9 @@ class HaKartaPompaCiepla extends HTMLElement {
         return '<label>' + esc(q.l) + '<input type="number" data-a="par" data-e="' + q.e + '" value="' + Number(s.state) + '" min="' + s.attributes.min + '" max="' + s.attributes.max + '" step="' + (s.attributes.step || 1) + '">' + (q.u || '') + '</label>';
       }).join('') + '</div>';
     }
-    const dr = this._schDraft(lane);
+    let dr = this._schDraft(lane);
+    // v1.46: automatyczne obnizenie CO - okna wprost z planu (sen = odwrotnosc planu cyrkulacji), nawet gdy Nauka jeszcze nie zapisala harmonogramu
+    if (lane.k === 'noc' && lk) { const np = this._nocPlan(); if (np) { const o = {}; days.forEach((d, i) => { o[d] = np[i] || []; }); dr = o; } }
     const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes(), wd = (now.getDay() + 6) % 7;
     // v1.36: rzedy = daty z wybranego zakresu (domyslnie dzis w 4. rzedzie, 3 dni wstecz i 3 w przod);
     //        okna = tygodniowy szablon dnia tygodnia (edycja jak dawniej), czerwony pasek = faktyczna praca z historii HA
@@ -525,6 +527,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         if (pl && /^[0-9a-f]{168}$/.test(pl.state)) bl = this._maskBl(pl.state);
         else if (N.res.cyrk) bl = N.edit || this._nauBase(N.res.cyrk);
       }
+      if (l.k === 'noc') bl = this._nocPlan();   // v1.46: automatyczne obnizenie CO = sen (+ opcjonalnie droga G12)
       if (l.k === 'cwu') {
         bl = this._nauCwuPlan(N.res.cwu).blocks;
         // v1.39: automatyczny plan CWU -> input_text.hp_cwu_plan (hp_esp_plan od razu wysyla go do ESP)
@@ -597,7 +600,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const st = this._hass.states, E = this._E;
     const need = [E.auto_cyrk, 'input_number.hp_cyrk_po_wyjsciu', E.wstali, 'input_text.hp_wstalismy_zrodlo',
       'sensor.hp_cwu_srodek_zmiana', E.aktyw, 'sensor.hp_temperatura_zewnetrzna_bt1', 'sensor.hp_pakiet_wersja',
-      E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.g12_do, E.cwu_wait, E.cwu_boost, E.cwu_lux_max, 'input_datetime.hp_cwu_boost_ostatnio', E.cwu_tania, E.cwu_lux_on, E.cwu_poza, E.cyrk_wymus, E.cyrk_wymus_min, E.cyrk_model, E.cyrk_obec, E.cyrk_plan, 'input_text.hp_krzywa_wzorcowa', 'input_text.hp_krzywa_robocza', 'input_text.hp_energia_encja', 'sensor.hp_hist_cwu_praca', 'sensor.hp_hist_cyrkulacja_praca'];
+      E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.g12_do, E.cwu_wait, E.cwu_boost, E.cwu_lux_max, 'input_datetime.hp_cwu_boost_ostatnio', E.cwu_tania, E.cwu_lux_on, E.cwu_poza, 'input_boolean.hp_auto_noc', 'input_boolean.hp_auto_noc_g12', E.cyrk_wymus, E.cyrk_wymus_min, E.cyrk_model, E.cyrk_obec, E.cyrk_plan, 'input_text.hp_krzywa_wzorcowa', 'input_text.hp_krzywa_robocza', 'input_text.hp_energia_encja', 'sensor.hp_hist_cwu_praca', 'sensor.hp_hist_cyrkulacja_praca'];
     const miss = need.filter((i) => !st[i]);
     const autoIds = {};
     Object.keys(st).forEach((k) => { if (k.startsWith('automation.') && st[k].attributes && st[k].attributes.id) autoIds[st[k].attributes.id] = 1; });
@@ -2150,6 +2153,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     };
     const fmtT = (t) => new Date(t).toLocaleString('pl-PL', one ? { hour: '2-digit', minute: '2-digit' } : { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     const num = (k) => { const v = parseFloat((st[E[k]] || {}).state); return isFinite(v) ? v : null; };
+    const num2 = (id) => { const v = parseFloat((st[id] || {}).state); return isFinite(v) ? v : null; };
     let real = [], real2 = [], plan = [], plan2 = [], unit = '°C', nm = '', nm2 = '', pn = '', pn2 = '', note = '', bands = [];
     if (ser === 'cwu') {
       nm = 'Realnie BT7 (CWU góra)'; real = samp(E.bt7);
@@ -2193,14 +2197,22 @@ class HaKartaPompaCiepla extends HTMLElement {
         const W = R.wx || {}, RD = this._nauRng(), MS = (RD && RD.meas) || {}, WX = (RD && RD.wx) || {}, mn = num('minsup'), mx = num('maxsup');
         const atC = (ys, to) => { const T7 = C.T; if (to <= -30) return ys[0]; if (to >= 30) return ys[6]; const i = Math.min(5, Math.floor((to + 30) / 10)), f = (to - T7[i]) / 10; return ys[i] + (ys[i + 1] - ys[i]) * f; };
         const clamp = (v) => { if (mx !== null) v = Math.min(mx, v); if (mn !== null) v = Math.max(mn, v); return Math.round(v * 10) / 10; };
-        for (let t = A; t <= B; t += 36e5) {
+        // v1.46: harmonogram obnizenia CO (auto z Nauki albo reczny) -> niebieskie paski + plan obnizony o roznice przesuniec
+        const NW = this._nocWins(), prV = num2('input_number.hp_noc_przesuniecie'), dzV = num2('input_number.hp_dzien_przesuniecie');
+        const dOff = NW && prV !== null && dzV !== null ? prV - dzV : 0;
+        const inN = (t) => { if (!NW) return false; const d = new Date(t), w = (d.getDay() + 6) % 7, m = d.getHours() * 60 + d.getMinutes(); return (NW[w] || []).some((b) => b.f <= m && m < b.t); };
+        if (NW) days.concat(RG.days.filter((d) => d.getTime() >= now)).forEach((dt) => { const a0 = dt.getTime(), w = (dt.getDay() + 6) % 7; (NW[w] || []).forEach((b) => bands.push([a0 + b.f * 6e4, a0 + b.t * 6e4])); });
+        for (let t = A; t <= B; t += 9e5) {
           const hk = Math.floor(t / 36e5) * 36e5;
           const to = C.toutH[hk] !== undefined && hk <= now ? C.toutH[hk] : MS[hk] !== undefined ? MS[hk] : W[hk] && isFinite(W[hk].temp) ? W[hk].temp : WX[hk] !== undefined ? WX[hk] : null;
           if (to === null) continue;
-          plan.push([t, clamp(atC(C.prop, to))]); plan2.push([t, clamp(atC(C.cur, to))]);
+          const o = inN(t) ? dOff : 0;
+          plan.push([t, clamp(atC(C.prop, to) + o)]); plan2.push([t, clamp(atC(C.cur, to) + o)]);
         }
-        pn = 'Plan wg proponowanej krzywej'; pn2 = 'wg obecnej krzywej';
-        note = 'Plan CO = zasilanie z krzywej dla temperatury na zewnątrz w danej godzinie (pomiar BT1, a dalej prognoza Open-Meteo), obcięte do min./max. zasilania. Nocnego obniżenia z harmonogramu nie doliczam. Podczas grzania wody CWU zasilanie CO naturalnie spada.';
+        pn = 'Plan wg proponowanej krzywej' + (NW ? ' (z obniżeniem)' : ''); pn2 = 'wg obecnej krzywej';
+        note = 'Plan CO = zasilanie z krzywej dla temperatury na zewnątrz (pomiar BT1, a dalej prognoza Open-Meteo), obcięte do min./max. zasilania. ' +
+          (NW ? 'Niebieskie paski na dole = okna obniżenia CO z harmonogramu' + (st['input_boolean.hp_auto_noc'] && st['input_boolean.hp_auto_noc'].state === 'on' ? ' (automatycznie z Nauki)' : '') + '; w nich plan jest niższy o ' + Math.abs(dOff) + ' °C (orientacyjnie: 1 stopień przesunięcia krzywej ≈ 1 °C zasilania). '
+            : 'Obniżenie CO jest wyłączone (ani harmonogram, ani automatyzacja), więc plan go nie uwzględnia. ') + 'Podczas grzania wody CWU zasilanie CO naturalnie spada.';
       } else note = 'Brak krzywej z Nauki, więc tylko realny przebieg.';
     } else {
       const sal = this._nauSalon()[0];
@@ -2293,6 +2305,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         if (a === 'espnow') { this._espKick(true); return; }
         if (a === 'send') this._nauSend();
         else if (a === 'sendcwu') this._nauSendCwu();
+        else if (a === 'autonoc' || a === 'autonocg12') { const id = a === 'autonoc' ? 'input_boolean.hp_auto_noc' : 'input_boolean.hp_auto_noc_g12'; if (this._hass.states[id]) this._hass.callService('input_boolean', 'toggle', { entity_id: id }); }
         else if (a === 'autocwu') { const id = this._E.auto_cwu; if (this._hass.states[id]) this._hass.callService('input_boolean', 'toggle', { entity_id: id }); }
         else if (a === 'celx') { delete N.src.cel; this._nauSrcSave(); this._nauRecalc(); }
         else if (a === 'auto') { const id = this._E.auto_cyrk; if (this._hass.states[id]) this._hass.callService('input_boolean', 'toggle', { entity_id: id }); }
@@ -2444,6 +2457,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     h += this._enHtml(esc);
     h += this._nauOutHtml(C);
     h += this._nauFcHtml();
+    h += this._nauCoHtml(esc);
     h += this._nauCyrkHtml(Y, esc, fmt);
     h += this._nauCwuHtml(R.cwu, esc, fmt);
     if (N.srcLoaded) h += this._nauSrcHtml(esc);
@@ -2752,6 +2766,44 @@ class HaKartaPompaCiepla extends HTMLElement {
       out.push(bl);
     }
     return out;
+  }
+  // v1.46: automatyczne obnizenie CO: sen = odwrotnosc planu cyrkulacji (HA: input_text.hp_cyrk_plan, bez niego Nauka karty),
+  //        opcjonalnie + droga strefa G12 (input_boolean.hp_auto_noc_g12). Pusty dom HA obsluguje na biezaco (nie ma go w planie).
+  _nocPlan() {
+    const st = this._hass && this._hass.states, N = this._nau; if (!st) return null;
+    const pl = st[this._E.cyrk_plan], inv = (h) => h.split('').map((c) => (15 - parseInt(c, 16)).toString(16)).join('');
+    let m = null;
+    if (pl && /^[0-9a-f]{168}$/.test(pl.state)) m = inv(pl.state);
+    else if (N && N.res && N.res.cyrk) m = inv(this._mask(N.edit || this._nauBase(N.res.cyrk), false));
+    if (!m) return null;
+    if (st['input_boolean.hp_auto_noc_g12'] && st['input_boolean.hp_auto_noc_g12'].state === 'on') {
+      const g = inv(this._mask(this._g12().day, false));
+      m = m.split('').map((c, i) => (parseInt(c, 16) | parseInt(g[i], 16)).toString(16)).join('');
+    }
+    return this._maskBl(m);
+  }
+  // okna obnizenia CO na dzien tygodnia (0 = Pn): auto -> _nocPlan, reczny harmonogram -> okna z HA, wylaczone -> null
+  _nocWins() {
+    const st = this._hass.states, on = (i) => st[i] && st[i].state === 'on';
+    if (on('input_boolean.hp_auto_noc')) return this._nocPlan();
+    if (!on('input_boolean.hp_plan_noc') || !this._sch || !this._sch.data || !this._sch.data.noc) return null;
+    const it = this._schFromItem(this._sch.data.noc); return this._schDays().map((d) => it[d] || []);
+  }
+  _nauCoHtml(esc) {
+    const st = this._hass.states, E = this._E, au = st['input_boolean.hp_auto_noc'], g = st['input_boolean.hp_auto_noc_g12'];
+    const auOn = au && au.state === 'on', gOn = g && g.state === 'on', pr = st['input_number.hp_noc_przesuniecie'], dz = st['input_number.hp_dzien_przesuniecie'];
+    const off = st[E.offset], OB = this._obecStan();
+    const W = this._nocWins(), now = new Date(), wd = (now.getDay() + 6) % 7, mm = now.getHours() * 60 + now.getMinutes();
+    const inW = !!(W && (W[wd] || []).some((b) => b.f <= mm && mm < b.t));
+    const pusto = auOn && !OB.none && !OB.unav && OB.n === 0;
+    let h = '<div class="sec"><div class="st2">Obniżenie CO: automatycznie z Nauki</div>';
+    h += '<div class="lh"><button class="tg' + (auOn ? ' on' : '') + '" data-a="autonoc"' + (au ? '' : ' disabled') + ' title="Automatyzacja obniżenia CO"><i></i></button><b>Automatyzacja obniżenia CO: ' + (au ? (auOn ? 'włączona' : 'wyłączona') : 'brak') + '</b>' +
+      '<span>Teraz: <b>' + (inW || pusto ? 'obniżone' : 'normalnie') + '</b>' + (auOn ? ' · powód: ' + (inW ? 'pora snu' + (gOn ? ' albo droga strefa G12' : '') : pusto ? 'nikogo ze wskazanych w domu' : 'ktoś jest i nie śpi') : '') +
+      ' · przesunięcie krzywej w pompie: <b>' + (off ? esc(off.state) : '–') + '</b> (w oknie ' + (pr ? Number(pr.state) : '–') + ', poza ' + (dz ? Number(dz.state) : '–') + ')</span></div>';
+    if (!au) return h + '<div class="info">Brak <code>input_boolean.hp_auto_noc</code>: zaktualizuj pakiet do ' + PKG_VER + ' (Diagnostyka → Napraw pakiet).</div></div>';
+    h += '<div class="lh wk"><label><input type="checkbox" data-a="autonocg12"' + (gOn ? ' checked' : '') + (g ? '' : ' disabled') + '> obniżaj też w drogiej strefie G12</label></div>';
+    h += '<div class="wn" style="margin:-.3em 0 .8em">Włączona: HA sam obniża krzywą w porze snu (od snu do ' + 'początku okna cyrkulacji przed wstaniem, z tego samego planu co cyrkulacja) i gdy nikogo ze wskazanych nie ma w domu dłużej niż czas „po wyjściu”' + (gOn ? ', oraz w drogiej strefie G12' : '') + '. Imitacja obecności = ktoś jest. Okna widać w Harmonogramie → Obniżenie CO i na wykresie doby (Zasilanie CO). Wartości przesunięcia ustawiasz w Harmonogramie.</div>';
+    return h + '</div>';
   }
   // --- karta -> HA: model cyrkulacji z Nauki (HA sam z niego liczy plan, gdy karta zamknieta) ---
   _cyrkPub() {

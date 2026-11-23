@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.45 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.46 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.45"
+        state: "1.46"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -495,6 +495,14 @@ input_boolean:
   hp_plan_boost:
     name: "HP plan: podgrzanie CWU aktywne"
     icon: mdi:water-thermometer
+  # v1.46: automatyczne obnizenie CO (Nauka): okna = sen (odwrotnosc planu cyrkulacji) + pusty dom. Domyslnie wylaczony.
+  hp_auto_noc:
+    name: "HP auto: obnizenie CO z Nauki"
+    icon: mdi:home-thermometer
+  # v1.46: dodatkowo obnizaj CO w drogiej strefie G12. Domyslnie wylaczony.
+  hp_auto_noc_g12:
+    name: "HP auto: obnizenie CO takze w drogiej strefie G12"
+    icon: mdi:cash-clock
   # v1.15: suwak "Automatyzacja cyrkulacji" w zakladce Nauka. Domyslnie wylaczony (bez `initial`).
   hp_auto_cyrk:
     name: "HP auto: cyrkulacja wg harmonogramu i obecnosci"
@@ -694,26 +702,52 @@ input_select:
 
 automation:
   # 1) Obnizenie CO: w oknie przesuniecie krzywej = "w oknie", poza oknem = "poza oknem"
+  #    v1.46: przy hp_auto_noc okno liczy HA sam: sen (poza oknami planu cyrkulacji z Nauki), pusty dom (wskazane osoby,
+  #    po hp_cyrk_po_wyjsciu min, imitacja = ktos jest) oraz opcjonalnie droga strefa G12 (hp_auto_noc_g12).
   - id: hp_plan_noc
     alias: "HP plan: obnizenie CO"
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [schedule.hp_plan_obnizenie_co, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_boolean.hp_plan_noc]
+        entity_id: [schedule.hp_plan_obnizenie_co, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_boolean.hp_plan_noc, input_boolean.hp_auto_noc, input_boolean.hp_auto_noc_g12, input_text.hp_cyrk_plan, binary_sensor.hp_g12_tania_strefa, input_text.hp_obecnosc_encje, input_boolean.hp_imitacja_obecnosci]
+      - trigger: template
+        value_template: "{{ (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('is_state', 'home') | list | count == 0 }}"
+        for: {minutes: "{{ states('input_number.hp_cyrk_po_wyjsciu') | int(5) }}"}
+      - trigger: template
+        value_template: "{{ (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('is_state', 'home') | list | count > 0 }}"
       - trigger: state
         entity_id: number.hydrolution_przesuniecie_krzywej_grzewczej
         from: unavailable
       - trigger: homeassistant
         event: start
+      - trigger: time_pattern
+        minutes: "/5"
     conditions:
-      - condition: state
-        entity_id: input_boolean.hp_plan_noc
-        state: "on"
+      - condition: template
+        value_template: "{{ is_state('input_boolean.hp_plan_noc', 'on') or is_state('input_boolean.hp_auto_noc', 'on') }}"
       - condition: template
         value_template: "{{ has_value('number.hydrolution_przesuniecie_krzywej_grzewczej') and has_value('input_number.hp_noc_przesuniecie') and has_value('input_number.hp_dzien_przesuniecie') }}"
     actions:
       - variables:
-          target: "{{ states('input_number.hp_noc_przesuniecie') | float(0) if is_state('schedule.hp_plan_obnizenie_co', 'on') else states('input_number.hp_dzien_przesuniecie') | float(0) }}"
+          okno: >-
+            {%- if is_state('input_boolean.hp_auto_noc', 'on') -%}
+            {%- set pl = states('input_text.hp_cyrk_plan') -%}
+            {%- if pl | length == 168 -%}
+            {%- set q = now().weekday() * 96 + now().hour * 4 + now().minute // 15 -%}
+            {%- set c = '0123456789abcdef'.find(pl[q // 4]) -%}
+            {%- set sen = c >= 0 and (c // (2 ** (3 - q % 4))) % 2 == 0 -%}
+            {%- else -%}
+            {%- set sen = is_state('schedule.hp_plan_obnizenie_co', 'on') -%}
+            {%- endif -%}
+            {%- set g12 = is_state('input_boolean.hp_auto_noc_g12', 'on') and is_state('binary_sensor.hp_g12_tania_strefa', 'off') -%}
+            {%- set osoby = (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('has_value') | list -%}
+            {%- set pmin = ((now() - (expand(osoby) | map(attribute='last_changed') | max)).total_seconds() / 60) if osoby | count > 0 else 0 -%}
+            {%- set pusto = osoby | count > 0 and not is_state('input_boolean.hp_imitacja_obecnosci', 'on') and osoby | select('is_state', 'home') | list | count == 0 and pmin >= (states('input_number.hp_cyrk_po_wyjsciu') | int(5)) -%}
+            {{ sen or g12 or pusto }}
+            {%- else -%}
+            {{ is_state('schedule.hp_plan_obnizenie_co', 'on') }}
+            {%- endif -%}
+          target: "{{ states('input_number.hp_noc_przesuniecie') | float(0) if okno else states('input_number.hp_dzien_przesuniecie') | float(0) }}"
       - condition: template
         value_template: "{{ (states('number.hydrolution_przesuniecie_krzywej_grzewczej') | float(0)) != target }}"
       - action: number.set_value
@@ -1342,7 +1376,7 @@ automation:
     mode: restart
     triggers:
       - trigger: state
-        entity_id: [input_boolean.hp_plan_cwu, input_boolean.hp_auto_cwu, input_boolean.hp_plan_cyrk, input_boolean.hp_auto_cyrk, input_boolean.hp_plan_noc, input_boolean.hp_plan_grz, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_select.hp_cwu_tryb_tania, input_number.hp_cwu_czekaj_min, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_text.hp_g12_strefy, input_boolean.hp_g12_weekend_tani, input_text.hp_cyrk_plan]
+        entity_id: [input_boolean.hp_plan_cwu, input_boolean.hp_auto_cwu, input_boolean.hp_plan_cyrk, input_boolean.hp_auto_cyrk, input_boolean.hp_plan_noc, input_boolean.hp_auto_noc, input_boolean.hp_plan_grz, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_select.hp_cwu_tryb_tania, input_number.hp_cwu_czekaj_min, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_text.hp_g12_strefy, input_boolean.hp_g12_weekend_tani, input_text.hp_cyrk_plan]
       # v1.38: zmiana okien harmonogramu (karta zapisuje schedule) -> od razu do ESP
       - trigger: state
         entity_id: [schedule.hp_plan_tryb_cwu, schedule.hp_plan_cyrkulacja_cwu, schedule.hp_plan_obnizenie_co, schedule.hp_plan_grzalka]
@@ -1448,7 +1482,14 @@ automation:
             {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
             {{- ns.h -}}
             {%- endif -%}
+          # v1.46: automatyczne obnizenie CO -> do ESP idzie sen (odwrotnosc planu cyrkulacji); obecnosci i G12 ESP offline nie zna
           m_noc: >-
+            {%- set pl = states('input_text.hp_cyrk_plan') -%}
+            {%- if is_state('input_boolean.hp_auto_noc', 'on') and pl | length == 168 -%}
+            {%- set ns = namespace(h='') -%}
+            {%- for ch in pl -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[15 - '0123456789abcdef'.find(ch)] -%}{%- endfor -%}
+            {{- ns.h -}}
+            {%- else -%}
             {%- set sd = (sch.get('schedule.hp_plan_obnizenie_co') or {}) if sch is mapping else {} -%}
             {%- set acc = namespace(l=[]) -%}
             {%- for dn in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] -%}{%- set ws = namespace(l=[]) -%}
@@ -1465,6 +1506,7 @@ automation:
             {%- if on.b -%}{%- set nb.v = nb.v + 2 ** (3 - i) -%}{%- endif -%}
             {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
             {{- ns.h -}}
+            {%- endif -%}
           m_grz: >-
             {%- set sd = (sch.get('schedule.hp_plan_grzalka') or {}) if sch is mapping else {} -%}
             {%- set acc = namespace(l=[]) -%}
@@ -1488,7 +1530,7 @@ automation:
           flagi: >-
             {{ '1' if auto_cwu or is_state('input_boolean.hp_plan_cwu', 'on') else '0' -}}
             {{ '1' if is_state('input_boolean.hp_auto_cyrk', 'on') or is_state('input_boolean.hp_plan_cyrk', 'on') else '0' -}}
-            {{ '1' if is_state('input_boolean.hp_plan_noc', 'on') else '0' -}}
+            {{ '1' if is_state('input_boolean.hp_plan_noc', 'on') or is_state('input_boolean.hp_auto_noc', 'on') else '0' -}}
             {{ '1' if is_state('input_boolean.hp_plan_grz', 'on') else '0' }}
           tresc: >-
             {{ c_in }},{{ c_out }},{{ (states('input_number.hp_cwu_czekaj_min') | int(30)) if auto_cwu else 0 }},{{ states('input_number.hp_cyrk_praca') | int(60) }},{{ [1, states('input_number.hp_cyrk_postoj') | int(1)] | max }},{{ states('input_number.hp_noc_przesuniecie') | int(0) }},{{ states('input_number.hp_dzien_przesuniecie') | int(0) }},{{ flagi }}
