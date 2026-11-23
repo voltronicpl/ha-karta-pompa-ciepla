@@ -366,11 +366,13 @@ class HaKartaPompaCiepla extends HTMLElement {
     let h = '<div class="sh"><div class="sht">Harmonogram<small>tydzień, wszystko robi Home Assistant</small></div>';
     // v1.40: info o planie w ESP przeniesione do zakladki Diagnostyka
     if (espOn) h += '<div class="warn">⚠ Na ESP jest włączony własny harmonogram („Harmonogram nocny / CWU aktywny”). Planem ma rządzić Home Assistant, więc wyłącz go, bo będą się gryźć. <button data-a="more" data-e="' + (st[E.sch_n] && st[E.sch_n].state === 'on' ? E.sch_n : E.sch_hw) + '">Pokaż przełącznik</button></div>';
-    h += '<div class="tabs">' + lanes.map((l) => {
+    const coBtn = '<button class="tab' + (S.lane === 'co' ? ' on' : '') + '" data-a="lane" data-k="co" title="Tylko podgląd: kiedy pompa pracowała w trybie CO"><span class="dot"></span>Tryb CO</button>';
+    h += '<div class="tabs">' + lanes.map((l, li) => {
       const on = st[l.en] && st[l.en].state === 'on', inw = st[l.sch] && st[l.sch].state === 'on';
       const au = this._schAuto(l);
-      return '<button class="tab' + (l.k === lane.k ? ' on' : '') + '" data-a="lane" data-k="' + l.k + '"><span class="dot' + ((on || au) ? (inw ? ' w' : ' a') : '') + '"></span>' + esc(l.n) + (au ? '<span class="au">auto</span>' : '') + (S.dirty[l.k] && !au ? ' •' : '') + '</button>';
+      return (li === 1 ? coBtn : '') + '<button class="tab' + (l.k === lane.k && S.lane !== 'co' ? ' on' : '') + '" data-a="lane" data-k="' + l.k + '"><span class="dot' + ((on || au) ? (inw ? ' w' : ' a') : '') + '"></span>' + esc(l.n) + (au ? '<span class="au">auto</span>' : '') + (S.dirty[l.k] && !au ? ' •' : '') + '</button>';
     }).join('') + '</div>';
+    if (S.lane === 'co') { el.innerHTML = h + this._schCoHtml(DL, days) + '</div>'; return; }
     if (S.err) h += '<div class="info">' + esc(S.err) + '</div>';
     if (S.note && S.note.k === lane.k) h += '<div class="info">' + esc(S.note.t) + '</div>';
     if (missing.length) {
@@ -444,7 +446,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const mark = () => { S().dirty[lane().k] = true; };
     el.addEventListener('pointerdown', (ev) => {
       const tl = ev.target.closest && ev.target.closest('.tl');
-      if (!tl || (ev.target.closest('.bk')) || this._schAuto(lane())) return;
+      if (!tl || S().lane === 'co' || (ev.target.closest('.bk')) || this._schAuto(lane())) return;
       ev.preventDefault();
       const d = tl.getAttribute('data-day'), a = snap(ev, tl);
       S().drag = { tl, d, a, b: a, tmp: null };
@@ -511,6 +513,20 @@ class HaKartaPompaCiepla extends HTMLElement {
     });
   }
   // v1.23: harmonogram prowadzony automatycznie z Nauki (wlaczony suwak automatyzacji)
+  // v1.47: zakladka Tryb CO - tylko wykres z historii HA: kiedy pompa byla w trybie CO i kiedy pracowala sprezarka (bez sterowania)
+  _schCoHtml(DL, days) {
+    const RG = this._rngDays(), t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const now = new Date(), nowMin = now.getHours() * 60 + now.getMinutes(), HS = this._schHist('co'), cmp = RG.days.length > 10;
+    let h = this._rngHtml();
+    h += '<div class="hr dt">' + [0, 3, 6, 9, 12, 15, 18, 21, 24].map((x) => '<span style="left:' + (x / 24 * 100) + '%">' + x + '</span>').join('') + '</div>';
+    RG.days.forEach((dt) => {
+      const i = (dt.getDay() + 6) % 7, isT = dt.getTime() === t0.getTime(), past = dt < t0;
+      h += '<div class="dr' + (past ? ' ps' : '') + (cmp ? ' cp2' : '') + '"><span class="dn dt' + (isT ? ' td' : '') + '">' + DL[i] + ' ' + String(dt.getDate()).padStart(2, '0') + '.' + String(dt.getMonth() + 1).padStart(2, '0') + '</span><div class="tl lk" style="--c:#ff7a2f;--c2:#c2511b">' +
+        (isT ? '<div class="nw" style="left:' + (nowMin / 14.4) + '%"></div>' : '') + this._schHistRow(HS, dt.getTime()) + '</div><span class="cp"></span></div>';
+    });
+    h += '<div class="lgh"><span><i style="background:#ffe0ef;height:3px"></i>pompa w trybie CO (priorytet Ogrzewanie)</span><span><i style="background:#ff3b2f;height:10px"></i>praca sprężarki na CO</span></div>';
+    return h + '<div class="ft"><span class="hint">Tylko podgląd z historii HA, bez sterowania. Czerwona kreska = teraz.</span></div>';
+  }
   _schAuto(l) { const s = l && l.au && this._hass && this._hass.states[l.au]; return !!(s && s.state === 'on'); }
   _autoAny() { return this._schLanes().some((l) => this._schAuto(l)); }
   _autoSync() {
@@ -2569,7 +2585,7 @@ class HaKartaPompaCiepla extends HTMLElement {
 
   // --- historia planu i pracy dla harmonogramu (ostatnie ~10 dni z historii, starsze godzinowo ze statystyk) ---
   _histIds(k) {
-    const m = { noc: 'obnizenie', cwu: 'cwu', cyrk: 'cyrkulacja', grz: 'grzalka', boost: 'podgrzanie' }[k];
+    const m = { co: 'co', noc: 'obnizenie', cwu: 'cwu', cyrk: 'cyrkulacja', grz: 'grzalka', boost: 'podgrzanie' }[k];
     return m ? ['sensor.hp_hist_' + m + '_plan', 'sensor.hp_hist_' + m + '_praca'] : null;
   }
   _histSrc(k) {
@@ -2577,6 +2593,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     const E = this._E;
     return {
       // v1.45: obnizenie CO = przesuniecie krzywej w pompie nizsze niz "poza oknem" (input_number.hp_dzien_przesuniecie)
+      // v1.47: Tryb CO (tylko podglad): plan = pompa w priorytecie Ogrzewanie, praca = sprezarka na CO
+      co: [E.prio, this._hass && this._hass.states['binary_sensor.hp_sprezarka_co'] ? 'binary_sensor.hp_sprezarka_co' : E.cpr, (v) => v === 'on', (v) => v === 'Ogrzewanie'],
       noc: [E.pl_noc, E.offset, (v) => { const dz = this._hass && this._hass.states['input_number.hp_dzien_przesuniecie']; const d = dz ? parseFloat(dz.state) : 0; const x = parseFloat(v); return isFinite(x) && x < (isFinite(d) ? d : 0); }],
       cwu: [E.pl_cwu, E.cpr_cwu, (v) => v === 'on'], cyrk: [E.pl_cyrk, E.hwc_run, (v) => parseFloat(v) > 1],
       grz: [E.pl_grz, E.eladd, (v) => parseFloat(v) > 0.05], boost: [E.pl_boost, E.tmp_lux, (v) => v && v !== 'Wylaczone' && v !== 'unknown' && v !== 'unavailable'],
@@ -2603,7 +2621,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (hFrom < end) {
       let pid, wid, pOn, wOn;
       if (own) { pid = ids[0]; wid = ids[1]; pOn = (v) => parseFloat(v) >= 50; wOn = pOn; }
-      else { const s = this._histSrc(k); pid = s[0]; wid = s[1]; pOn = (v) => v === 'on'; wOn = s[2]; }
+      else { const s = this._histSrc(k); pid = s[0]; wid = s[1]; pOn = s[3] || ((v) => v === 'on'); wOn = s[2]; }
       const q = [pid, wid].filter((i) => st[i]);
       if (q.length) {
         const r = (await hass.callApi('GET', 'history/period/' + new Date(hFrom).toISOString() + '?filter_entity_id=' + q.join(',') + '&end_time=' + encodeURIComponent(new Date(end).toISOString()) + '&minimal_response&no_attributes')) || [];
