@@ -822,7 +822,7 @@ return '<svg viewBox="0 0 484 138" style="position:absolute;inset:0;width:100%;h
     src = open('card_tpl.js').read()
     import pkgspec
     PKGSPEC = pkgspec.build(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-    for a, b in [('__PKG__', json.dumps(PKGSPEC, ensure_ascii=False, separators=(',', ':'))), ('__VERSION__', VERSION), ('__ENTITIES__', json.dumps(E, indent=1)), ('__TREND__', json.dumps(['bt7', 'bt12', 'bt3', 'bt25'])),
+    for a, b in [('__PKG__', json.dumps(PKGSPEC, ensure_ascii=False, separators=(',', ':'))), ('__PKGYAML__', json.dumps(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'packages', 'hydrolution_karta.yaml'), encoding='utf-8').read(), ensure_ascii=False)), ('__VERSION__', VERSION), ('__ENTITIES__', json.dumps(E, indent=1)), ('__TREND__', json.dumps(['bt7', 'bt12', 'bt3', 'bt25'])),
                  ('__EXTRA__', json.dumps(EXTRA)), ('__FONT__', json.dumps(FONT)), ('__ELEMENTS__', ',\n'.join(out)), ('__BG__', bg)]:
         src = src.replace(a, b)
     open(JSOUT, 'w').write(src)

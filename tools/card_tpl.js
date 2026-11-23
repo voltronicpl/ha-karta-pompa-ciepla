@@ -12,6 +12,7 @@
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
 const PKG_VER = '1.40';
+const PKG_YAML = __PKGYAML__;   // v1.41: pelna tresc pakietu YAML tej wersji (naprawa starego pliku przez File editor)
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];
 const PKG = __PKG__;   // v1.28: spis pakietu HA (tools/pkgspec.py) - karta zaklada brakujace elementy przez API
@@ -130,7 +131,7 @@ const V135_CSS = '.el.hpp{border-radius:calc(var(--u)*8);box-shadow:0 0 0 2px #b
   '#nau .zs.w{background:#5b6573}#nau .zs.x{background:#c9372c}#nau .zs.o{opacity:0}' +
   '#sch .esp{display:inline-flex;align-items:center;gap:.3em;padding:.1em .65em;border-radius:999px;font-size:.88em;font-weight:600}' +
   '#sch .esp button,#nau .esp button{margin-left:.4em;padding:.05em .55em;font-size:.95em}#sch .now,#nau .now,#dia .now{display:flex;flex-wrap:wrap;gap:.3em .9em;margin:-.2em 0 .7em;font-size:.92em}#sch .now .bad,#nau .now .bad,#dia .now .bad{color:#ffb300;font-weight:600}#sch .now .good,#nau .now .good,#dia .now .good{color:#7ee04a;font-weight:600}' +
-  '#nau .ob{display:flex;flex-wrap:wrap;gap:.4em .6em;align-items:center;margin:0 0 .9em;font-size:.9em}#nau .ob .p{padding:.15em .65em;border-radius:999px;background:rgba(10,12,16,.55);border:1px solid rgba(255,255,255,.18);cursor:pointer}#nau .ob .p.h{border-color:#43d343;color:#c9f5b0}#nau .ob .p.a{opacity:.8}' +
+  '#nau .obc{display:flex;flex-wrap:wrap;gap:.4em .6em;align-items:center;margin:0 0 .9em;font-size:.9em}#nau .obc .p{padding:.15em .65em;border-radius:999px;background:rgba(10,12,16,.55);border:1px solid rgba(255,255,255,.18);cursor:pointer}#nau .obc .p.h{border-color:#43d343;color:#c9f5b0}#nau .obc .p.a{opacity:.8}' +
   '#sch .esp.ok{background:rgba(67,194,90,.18);border:1px solid #43d343;color:#bff0c8}#sch .esp.w{background:rgba(255,179,0,.14);border:1px solid #ffb300;color:#ffd9a0}#sch .esp.n{opacity:.65;border:1px solid rgba(255,255,255,.2)}' +
   '#nau .km{margin-top:1em;padding:.8em 1em;border-radius:10px;background:rgba(10,12,16,.45);border:1px solid rgba(110,193,255,.25)}' +
   '#nau .km .kb{display:flex;flex-wrap:wrap;align-items:center;gap:.5em 1em;margin-bottom:.7em}#nau .km .kb button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
@@ -615,7 +616,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (el._sig === sig) return; el._sig = sig;
     el.hidden = !P.old && !K.busy;
     if (K.busy) el.innerHTML = '⏳ <b>Karta instaluje / aktualizuje pakiet HA</b>… szczegóły w zakładce Nauka.';
-    else if (P.old) el.innerHTML = '⚠ <b>' + (P.ver ? 'Masz stary pakiet w HA' : 'Brak pakietu w HA') + '</b> (' + (P.ver ? 'v' + P.ver : 'brak wersji') + ', karta chce v' + P.want + '). Brakuje ' + P.miss.length + ' elementów. Kliknij: zakładka Nauka → ' + (mode === 'yaml' ? 'co zrobić' : '„Zainstaluj / napraw pakiet”') + '.';
+    else if (P.old) el.innerHTML = '⚠ <b>' + (P.ver ? 'Masz stary pakiet w HA' : 'Brak pakietu w HA') + '</b> (' + (P.ver ? 'v' + P.ver : 'brak wersji') + ', karta chce v' + P.want + '). Brakuje ' + P.miss.length + ' elementów. Kliknij: zakładka Nauka → ' + (mode === 'yaml' ? '„Napraw pakiet (podmień plik)”' : '„Zainstaluj / napraw pakiet”') + '.';
   }
   _pkHtml(esc) {
     const hass = this._hass, P = this._pkgCheck(), K = this._pk || (this._pk = {}), admin = !!(hass.user && hass.user.is_admin);
@@ -633,7 +634,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (R.mode === 'yaml') {
       if (!R.paste.length && !R.restart.length) return h;
       if (!R.paste.length) return h + '<div class="pkw">⚠ <b>Pakiet YAML v' + esc(R.yv) + ' jest aktualny, ale HA nie załadował ' + R.restart.length + ' jego elementów:</b> ' + lst(R.restart) + '. Zrób <b>pełny restart HA</b> (Ustawienia → ⋮ → Uruchom ponownie). Jeśli po restarcie dalej brakuje, sprawdź log HA (np. zajęta nazwa encji, wtedy HA dokłada „_2”).</div>';
-      return h + '<div class="pkw">⚠ <b>Pakiet masz w pliku YAML</b> (<code>/config/packages/hydrolution_karta.yaml</code>, v' + esc(R.yv) + '), karta oczekuje <b>v' + PKG.ver + '</b>. Karta nie zmienia plików w HA, więc tego sama nie podmieni.' +
+      return h + '<div class="pkw">⚠ <b>Pakiet masz w pliku YAML</b> (<code>/config/packages/hydrolution_karta.yaml</code>, v' + esc(R.yv) + '), karta oczekuje <b>v' + PKG.ver + '</b>.' + this._pkFixHtml(esc) +
         (R.paste.length ? '<br>Nowe albo zmienione w v' + PKG.ver + ' (' + R.paste.length + '): ' + lst(R.paste) + '.' : '') +
         (R.restart.length ? '<br>Są w Twoim pliku, ale HA ich nie załadował (zrób pełny restart): ' + lst(R.restart) + '.' : '') +
         '<br><b>Droga A (jak dotąd):</b> wklej całą treść <code>packages/hydrolution_karta.yaml</code> z repo do tego pliku, Narzędzia deweloperskie → YAML → Sprawdź konfigurację, potem <b>pełny restart HA</b>.' +
@@ -652,6 +653,69 @@ class HaKartaPompaCiepla extends HTMLElement {
   // Tryby: 'yaml' = pakiet w pliku (karta tylko podpowiada), 'card' = zainstalowany przez karte (input_text.hp_pakiet_karta),
   // 'none' = brak pakietu (albo po zmianie nazwy pliku na .bak). Karta niczego nie usuwa (poza "Zwolnij nazwy" na klikniecie).
   _pkLive(eid) { const s = eid && this._hass.states[eid]; return !!(s && !(s.attributes && s.attributes.restored)); }
+  // v1.41: naprawa starego pakietu w pliku YAML przez dodatek File editor (core_configurator):
+  //        kopia starego pliku (.bak-vX, HA jej nie wczytuje), zapis nowego, sprawdzenie konfiguracji (blad = przywraca kopie), restart dopiero po klik "Tak"
+  _pkFixHtml(esc) {
+    const F = this._pkF || {}, admin = !!(this._hass.user && this._hass.user.is_admin);
+    let h = '<br>' + (admin ? '<button class="sv" data-a="pkfix"' + (F.busy ? ' disabled' : '') + '>' + (F.busy ? 'Naprawiam…' : 'Napraw pakiet (podmień plik)') + '</button> ' : '<i>Naprawa pakietu tylko na koncie administratora HA.</i> ') +
+      '<button data-a="pkcopy">Kopiuj pakiet ' + PKG.ver + ' do schowka</button> <span class="ds">Karta robi kopię starego pliku, wgrywa nowy przez dodatek File editor i sprawdza konfigurację; restart HA dopiero po Twoim kliknięciu.</span>';
+    if (F.log && F.log.length) h += '<br>' + F.log.map((x) => esc(x)).join('<br>');
+    if (F.ok) h += '<br><b style="color:#7ee04a">Pakiet ' + PKG.ver + ' wgrany i konfiguracja poprawna.</b> <button class="sv" data-a="pkfixr">Tak, restart HA teraz</button> <span class="ds">(bez restartu HA dalej używa starego pakietu)</span>';
+    if (F.copied) h += '<br><b>Skopiowane.</b> Otwórz File editor → <code>packages/hydrolution_karta.yaml</code>, zaznacz wszystko, wklej, zapisz, pełny restart. <a href="/hassio/ingress/core_configurator" target="_top">Otwórz File editor</a>';
+    return h + '<br>';
+  }
+  _pkCopy() {
+    const F = this._pkF || (this._pkF = {});
+    const done = () => { F.copied = true; this._nauRender(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(PKG_YAML).then(done, () => { F.log = (F.log || []).concat(['Schowek niedostępny w tej przeglądarce: skopiuj plik z GitHuba (packages/hydrolution_karta.yaml).']); this._nauRender(); });
+    else { F.log = (F.log || []).concat(['Schowek niedostępny: skopiuj plik z GitHuba (packages/hydrolution_karta.yaml).']); this._nauRender(); }
+  }
+  async _pkFix() {
+    const F = this._pkF = { busy: true, log: [] }, hass = this._hass;
+    const say = (t) => { F.log.push(t); this._log('karta', 'Napraw pakiet', t); this._nauRender(); };
+    const old = (this._hass.states['sensor.hp_pakiet_wersja'] || {}).state || 'stary';
+    try {
+      const info = await hass.callWS({ type: 'supervisor/api', endpoint: '/addons/core_configurator/info', method: 'get' }).catch(() => null);
+      if (!info) throw new Error('brak dodatku File editor (Ustawienia → Dodatki → File editor → Zainstaluj i Uruchom), albo HA bez Supervisora. Użyj „Kopiuj pakiet do schowka”.');
+      if (info.state !== 'started') throw new Error('dodatek File editor jest zatrzymany: Ustawienia → Dodatki → File editor → Uruchom, potem kliknij jeszcze raz.');
+      const ses = await hass.callWS({ type: 'supervisor/api', endpoint: '/ingress/session', method: 'post' });
+      document.cookie = 'ingress_session=' + ses.session + ';path=/api/hassio_ingress/;SameSite=Strict' + (location.protocol === 'https:' ? ';Secure' : '');
+      const base = String(info.ingress_url || '').replace(/\/$/, '');
+      if (!base) throw new Error('File editor nie ma adresu ingress.');
+      const get = async (f) => { const r = await fetch(base + '/api/file?filename=' + encodeURIComponent(f), { credentials: 'same-origin' }); if (!r.ok) throw new Error('odczyt ' + f + ': HTTP ' + r.status); return r.text(); };
+      const post = async (ep, body) => {
+        const r = await fetch(base + '/api/' + ep, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(body).toString() });
+        let j = null; try { j = await r.json(); } catch (e) { /* brak */ }
+        if (!r.ok || !j || j.error) throw new Error(ep + ': ' + (j && j.message || ('HTTP ' + r.status)));
+        return j;
+      };
+      let path = null, cur = '';
+      for (const f of ['/homeassistant/packages/hydrolution_karta.yaml', '/config/packages/hydrolution_karta.yaml']) {
+        const t = await get(f).catch(() => '');
+        if (t && t !== 'File not found' && !/^\[Errno/.test(t)) { path = f; cur = t; break; }
+      }
+      if (!path) throw new Error('nie znalazłem pliku packages/hydrolution_karta.yaml (ani w /homeassistant, ani w /config).');
+      say('Plik: ' + path + ' (' + cur.length + ' znaków).');
+      const bak = path + '.bak-v' + old + '-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+      await post('save', { filename: bak, text: cur });
+      say('Kopia starego: ' + bak + ' (HA jej nie wczytuje).');
+      await post('save', { filename: path, text: PKG_YAML });
+      say('Zapisany pakiet ' + PKG.ver + '.');
+      const chk = await hass.callApi('POST', 'config/core/check_config').catch((e) => ({ result: 'invalid', errors: this._errTxt(e) }));
+      if (chk && chk.result === 'valid') { say('Sprawdzenie konfiguracji: OK.'); F.ok = true; }
+      else {
+        say('Sprawdzenie konfiguracji: BŁĄD: ' + (chk && chk.errors || '?'));
+        await post('save', { filename: path, text: cur });
+        say('Przywróciłem stary plik (nic nie zmienione). Wyślij mi ten błąd.');
+      }
+    } catch (e) { say('Nie wyszło: ' + this._errTxt(e)); }
+    F.busy = false; this._nauRender();
+  }
+  _pkFixRestart() {
+    const F = this._pkF || {}; if (!F.ok) return;
+    F.ok = false; F.log.push('Restart HA… po minucie odśwież stronę (Ctrl+F5).'); this._nauRender();
+    this._hass.callService('homeassistant', 'restart', {}).catch(() => { /* HA sie wylacza */ });
+  }
   _pkMode() {
     const st = this._hass.states;
     if (st['input_text.hp_pakiet_karta']) return 'card';
@@ -2118,6 +2182,9 @@ class HaKartaPompaCiepla extends HTMLElement {
         else if (a === 'nrst') { N.edit = null; N.sel = null; this._nauRender(); }
         else if (a === 'ncp') { const e = this._nauEdit(), d = Number(t.getAttribute('data-d')); if (e[d]) { for (let k = 0; k < 7; k++) if (e[k]) e[k] = JSON.parse(JSON.stringify(e[d])); N.sel = null; this._nauRender(); } }
         else if (a === 'pkrun') this._pkRun(false);
+        else if (a === 'pkfix') this._pkFix();
+        else if (a === 'pkfixr') this._pkFixRestart();
+        else if (a === 'pkcopy') this._pkCopy();
         else if (a === 'pkfree') this._pkFree();
         else if (a === 'pkok') { if (this._pk) { this._pk.log = []; this._pk.err = []; } this._nauRender(); }
         else if (a === 'reload' && !N.loading) { N.cmpFrom = N.base || this._nauSnap(); this._nauLoad(); }
@@ -2654,7 +2721,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const st = this._hass.states, pers = this._nauPersons().filter((i) => st[i]); if (!pers.length) return '';
     const od = (s) => { const d = new Date(s.last_changed); if (isNaN(d)) return ''; const t = d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }); return d.toDateString() === new Date().toDateString() ? t : d.toLocaleDateString('pl-PL', { weekday: 'short' }) + ' ' + t; };
     const zh = st['zone.home'], n = zh ? parseInt(zh.state, 10) : NaN;
-    return '<div class="ob"><b>Obecność:</b>' + pers.map((i) => {
+    return '<div class="obc"><b>Obecność:</b>' + pers.map((i) => {
       const s = st[i], home = s.state === 'home', nm = (s.attributes && s.attributes.friendly_name) || i.split('.')[1];
       const where = home ? '🏠 w domu' : s.state === 'not_home' ? '🚶 poza' : /^(unknown|unavailable)$/.test(s.state) ? '❔ nieznane' : '📍 ' + s.state;
       return '<span class="p ' + (home ? 'h' : 'a') + '" data-a="more" data-e="' + i + '">' + esc(nm) + ' ' + where + ' od ' + od(s) + '</span>';
