@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.47';
+const PKG_VER = '1.48';
 const PKG_YAML = __PKGYAML__;   // v1.41: pelna tresc pakietu YAML tej wersji (naprawa starego pliku przez File editor)
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];

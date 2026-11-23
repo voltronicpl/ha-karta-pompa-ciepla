@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.47 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.48 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.47"
+        state: "1.48"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -967,6 +967,8 @@ automation:
         for: {minutes: "{{ states('input_number.hp_cyrk_po_wyjsciu') | int(5) }}"}
       - trigger: template
         value_template: "{{ (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('is_state', 'home') | list | count > 0 }}"
+        # v1.49: powrot liczy sie dopiero po 2 min w domu (krotkie skoki trackera na 'home' nie wlaczaja cyrkulacji)
+        for: {minutes: 2}
       - trigger: state
         entity_id: [input_text.hp_obecnosc_encje, input_boolean.hp_imitacja_obecnosci]
       - trigger: state
@@ -992,7 +994,11 @@ automation:
       - variables:
           osoby: "{{ (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('has_value') | list }}"
           imit: "{{ is_state('input_boolean.hp_imitacja_obecnosci', 'on') }}"
-          ktos: "{{ imit or osoby | select('is_state', 'home') | list | count > 0 }}"
+          # v1.49: osoba jest w domu dopiero, gdy ma 'home' nieprzerwanie od >= 2 min (filtr skokow trackera,
+          #        np. telefon na chwile widziany przez router - wczesniej zerowal 'pusto od' i cyrkulacja chodzila przy pustym domu)
+          w_domu: "{{ expand(osoby) | selectattr('state', 'eq', 'home') | selectattr('last_changed', 'lt', now() - timedelta(minutes=2)) | map(attribute='name') | list }}"
+          skok: "{{ expand(osoby) | selectattr('state', 'eq', 'home') | selectattr('last_changed', 'ge', now() - timedelta(minutes=2)) | map(attribute='name') | list }}"
+          ktos: "{{ imit or w_domu | count > 0 }}"
           # v1.47: liczone od ostatniej chwili, gdy ktos byl w domu (input_datetime), a nie od last_changed trackerow
           #        (telefon przeskakujacy miedzy strefami zerowal licznik i cyrkulacja chodzila przy pustym domu)
           pusto_min: >-
@@ -1024,13 +1030,15 @@ automation:
           # v1.44: powod decyzji (Diagnostyka)
           powod: >-
             {{ now().strftime('%H:%M') }}
-            {{ 'imitacja obecnosci' if imit else ('w domu: ' ~ (expand(osoby) | selectattr('state', 'eq', 'home') | map(attribute='name') | join(', ')) if ktos else 'pusto od ' ~ pusto_min ~ ' min') }},
+            {%- set ow = states('input_datetime.hp_ostatnio_w_domu') | as_datetime(none) -%}
+            {{ 'imitacja obecnosci' if imit else ('w domu: ' ~ (w_domu | join(', ')) if ktos else 'pusto od ' ~ pusto_min ~ ' min' ~ (' (ost. w domu ' ~ (ow | as_local).strftime('%H:%M') ~ ')' if ow is not none else '')) }}{{ ' [skok trackera: ' ~ (skok | join(', ')) ~ ' <2 min, pomijam]' if skok | count > 0 and not imit else '' }},
             {{ 'okno planu' if w_oknie else ('weekend rano' if rano else ('poza oknem, ale imitacja' if imit else 'poza oknem (sen)')) }}
             -> {{ 'pracuje ' ~ (praca | int) ~ '/' ~ (postoj | int) if wl else 'wylaczona 1/60' }}
-      # v1.47: zapamietaj, ze ktos jest w domu (imitacja tez)
+      # v1.47: zapamietaj, ze ktos jest w domu
+      # v1.49: tylko prawdziwa obecnosc (>= 2 min), NIE imitacja - po wylaczeniu imitacji przy pustym domu cyrkulacja gasnie od razu
       - if:
           - condition: template
-            value_template: "{{ ktos }}"
+            value_template: "{{ w_domu | count > 0 }}"
         then:
           - action: input_datetime.set_datetime
             target: {entity_id: input_datetime.hp_ostatnio_w_domu}
