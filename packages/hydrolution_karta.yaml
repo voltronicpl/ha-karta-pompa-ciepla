@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.46 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.47 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.46"
+        state: "1.47"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -539,6 +539,12 @@ input_datetime:
     has_date: true
     has_time: true
     icon: mdi:pump
+  # v1.47: kiedy ostatnio ktos byl w domu (wpisuje automat cyrkulacji) - od tego liczy sie "pusto od"
+  hp_ostatnio_w_domu:
+    name: "HP obecnosc: ostatnio ktos w domu"
+    has_date: true
+    has_time: true
+    icon: mdi:home-clock
   # v1.35: kiedy HA ostatnio przeliczyl plan cyrkulacji (automatyzacja hp_cyrk_przelicz, bez otwierania karty)
   hp_cyrk_plan_przeliczony:
     name: "HP cyrkulacja: plan przeliczony"
@@ -987,7 +993,11 @@ automation:
           osoby: "{{ (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('has_value') | list }}"
           imit: "{{ is_state('input_boolean.hp_imitacja_obecnosci', 'on') }}"
           ktos: "{{ imit or osoby | select('is_state', 'home') | list | count > 0 }}"
-          pusto_min: "{{ ((now() - (expand(osoby) | map(attribute='last_changed') | max)).total_seconds() / 60) | round(0) if osoby | count > 0 else 0 }}"
+          # v1.47: liczone od ostatniej chwili, gdy ktos byl w domu (input_datetime), a nie od last_changed trackerow
+          #        (telefon przeskakujacy miedzy strefami zerowal licznik i cyrkulacja chodzila przy pustym domu)
+          pusto_min: >-
+            {%- set t = state_attr('input_datetime.hp_ostatnio_w_domu', 'timestamp') -%}
+            {{ (((now().timestamp() - (t | float)) / 60) | round(0)) if t is not none and (t | float(0)) > 0 else 9999 }}
           pusto_dlugo: "{{ not ktos and pusto_min >= (states('input_number.hp_cyrk_po_wyjsciu') | int(5)) }}"
           # v1.35: okno z planu policzonego w HA (input_text.hp_cyrk_plan, 168 znakow hex), bez planu jak dawniej z harmonogramu
           w_oknie: >-
@@ -1017,6 +1027,14 @@ automation:
             {{ 'imitacja obecnosci' if imit else ('w domu: ' ~ (expand(osoby) | selectattr('state', 'eq', 'home') | map(attribute='name') | join(', ')) if ktos else 'pusto od ' ~ pusto_min ~ ' min') }},
             {{ 'okno planu' if w_oknie else ('weekend rano' if rano else ('poza oknem, ale imitacja' if imit else 'poza oknem (sen)')) }}
             -> {{ 'pracuje ' ~ (praca | int) ~ '/' ~ (postoj | int) if wl else 'wylaczona 1/60' }}
+      # v1.47: zapamietaj, ze ktos jest w domu (imitacja tez)
+      - if:
+          - condition: template
+            value_template: "{{ ktos }}"
+        then:
+          - action: input_datetime.set_datetime
+            target: {entity_id: input_datetime.hp_ostatnio_w_domu}
+            data: {timestamp: "{{ now().timestamp() | int }}"}
       - if:
           - condition: template
             value_template: "{{ states('input_text.hp_cyrk_powod') != 'unavailable' and (states('input_text.hp_cyrk_powod').split(' | ')[0])[6:] != (powod | string)[6:200] }}"
