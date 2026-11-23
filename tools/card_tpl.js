@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.44';
+const PKG_VER = '1.45';
 const PKG_YAML = __PKGYAML__;   // v1.41: pelna tresc pakietu YAML tej wersji (naprawa starego pliku przez File editor)
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];
@@ -421,7 +421,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (MS) h += '<div class="ms">' + MS[i].map((b) => '<i class="' + b.c + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%" title="' + esc(NMS[b.m]) + ' ' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '"></i>').join('') + '</div>';
       h += '</div>' + (lk ? '<span class="cp"></span>' : '<button class="cp" data-a="cp" data-d="' + d + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button>') + '</div>';
     });
-    if (this._histIds(lane.k)) h += '<div class="lgh"><span><i style="background:#ffe0ef;height:3px"></i>plan wtedy</span><span><i style="background:#ff3b2f;height:10px"></i>faktyczna praca</span><span>Edycja okna w rzędzie zmienia ten dzień tygodnia (szablon tygodnia).</span></div>';
+    if (this._histIds(lane.k)) h += '<div class="lgh"><span><i style="background:#ffe0ef;height:3px"></i>plan wtedy</span><span><i style="background:#ff3b2f;height:10px"></i>' + (lane.k === 'noc' ? 'krzywa faktycznie obniżona (przesunięcie w pompie niższe niż poza oknem)' : 'faktyczna praca') + '</span><span>Edycja okna w rzędzie zmienia ten dzień tygodnia (szablon tygodnia).</span></div>';
     if (MS) h += '<div class="lgm"><span>Pasek pod osią = faktyczny tryb CWU:</span><span><i class="' + (NMS.lux ? 'L' : this._cwuCls(NMS.L)) + '"></i>' + esc(NMS.L) + ' (w oknie)</span>' + (this._schAuto(lane) ? '<span><i class="E"></i>Ekonomiczny (czeka na tanią)</span>' : '') + '<span><i class="' + this._cwuCls(NMS.N) + '"></i>' + esc(NMS.N) + ' (poza oknem)</span>' + this._cwuLeg() + '<span><i style="background:#f5a9cd"></i>okna (jasny róż)</span><span><i class="E" style="opacity:.45;border:1px dashed #fff"></i>poza oknem (blok trybu, tylko podgląd)</span></div>';
     if (lk) { el.innerHTML = h + '<div class="ft"><span class="hint">Automatyczny harmonogram z Nauki. Czerwona kreska = teraz.</span></div></div>'; return; }
     if (S.sel && dr[S.sel.d] && dr[S.sel.d][S.sel.i]) {
@@ -937,8 +937,10 @@ class HaKartaPompaCiepla extends HTMLElement {
   _obecStan() {
     const st = this._hass.states, ids = this._obecIds(), ok = ids.filter((i) => st[i] && !/^(unknown|unavailable)$/.test(st[i].state));
     const home = ok.filter((i) => st[i].state === 'home');
+    // v1.45: imitacja obecnosci (Diagnostyka) liczy sie jak jedna osoba w domu
+    const im = st['input_boolean.hp_imitacja_obecnosci'], imit = !!(im && im.state === 'on'), imDo = imit ? new Date(Date.parse(im.last_changed) + 30 * 60000) : null;
     let od = null; if (ok.length && !home.length) od = new Date(Math.max.apply(null, ok.map((i) => Date.parse(st[i].last_changed) || 0)));
-    return { ids, ok, home, n: home.length, od, none: !ids.length, unav: ids.length > 0 && !ok.length };
+    return { ids, ok, home, n: home.length + (imit ? 1 : 0), od, imit, imDo, none: !ids.length && !imit, unav: ids.length > 0 && !ok.length && !imit };
   }
   _obecPub() {
     const N = this._nau, hass = this._hass, ent = 'input_text.hp_obecnosc_encje';
@@ -2309,6 +2311,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         else if (a === 'dser') { N.dser = t.getAttribute('data-v'); this._nauRender(); }
         else if (a === 'dday') { N.dday = Number(t.getAttribute('data-v')); this._nauRender(); }
         else if (a === 'enrl') { N.en = null; this._nauRender(); }
+        else if (a === 'obimit') this._hass.callService('input_boolean', 'turn_off', { entity_id: 'input_boolean.hp_imitacja_obecnosci' });
         else if (a === 'more') this._more(t.getAttribute('data-e'));
         else if (a === 'sdel') this._nauSrcEdit(t.getAttribute('data-k'), 'del', t.getAttribute('data-e'));
         else if (a === 'sauto') this._nauSrcEdit(t.getAttribute('data-k'), 'auto');
@@ -2552,13 +2555,15 @@ class HaKartaPompaCiepla extends HTMLElement {
 
   // --- historia planu i pracy dla harmonogramu (ostatnie ~10 dni z historii, starsze godzinowo ze statystyk) ---
   _histIds(k) {
-    const m = { cwu: 'cwu', cyrk: 'cyrkulacja', grz: 'grzalka', boost: 'podgrzanie' }[k];
+    const m = { noc: 'obnizenie', cwu: 'cwu', cyrk: 'cyrkulacja', grz: 'grzalka', boost: 'podgrzanie' }[k];
     return m ? ['sensor.hp_hist_' + m + '_plan', 'sensor.hp_hist_' + m + '_praca'] : null;
   }
   _histSrc(k) {
     // bez pakietu 1.36: praca liczona z encji zrodlowych, plan = stan harmonogramu
     const E = this._E;
     return {
+      // v1.45: obnizenie CO = przesuniecie krzywej w pompie nizsze niz "poza oknem" (input_number.hp_dzien_przesuniecie)
+      noc: [E.pl_noc, E.offset, (v) => { const dz = this._hass && this._hass.states['input_number.hp_dzien_przesuniecie']; const d = dz ? parseFloat(dz.state) : 0; const x = parseFloat(v); return isFinite(x) && x < (isFinite(d) ? d : 0); }],
       cwu: [E.pl_cwu, E.cpr_cwu, (v) => v === 'on'], cyrk: [E.pl_cyrk, E.hwc_run, (v) => parseFloat(v) > 1],
       grz: [E.pl_grz, E.eladd, (v) => parseFloat(v) > 0.05], boost: [E.pl_boost, E.tmp_lux, (v) => v && v !== 'Wylaczone' && v !== 'unknown' && v !== 'unavailable'],
     }[k];
@@ -2843,7 +2848,8 @@ class HaKartaPompaCiepla extends HTMLElement {
       const home = s.state === 'home', nm = (s.attributes && s.attributes.friendly_name) || i.split('.')[1];
       const where = home ? '🏠 w domu' : s.state === 'not_home' ? '🚶 poza' : /^(unknown|unavailable)$/.test(s.state) ? '❔ nieznane' : '📍 ' + s.state;
       return '<span class="p ' + (home ? 'h' : 'a') + '" data-a="more" data-e="' + i + '">' + esc(nm) + ' ' + where + ' od ' + od(s.last_changed) + '</span>';
-    }).join('') + '<span class="ds">' + (OB.unav ? 'wszyscy niedostępni: HA nic nie zmienia' : OB.n > 0 ? 'w domu: ' + OB.n : 'pusto od ' + od(OB.od)) + ' (liczone tylko z tej listy)</span></div>';
+    }).join('') + (OB.imit ? '<span class="p h" data-a="obimit" title="Kliknij, żeby wyłączyć imitację" style="border-style:dashed;cursor:pointer">Wymuszone (imitacja) 🏠 do ' + od(OB.imDo) + ' ✕</span>' : '') +
+      '<span class="ds">' + (OB.unav ? 'wszyscy niedostępni: HA nic nie zmienia' : OB.n > 0 ? 'w domu: ' + OB.n + (OB.imit ? ' (wymuszone)' : '') : 'pusto od ' + od(OB.od)) + ' (liczone tylko z tej listy)</span></div>';
   }
 
   // --- tryb CWU -> klasa koloru: Luksus rozowy, Normalny fioletowy, Ekonomiczny zielony ---
