@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.38 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.39 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.38"
+        state: "1.39"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -642,6 +642,14 @@ input_text:
   hp_cyrk_plan:
     name: "HP cyrkulacja: plan (HA)"
     max: 255
+  # v1.39: automatyczny plan CWU z Nauki (karta wpisuje, hex 7 x 96 kwadransow) - od razu idzie do ESP (hp_esp_plan)
+  hp_cwu_plan:
+    name: "HP CWU: plan (z Nauki)"
+    max: 255
+  # v1.39: wynik ostatniego sprawdzenia planu w ESP (hp_esp_plan): "OK" albo "brak: ..." / "ESP offline"
+  hp_esp_plan_status:
+    name: "HP plan: stan w ESP"
+    max: 255
   # v1.35: dwie pamieci krzywej grzewczej z Nauki (P1..P7 po przecinku, np. "40,30,29,28,25,18,5").
   #        Do pompy ida dopiero po "Wyslij na glowna" + potwierdzeniu w karcie. Fabryczna jest w kodzie karty (nie do zmiany).
   hp_krzywa_wzorcowa:
@@ -766,10 +774,10 @@ automation:
       - variables:
           ne: "{{ state_attr('schedule.hp_plan_tryb_cwu', 'next_event') }}"
           ma_plan: "{{ ne is not none and ne != '' and states('schedule.hp_plan_tryb_cwu') in ['on', 'off'] }}"
-          okno: "{{ is_state('schedule.hp_plan_tryb_cwu', 'on') if ma_plan else is_state('binary_sensor.hp_g12_tania_strefa', 'on') }}"
+          # v1.39: okno tylko w taniej strefie G12 (stare okna harmonogramu nie przedluza trybu taniej na droga); okna z Nauki moga tania pominac
+          okno: "{{ is_state('binary_sensor.hp_g12_tania_strefa', 'on') and (is_state('schedule.hp_plan_tryb_cwu', 'on') if ma_plan else true) }}"
           do_okna: >
             {% if okno %}0
-            {% elif ma_plan %}{{ (((ne if ne is datetime else as_datetime(ne)) - now()).total_seconds() / 60) | round(0) }}
             {% else %}{{ states('sensor.hp_g12_do_taniej') | float(9999) }}{% endif %}
           czekaj: "{{ states('input_number.hp_cwu_czekaj_min') | float(30) }}"
           w_oknie: "{{ states('input_select.hp_cwu_tryb_w_oknie') if states('input_select.hp_cwu_tryb_w_oknie') not in ['unknown', 'unavailable', ''] else 'Luksus' }}"
@@ -825,7 +833,8 @@ automation:
           bt7: "{{ states('sensor.hydrolution_cwu_gora_bt7') | float(0) }}"
           cel: "{{ states('number.hydrolution_cwu_temp_stop_luksus') | float(53) }}"
           ma_plan: "{{ state_attr('schedule.hp_plan_tryb_cwu', 'next_event') not in [none, ''] }}"
-          okno: "{{ is_state('schedule.hp_plan_tryb_cwu', 'on') if ma_plan else is_state('binary_sensor.hp_g12_tania_strefa', 'on') }}"
+          # v1.39: okno tylko w taniej strefie G12 (stare okna harmonogramu nie przedluza trybu taniej na droga); okna z Nauki moga tania pominac
+          okno: "{{ is_state('binary_sensor.hp_g12_tania_strefa', 'on') and (is_state('schedule.hp_plan_tryb_cwu', 'on') if ma_plan else true) }}"
           zagrzana: "{{ bt7 >= cel - 0.5 }}"
           lux_koniec: "{{ is_state('select.hydrolution_podgrzanie_cwu_jednorazowe', 'Wylaczone') and min_trwa >= 5 }}"
           przerwij: >
@@ -919,6 +928,9 @@ automation:
       # v1.33: reczne wymuszenie z karty ma pierwszenstwo (co 5 min go nie nadpisuje)
       - condition: template
         value_template: "{{ (state_attr('input_datetime.hp_cyrk_wymus_do', 'timestamp') | float(0)) <= now().timestamp() }}"
+      # v1.39: zone.home nieznany (np. po restarcie) = nic nie zmieniaj (wczesniej liczylo sie jako pusty dom)
+      - condition: template
+        value_template: "{{ states('zone.home') | is_number }}"
     actions:
       - variables:
           ktos: "{{ states('zone.home') | int(0) > 0 }}"
@@ -1261,18 +1273,32 @@ automation:
       # v1.38: zmiana okien harmonogramu (karta zapisuje schedule) -> od razu do ESP
       - trigger: state
         entity_id: [schedule.hp_plan_tryb_cwu, schedule.hp_plan_cyrkulacja_cwu, schedule.hp_plan_obnizenie_co, schedule.hp_plan_grzalka]
+      # v1.39: automatyczny plan CWU z Nauki (karta) -> od razu do ESP
       - trigger: state
-        entity_id: text.hydrolution_plan_offline_parametry
+        entity_id: input_text.hp_cwu_plan
+      - trigger: state
+        entity_id: [text.hydrolution_plan_offline_parametry, text.hydrolution_plan_offline_cwu, text.hydrolution_plan_offline_cyrkulacja]
         from: unavailable
+      # v1.39: co 5 min sprawdza, co ESP ma w sobie, i dosyla braki (wczesniej co 15 min)
       - trigger: time_pattern
-        minutes: "/15"
+        minutes: "/5"
       - trigger: homeassistant
         event: start
-    conditions:
-      - condition: template
-        value_template: "{{ states('text.hydrolution_plan_offline_parametry') not in ['unavailable', 'unknown'] and states('text.hydrolution_plan_offline_cwu') not in ['unavailable', 'unknown'] }}"
     actions:
       - delay: {seconds: 5}
+      # v1.39: ESP niedostepny -> zapisz stan i koniec
+      - if:
+          - condition: template
+            value_template: "{{ states('text.hydrolution_plan_offline_parametry') in ['unavailable', 'unknown'] or states('text.hydrolution_plan_offline_cwu') in ['unavailable', 'unknown'] }}"
+        then:
+          - if:
+              - condition: template
+                value_template: "{{ states('input_text.hp_esp_plan_status') not in ['unavailable', 'unknown'] and not states('input_text.hp_esp_plan_status').startswith('ESP offline') }}"
+            then:
+              - action: input_text.set_value
+                target: {entity_id: input_text.hp_esp_plan_status}
+                data: {value: "ESP offline od {{ now().strftime('%H:%M') }}"}
+          - stop: "ESP niedostepny"
       - variables:
           lista: "{{ ['schedule.hp_plan_tryb_cwu', 'schedule.hp_plan_cyrkulacja_cwu', 'schedule.hp_plan_obnizenie_co', 'schedule.hp_plan_grzalka'] | select('in', states.schedule | map(attribute='entity_id') | list) | list }}"
       - if:
@@ -1290,7 +1316,10 @@ automation:
             {%- set sd = (sch.get('schedule.hp_plan_tryb_cwu') or {}) if sch is mapping else {} -%}
             {{ sd.values() | map('count') | sum == 0 if sd is mapping else true }}
           m_cwu: >-
-            {%- if auto_cwu and cwu_pusty -%}
+            {%- set pc = states('input_text.hp_cwu_plan') -%}
+            {%- if auto_cwu and pc | length == 168 and pc | regex_match('^[0-9a-f]+$') -%}
+            {%- set dws = none -%}{{- pc -}}
+            {%- elif auto_cwu and cwu_pusty -%}
             {%- set s = states('input_text.hp_g12_strefy') -%}
             {%- if s in ['', 'unknown', 'unavailable'] -%}{%- set s = '22:00-06:00,13:00-15:00' -%}{%- endif -%}
             {%- set zz = namespace(l=[]) -%}
@@ -1314,6 +1343,7 @@ automation:
             {%- endfor -%}{%- set acc.l = acc.l + [ws.l] -%}{%- endfor -%}
             {%- set dws = acc.l -%}
             {%- endif -%}
+            {%- if dws is not none -%}
             {%- set ns = namespace(h='') -%}
             {%- for dw in dws -%}{%- for q in range(24) -%}{%- set nb = namespace(v=0) -%}
             {%- for i in range(4) -%}{%- set m = (q * 4 + i) * 15 -%}{%- set on = namespace(b=false) -%}
@@ -1321,6 +1351,7 @@ automation:
             {%- if on.b -%}{%- set nb.v = nb.v + 2 ** (3 - i) -%}{%- endif -%}
             {%- endfor -%}{%- set ns.h = ns.h ~ '0123456789abcdef'[nb.v] -%}{%- endfor -%}{%- endfor -%}
             {{- ns.h -}}
+            {%- endif -%}
           m_cyrk: >-
             {%- set pl = states('input_text.hp_cyrk_plan') -%}
             {%- if is_state('input_boolean.hp_auto_cyrk', 'on') and pl | length == 168 -%}
@@ -1387,24 +1418,66 @@ automation:
             {{ '1' if is_state('input_boolean.hp_plan_grz', 'on') else '0' }}
           tresc: >-
             {{ c_in }},{{ c_out }},{{ (states('input_number.hp_cwu_czekaj_min') | int(30)) if auto_cwu else 0 }},{{ states('input_number.hp_cyrk_praca') | int(60) }},{{ [1, states('input_number.hp_cyrk_postoj') | int(1)] | max }},{{ states('input_number.hp_noc_przesuniecie') | int(0) }},{{ states('input_number.hp_dzien_przesuniecie') | int(0) }},{{ flagi }}
-          zmiany: >-
-            {{ (states('text.hydrolution_plan_offline_cwu') != m_cwu) or (states('text.hydrolution_plan_offline_cyrkulacja') != m_cyrk) or (states('text.hydrolution_plan_offline_noc') != m_noc) or (states('text.hydrolution_plan_offline_grzalka') != m_grz) or ((states('text.hydrolution_plan_offline_parametry').split(',')[:8] | join(',')) != tresc) }}
+          # v1.39: czego brakuje w ESP (porownanie z tym, co ESP ma w sobie)
+          braki: >-
+            {%- set ns = namespace(b=[]) -%}
+            {%- if states('text.hydrolution_plan_offline_cwu') != m_cwu -%}{%- set ns.b = ns.b + ['CWU'] -%}{%- endif -%}
+            {%- if states('text.hydrolution_plan_offline_cyrkulacja') != m_cyrk -%}{%- set ns.b = ns.b + ['cyrkulacja'] -%}{%- endif -%}
+            {%- if states('text.hydrolution_plan_offline_noc') != m_noc -%}{%- set ns.b = ns.b + ['obnizenie CO'] -%}{%- endif -%}
+            {%- if states('text.hydrolution_plan_offline_grzalka') != m_grz -%}{%- set ns.b = ns.b + ['grzalka'] -%}{%- endif -%}
+            {%- if (states('text.hydrolution_plan_offline_parametry').split(',')[:8] | join(',')) != tresc -%}{%- set ns.b = ns.b + ['parametry'] -%}{%- endif -%}
+            {{ ns.b }}
       - condition: template
-        value_template: "{{ zmiany and m_cwu | length == 168 }}"
-      - repeat:
-          for_each:
-            - {e: text.hydrolution_plan_offline_cwu, v: "{{ m_cwu }}"}
-            - {e: text.hydrolution_plan_offline_cyrkulacja, v: "{{ m_cyrk }}"}
-            - {e: text.hydrolution_plan_offline_noc, v: "{{ m_noc }}"}
-            - {e: text.hydrolution_plan_offline_grzalka, v: "{{ m_grz }}"}
-          sequence:
-            - if:
+        value_template: "{{ m_cwu | length == 168 and m_cyrk | length == 168 }}"
+      # v1.39: dosylanie brakow z weryfikacja: zapis -> 15 s -> ponowny odczyt z ESP, najwyzej 3 proby
+      - if:
+          - condition: template
+            value_template: "{{ braki | count > 0 }}"
+        then:
+          - repeat:
+              sequence:
+                - repeat:
+                    for_each:
+                      - {e: text.hydrolution_plan_offline_cwu, v: "{{ m_cwu }}"}
+                      - {e: text.hydrolution_plan_offline_cyrkulacja, v: "{{ m_cyrk }}"}
+                      - {e: text.hydrolution_plan_offline_noc, v: "{{ m_noc }}"}
+                      - {e: text.hydrolution_plan_offline_grzalka, v: "{{ m_grz }}"}
+                    sequence:
+                      - if:
+                          - condition: template
+                            value_template: "{{ states(repeat.item.e) != repeat.item.v }}"
+                        then:
+                          - action: text.set_value
+                            target: {entity_id: "{{ repeat.item.e }}"}
+                            data: {value: "{{ repeat.item.v }}"}
+                            continue_on_error: true
+                - if:
+                    - condition: template
+                      value_template: "{{ (states('text.hydrolution_plan_offline_parametry').split(',')[:8] | join(',')) != tresc or repeat.index == 1 }}"
+                  then:
+                    - action: text.set_value
+                      target: {entity_id: text.hydrolution_plan_offline_parametry}
+                      data: {value: "{{ tresc }},{{ now().strftime('%Y-%m-%d %H:%M') }}"}
+                      continue_on_error: true
+                - delay: {seconds: 15}
+              until:
                 - condition: template
-                  value_template: "{{ states(repeat.item.e) != repeat.item.v }}"
-              then:
-                - action: text.set_value
-                  target: {entity_id: "{{ repeat.item.e }}"}
-                  data: {value: "{{ repeat.item.v }}"}
-      - action: text.set_value
-        target: {entity_id: text.hydrolution_plan_offline_parametry}
-        data: {value: "{{ tresc }},{{ now().strftime('%Y-%m-%d %H:%M') }}"}
+                  value_template: >-
+                    {{ repeat.index >= 3 or ((states('text.hydrolution_plan_offline_cwu') == m_cwu) and (states('text.hydrolution_plan_offline_cyrkulacja') == m_cyrk) and (states('text.hydrolution_plan_offline_noc') == m_noc) and (states('text.hydrolution_plan_offline_grzalka') == m_grz) and ((states('text.hydrolution_plan_offline_parametry').split(',')[:8] | join(',')) == tresc)) }}
+      - variables:
+          braki2: >-
+            {%- set ns = namespace(b=[]) -%}
+            {%- if states('text.hydrolution_plan_offline_cwu') != m_cwu -%}{%- set ns.b = ns.b + ['CWU'] -%}{%- endif -%}
+            {%- if states('text.hydrolution_plan_offline_cyrkulacja') != m_cyrk -%}{%- set ns.b = ns.b + ['cyrkulacja'] -%}{%- endif -%}
+            {%- if states('text.hydrolution_plan_offline_noc') != m_noc -%}{%- set ns.b = ns.b + ['obnizenie CO'] -%}{%- endif -%}
+            {%- if states('text.hydrolution_plan_offline_grzalka') != m_grz -%}{%- set ns.b = ns.b + ['grzalka'] -%}{%- endif -%}
+            {%- if (states('text.hydrolution_plan_offline_parametry').split(',')[:8] | join(',')) != tresc -%}{%- set ns.b = ns.b + ['parametry'] -%}{%- endif -%}
+            {{ ns.b }}
+          stan: "{{ 'OK' if braki2 | count == 0 else 'brak: ' ~ (braki2 | join(', ')) ~ ' (3 proby, ' ~ now().strftime('%H:%M') ~ ')' }}"
+      - if:
+          - condition: template
+            value_template: "{{ states('input_text.hp_esp_plan_status') not in ['unavailable', 'unknown'] and states('input_text.hp_esp_plan_status') != stan }}"
+        then:
+          - action: input_text.set_value
+            target: {entity_id: input_text.hp_esp_plan_status}
+            data: {value: "{{ stan }}"}

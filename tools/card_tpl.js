@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.38';
+const PKG_VER = '1.39';
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];
 const PKG = __PKG__;   // v1.28: spis pakietu HA (tools/pkgspec.py) - karta zaklada brakujace elementy przez API
@@ -124,6 +124,8 @@ const V135_CSS = '.el.hpp{border-radius:calc(var(--u)*8);box-shadow:0 0 0 2px #b
   '#nau{position:relative}#nau .zs{position:absolute;z-index:9;padding:.15em .65em;border-radius:999px;background:#2e9e45;color:#fff;font-size:.82em;font-weight:600;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.5);transition:opacity .6s}' +
   '#nau .zs.w{background:#5b6573}#nau .zs.x{background:#c9372c}#nau .zs.o{opacity:0}' +
   '#sch .esp{display:inline-flex;align-items:center;gap:.3em;padding:.1em .65em;border-radius:999px;font-size:.88em;font-weight:600}' +
+  '#sch .esp button,#nau .esp button{margin-left:.4em;padding:.05em .55em;font-size:.95em}#sch .now{display:flex;flex-wrap:wrap;gap:.3em .9em;margin:-.2em 0 .7em;font-size:.92em}#sch .now .bad{color:#ffb300;font-weight:600}#sch .now .good{color:#7ee04a;font-weight:600}' +
+  '#nau .ob{display:flex;flex-wrap:wrap;gap:.4em .6em;align-items:center;margin:0 0 .9em;font-size:.9em}#nau .ob .p{padding:.15em .65em;border-radius:999px;background:rgba(10,12,16,.55);border:1px solid rgba(255,255,255,.18);cursor:pointer}#nau .ob .p.h{border-color:#43d343;color:#c9f5b0}#nau .ob .p.a{opacity:.8}' +
   '#sch .esp.ok{background:rgba(67,194,90,.18);border:1px solid #43d343;color:#bff0c8}#sch .esp.w{background:rgba(255,179,0,.14);border:1px solid #ffb300;color:#ffd9a0}#sch .esp.n{opacity:.65;border:1px solid rgba(255,255,255,.2)}' +
   '#nau .km{margin-top:1em;padding:.8em 1em;border-radius:10px;background:rgba(10,12,16,.45);border:1px solid rgba(110,193,255,.25)}' +
   '#nau .km .kb{display:flex;flex-wrap:wrap;align-items:center;gap:.5em 1em;margin-bottom:.7em}#nau .km .kb button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
@@ -331,6 +333,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     const st = this._hass.states, E = this._E;
     const ids = []; this._schLanes().forEach((l) => { ids.push(l.sch, l.en); if (l.au) ids.push(l.au); l.p.forEach((q) => ids.push(q.e)); });
     ids.push(E.sch_n, E.sch_hw);
+    // v1.39: znacznik ESP + linia "teraz" (tryb CWU w pompie, cyrkulacja, obecnosc)
+    ids.push(E.esp_plan, E.esp_cwu, E.esp_cyrk, E.esp_noc, E.esp_grz, E.esp_stat, E.cwu_plan, E.cyrk_plan, E.hwmode, E.hwc_run, E.hwc_still, 'zone.home', E.g12_tania, E.cwu_boost);
     const sig = ids.map((i) => (st[i] ? st[i].state + (st[i].attributes && st[i].attributes.next_event || '') : '?')).join('|');
     const busy = S.drag || (this._schEl.shadowRoot ? false : false) || (this._root && this._root.activeElement && this._schEl.contains(this._root.activeElement));
     if (sig !== S.sig && !busy) { S.sig = sig; this._schRender(true); }
@@ -371,6 +375,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (ne) { const d = new Date(ne); if (!isNaN(d)) nxt = ' · najbliższa zmiana: ' + d.toLocaleString('pl-PL', { weekday: 'short', hour: '2-digit', minute: '2-digit' }); }
     h += '<div class="lh"><button class="tg' + (on ? ' on' : '') + '" data-a="en" title="Włącz / wyłącz tę funkcję"><i></i></button><b>' + (this._schAuto(lane) ? 'Automatyczny' : on ? 'Aktywne' : 'Wyłączone') + '</b>' +
       '<span>Teraz: <b>' + (inw ? 'w oknie' : 'poza oknem') + '</b>' + esc(nxt) + '</span>' + this._espBadge(lane) + '<span class="ds">' + esc(lane.d) + '</span></div>';
+    h += this._schNowHtml(lane, esc);
     const lk = this._schAuto(lane);
     if (lk) h += '<div class="info"><b>Automatyczny</b>: ten harmonogram ustawia zakładka Nauka (włączona „' + esc(lane.an) + '”) i automatyzacja w HA. Okna niżej to plan z Nauki, odświeżany sam' + (S.syncAt && S.syncAt[lane.k] ? ' (ostatnio ' + new Date(S.syncAt[lane.k]).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ')' : '') + '. Ręczna edycja jest zablokowana, żeby się nie gryzło: wyłącz automatyzację w Nauce, jeśli chcesz ustawiać sam. <button data-a="gonau">Pokaż w Nauce</button></div>';
     if (!st[lane.en]) h += '<div class="info">Brak przełącznika <code>' + lane.en + '</code>. Dodaj pakiet HA z repozytorium (packages/hydrolution_karta.yaml) i przeładuj konfigurację.</div>';
@@ -468,6 +473,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       const a = t.getAttribute('data-a'), hass = this._hass, l = lane(), dr = this._schDraft(l);
       if (this._schAuto(l) && ['bk', 'cp', 'del', 'undo', 'save'].indexOf(a) >= 0) return;
       if (a === 'gonau') { this._tab('nau', true); return; }
+      if (a === 'espnow') { this._espKick(true); return; }
       if (a === 'lane') { S().lane = t.getAttribute('data-k'); S().sel = null; S().note = null; this._schRender(); }
       else if (a === 'more') this._more(t.getAttribute('data-e'));
       else if (a === 'bk') { S().sel = { d: t.getAttribute('data-d'), i: Number(t.getAttribute('data-i')) }; this._schRender(); }
@@ -518,7 +524,15 @@ class HaKartaPompaCiepla extends HTMLElement {
         if (pl && /^[0-9a-f]{168}$/.test(pl.state)) bl = this._maskBl(pl.state);
         else if (N.res.cyrk) bl = N.edit || this._nauBase(N.res.cyrk);
       }
-      if (l.k === 'cwu') bl = this._nauCwuPlan(N.res.cwu).blocks;
+      if (l.k === 'cwu') {
+        bl = this._nauCwuPlan(N.res.cwu).blocks;
+        // v1.39: automatyczny plan CWU -> input_text.hp_cwu_plan (hp_esp_plan od razu wysyla go do ESP)
+        const pc = hass.states[this._E.cwu_plan], mk = bl ? this._mask(bl, false) : '';
+        if (pc && mk.length === 168 && pc.state !== mk && Date.now() - (S.cwuPubAt || 0) > 60000) {
+          S.cwuPubAt = Date.now();
+          hass.callService('input_text', 'set_value', { entity_id: this._E.cwu_plan, value: mk }).catch(() => { /* brak */ });
+        }
+      }
       if (!bl) return;
       const cur = this._schFromItem(S.data[l.k]), days = this._schDays(), tgt = {};
       days.forEach((d, i) => { tgt[d] = bl[i] ? this._schNorm(JSON.parse(JSON.stringify(bl[i]))) : cur[d]; });
@@ -533,7 +547,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     });
   }
   // v1.38: po kazdej zmianie harmonogramu od razu wyslij plan do ESP (uruchamia automatyzacje hp_esp_plan, ta liczy maski i zapisuje tylko roznice)
-  _espKick() {
+  _espKick(now) {
     clearTimeout(this._espKickTm);
     this._espKickTm = setTimeout(() => {
       const st = this._hass && this._hass.states; if (!st) return;
@@ -542,7 +556,8 @@ class HaKartaPompaCiepla extends HTMLElement {
       this._espKickAt = Date.now();
       this._hass.callService('automation', 'trigger', { entity_id: au, skip_condition: false }).catch(() => { /* brak */ });
       if (this._sch) this._schRender();
-    }, 2500);
+      if (this._tabCur === 'nau' && this._nau) this._nauRender();
+    }, now ? 0 : 2500);
   }
   async _schSave(l) {
     const S = this._sch, dr = this._schDraft(l);
@@ -905,7 +920,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       }
     }
     // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
-    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja', E.cwu_tania, E.cwu_lux_on, E.cwu_poza, 'input_text.hp_energia_encja', 'input_text.hp_energia_kwh_encja']);
+    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja', E.cwu_tania, E.cwu_lux_on, E.cwu_poza, 'input_text.hp_energia_encja', 'input_text.hp_energia_kwh_encja', E.esp_stat, E.esp_cwu, E.esp_cyrk, E.esp_plan, E.cwu_plan]);
     const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|') + '|' + Math.floor(Date.now() / 300000);
     // v1.25: wstrzymaj odswiezanie tylko przy pisaniu w polu (klikniety suwak ma focus i blokowal odswiezenie, przelacznik wygladal na martwy)
     const ae = this.shadowRoot && this.shadowRoot.activeElement;
@@ -1979,6 +1994,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         const t = ev.target.closest && ev.target.closest('[data-a]'); if (!t) return;
         const a = t.getAttribute('data-a');
         if (this._krzClick(a, t)) return;
+        if (a === 'espnow') { this._espKick(true); return; }
         if (a === 'send') this._nauSend();
         else if (a === 'sendcwu') this._nauSendCwu();
         else if (a === 'autocwu') { const id = this._E.auto_cwu; if (this._hass.states[id]) this._hass.callService('input_boolean', 'toggle', { entity_id: id }); }
@@ -2074,6 +2090,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     let h = '<div class="sh"><div class="sht">Nauka<small>podgląd: ustawień pompy nie zmienia (poza suwakami automatyzacji cyrkulacji i CWU)</small><span style="flex:1"></span>' +
       '<button data-a="reload"' + (N.loading ? ' disabled' : '') + '>' + (N.loading ? 'Liczę…' : 'Przelicz') + '</button></div>';
     h += this._pkHtml(esc);
+    h += this._obecHtml(esc);
     h += this._rngHtml(true);
     if (!R) { el.innerHTML = h + '<div class="info">' + (N.loading ? 'Pobieram historię z Home Assistant i pogodę z Open-Meteo…' : 'Brak danych.') + '</div></div>'; return; }
     (R.errs || []).forEach((e) => { h += '<div class="warn">' + esc(e) + '</div>'; });
@@ -2452,18 +2469,23 @@ class HaKartaPompaCiepla extends HTMLElement {
   // --- Harmonogram: znacznik "zapisany do ESP" przy oknach ---
   _espBadge(l) {
     const st = this._hass.states, E = this._E, S = this._sch, pe = st[E.esp_plan];
+    const esc2 = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     // v1.37: powiedz wprost, czemu nie idzie do ESP
     if (!pe || pe.state === 'unavailable') return '<span class="esp w" title="ESP musi mieć wgrany plik v5.5 lub nowszy (encje text „Plan offline …”) i być online">⚠ nie idzie do ESP: ' + (!pe ? 'brak encji „Plan offline” (wgraj ESP v5.6)' : 'ESP offline') + '</span>';
     const au = Object.keys(st).find((i) => i.startsWith('automation.') && st[i].attributes && st[i].attributes.id === 'hp_esp_plan');
-    if (!au) return '<span class="esp w" title="Automatyzacja hp_esp_plan z pakietu wysyła plan co 15 min i po każdej zmianie">⚠ nie idzie do ESP: brak automatyzacji „wyślij plan tygodnia do ESP” (zaktualizuj pakiet)</span>';
+    if (!au) return '<span class="esp w" title="Automatyzacja hp_esp_plan z pakietu wysyła plan co 5 min i po każdej zmianie">⚠ nie idzie do ESP: brak automatyzacji „wyślij plan tygodnia do ESP” (zaktualizuj pakiet)</span>';
     if (st[au].state !== 'on') return '<span class="esp w">⚠ nie idzie do ESP: automatyzacja „wyślij plan tygodnia do ESP” wyłączona</span>';
     const eid = { cwu: E.esp_cwu, cyrk: E.esp_cyrk, noc: E.esp_noc, grz: E.esp_grz }[l.k];
     if (!eid) return '<span class="esp n">ESP tego nie wykonuje (tylko HA)</span>';
     const es = st[eid]; if (!es) return '';
     let want;
     const pl = st[E.cyrk_plan];
-    if (l.k === 'cyrk' && this._schAuto(l) && pl && /^[0-9a-f]{168}$/.test(pl.state)) want = pl.state;
+    const pc = st[E.cwu_plan];
+    let src = '';
+    if (l.k === 'cyrk' && this._schAuto(l) && pl && /^[0-9a-f]{168}$/.test(pl.state)) { want = pl.state; src = 'plan z Nauki (auto)'; }
+    else if (l.k === 'cwu' && this._schAuto(l) && pc && /^[0-9a-f]{168}$/.test(pc.state)) { want = pc.state; src = 'plan z Nauki (auto)'; }
     else {
+      src = this._schAuto(l) ? 'okna harmonogramu (auto)' : 'Twoje okna';
       const cur = S.data[l.k] ? this._schFromItem(S.data[l.k]) : {}, days = this._schDays();
       const bl = days.map((d) => cur[d] || []);
       if (l.k === 'cwu' && this._schAuto(l) && !bl.some((x) => x.length)) want = this._mask(this._g12().day, false);
@@ -2472,8 +2494,58 @@ class HaKartaPompaCiepla extends HTMLElement {
     const pv = String(pe.state).split(','), at = pv.length >= 9 ? pv[8] : '';
     const m = /(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/.exec(at);
     const atTxt = m ? m[3] + '.' + m[2] + ' ' + m[4] : at;
-    return es.state === want ? '<span class="esp ok" title="Okna tego harmonogramu są w pamięci ESP (plan offline)">✓ zapisany do ESP ' + atTxt + '</span>'
-      : '<span class="esp w" title="Automatyzacja „wyślij plan tygodnia do ESP” wysyła od razu po każdej zmianie i co 15 min">⏳ ' + (this._espKickAt && Date.now() - this._espKickAt < 180000 ? 'wysłane do ESP ' + new Date(this._espKickAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ', czekam na potwierdzenie' : 'jeszcze nie w ESP') + '</span>';
+    // v1.39: zrodlo planu, wynik ostatniego sprawdzenia ESP (input_text.hp_esp_plan_status), kiedy sprawdzone, przycisk "Wyslij teraz"
+    const ss = st[E.esp_stat], lt = st[au].attributes && st[au].attributes.last_triggered;
+    const ltD = lt ? new Date(lt) : null, ltTxt = ltD && !isNaN(ltD) ? ltD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : '';
+    const btn = '<button data-a="espnow" title="Uruchom teraz automatyzację „wyślij plan tygodnia do ESP”: porówna z tym, co ESP ma w sobie, i dośle braki">Wyślij teraz</button>';
+    const tail = ' <span class="ds">(' + esc2(src) + (ltTxt ? ', sprawdzone ' + ltTxt : '') + ')</span>' + (ss && ss.state && ss.state !== 'OK' && !/^(unknown|unavailable)$/.test(ss.state) ? ' <span class="esp w">⚠ ' + esc2(ss.state) + '</span>' : '') + btn;
+    return (es.state === want ? '<span class="esp ok" title="Okna tego harmonogramu są w pamięci ESP (plan offline)">✓ zapisany do ESP ' + atTxt + '</span>'
+      : '<span class="esp w" title="Automatyzacja „wyślij plan tygodnia do ESP” wysyła od razu po każdej zmianie i co 5 min">⏳ ' + (this._espKickAt && Date.now() - this._espKickAt < 180000 ? 'wysłane do ESP ' + new Date(this._espKickAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ', czekam na potwierdzenie' : 'jeszcze nie w ESP') + '</span>') + tail;
+  }
+  // v1.39: linia "teraz" pod naglowkiem harmonogramu: CWU = strefa G12 -> jaki tryb powinien byc i co ma pompa; cyrkulacja = co ustawil HA + obecnosc
+  _schNowHtml(l, esc) {
+    const st = this._hass.states, E = this._E, hm = (d) => (d && !isNaN(d) ? d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : '–');
+    const auId = (id) => Object.keys(st).find((i) => i.startsWith('automation.') && st[i].attributes && st[i].attributes.id === id);
+    if (l.k === 'cwu') {
+      const pump = st[E.hwmode] ? st[E.hwmode].state : null, auto = this._schAuto(l), en = st[l.en] && st[l.en].state === 'on';
+      const sv = (id, d) => (st[id] && !/^(unknown|unavailable|)$/.test(st[id].state) ? st[id].state : d);
+      const tan = st[E.g12_tania] && st[E.g12_tania].state === 'on', sch = st[l.sch], ne = sch && sch.attributes && sch.attributes.next_event;
+      let want = null, why = '', auName = '';
+      if (auto) {
+        const okno = tan && (ne ? sch.state === 'on' : true), doT = Number(sv(E.g12_do, 9999)), cz = Number(sv(E.cwu_wait, 30));
+        want = okno ? sv(E.cwu_tania, 'Ekonomiczny') : (doT <= cz ? 'Ekonomiczny' : sv(E.cwu_poza, 'Normalny'));
+        why = 'strefa ' + (tan ? 'tania' : 'droga') + (tan && !okno ? ' (Nauka ją pomija)' : '') + (!okno && doT <= cz ? ', za ' + Math.round(doT) + ' min tania (czeka)' : '');
+        auName = 'hp_auto_cwu';
+      } else if (en) {
+        want = sch && sch.state === 'on' ? sv('input_select.hp_cwu_tryb_w_oknie', 'Luksus') : sv(E.cwu_poza, 'Normalny');
+        why = sch && sch.state === 'on' ? 'w oknie' : 'poza oknem'; auName = 'hp_plan_cwu';
+      }
+      if (!want) return '<div class="now"><span>Tryb CWU w pompie: <b>' + esc(pump || '–') + '</b> (harmonogram wyłączony, nic go nie zmienia)</span></div>';
+      const boost = st[E.cwu_boost] && !/^(unknown|unavailable|)$/.test(st[E.cwu_boost].state);
+      const ai = auId(auName), aOff = !ai || st[ai].state !== 'on';
+      const ok = pump === want;
+      return '<div class="now"><span>Teraz: ' + esc(why) + ' → powinno być <b>' + esc(want) + '</b></span><span>pompa ma: <b class="' + (ok ? 'good' : 'bad') + '">' + esc(pump || '–') + '</b></span>' +
+        (ok ? '' : '<span class="bad">' + (boost ? 'trwa luksus jednorazowy (po nim wróci)' : aOff ? 'automatyzacja „' + (auto ? 'HP auto: CWU wg taryfy G12' : 'HP plan: tryb CWU wg godzin') + '” ' + (ai ? 'wyłączona' : 'nie istnieje (zaktualizuj pakiet)') : 'HA ustawia to co minutę: jeśli dalej się nie zgadza, ESP / sterownik nie przyjmuje zapisu (rejestr 47041)') + '</span>') + '</div>';
+    }
+    if (l.k === 'cyrk') {
+      const run = parseFloat((st[E.hwc_run] || {}).state), still = parseFloat((st[E.hwc_still] || {}).state);
+      const off = !isNaN(run) && run <= 1 && still >= 60, zh = st['zone.home'], n = zh ? parseInt(zh.state, 10) : NaN;
+      const ob = !zh ? 'brak zone.home' : isNaN(n) ? 'obecność nieznana (zone.home: ' + esc(zh.state) + ', HA nic nie zmienia)' : n > 0 ? 'w domu: <b>' + n + '</b>' : 'pusto od <b>' + hm(new Date(zh.last_changed)) + '</b>';
+      return '<div class="now"><span>HA ustawił cyrkulację: <b class="' + (off ? '' : 'good') + '">' + (isNaN(run) ? '–' : off ? 'wyłączona' : 'pracuje') + '</b>' + (isNaN(run) ? '' : ' (praca ' + run + ' / postój ' + still + ' min)') + '</span><span>' + ob + '</span>' +
+        (off ? '<span class="ds">Jeśli pompka mimo to kręci, to nie wisi na wyjściu sterownika (AA3-X7), tylko na stałej fazie.</span>' : '') + '</div>';
+    }
+    return '';
+  }
+  // v1.39: Nauka - maly pasek obecnosci domownikow (person.* / telefony): w domu / poza, od kiedy
+  _obecHtml(esc) {
+    const st = this._hass.states, pers = this._nauPersons().filter((i) => st[i]); if (!pers.length) return '';
+    const od = (s) => { const d = new Date(s.last_changed); if (isNaN(d)) return ''; const t = d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }); return d.toDateString() === new Date().toDateString() ? t : d.toLocaleDateString('pl-PL', { weekday: 'short' }) + ' ' + t; };
+    const zh = st['zone.home'], n = zh ? parseInt(zh.state, 10) : NaN;
+    return '<div class="ob"><b>Obecność:</b>' + pers.map((i) => {
+      const s = st[i], home = s.state === 'home', nm = (s.attributes && s.attributes.friendly_name) || i.split('.')[1];
+      const where = home ? '🏠 w domu' : s.state === 'not_home' ? '🚶 poza' : /^(unknown|unavailable)$/.test(s.state) ? '❔ nieznane' : '📍 ' + s.state;
+      return '<span class="p ' + (home ? 'h' : 'a') + '" data-a="more" data-e="' + i + '">' + esc(nm) + ' ' + where + ' od ' + od(s) + '</span>';
+    }).join('') + (zh ? '<span class="ds">' + (isNaN(n) ? 'zone.home: ' + esc(zh.state) : n > 0 ? 'w domu: ' + n : 'pusto od ' + od(zh)) + '</span>' : '') + '</div>';
   }
   // --- tryb CWU -> klasa koloru: Luksus rozowy, Normalny fioletowy, Ekonomiczny zielony ---
   _cwuCls(name) { const n = String(name || '').toLowerCase(); return n.indexOf('luks') >= 0 ? 'L' : n.indexOf('eko') >= 0 ? 'E' : n.indexOf('smart') >= 0 ? 'S' : 'N'; }
