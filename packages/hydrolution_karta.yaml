@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.37 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.38 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.37"
+        state: "1.38"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -213,12 +213,14 @@ template:
           {% elif u == 'kW' and has_value(e) %}{{ states(e) | float(0) | round(3) }}
           {% else %}{{ states('sensor.hp_moc_elektryczna') | float(0) | round(3) }}{% endif %}
       # v1.37: prad dzis (kWh): licznik kWh wybrany w Nauce (od polnocy) albo calka z mocy elektrycznej
+      # v1.38: licznik z input_text.hp_energia_kwh_encja (zgodnosc: licznik kWh zapisany w hp_energia_encja)
       - name: "HP prad dzis"
         unique_id: hp_prad_dzis
         unit_of_measurement: "kWh"
         device_class: energy
         state: >
-          {% set e = states('input_text.hp_energia_encja') %}
+          {% set k = states('input_text.hp_energia_kwh_encja') %}
+          {% set e = k if k.startswith('sensor.') and state_attr(k, 'unit_of_measurement') in ['kWh', 'Wh'] else states('input_text.hp_energia_encja') %}
           {% set u = state_attr(e, 'unit_of_measurement') if e.startswith('sensor.') else none %}
           {% set b = states('input_number.hp_prad_licznik_polnoc') | float(-1) %}
           {% if u in ['kWh', 'Wh'] and has_value(e) and b >= 0 %}
@@ -652,6 +654,10 @@ input_text:
   hp_energia_encja:
     name: "HP energia: encja pradu"
     max: 100
+  # v1.38: licznik energii elektrycznej (kWh/Wh, narastajacy) wybrany w Nauce; hp_energia_encja = moc (W/kW)
+  hp_energia_kwh_encja:
+    name: "HP energia: licznik pradu kWh"
+    max: 100
 
 input_select:
   hp_cwu_tryb_w_oknie:
@@ -986,6 +992,7 @@ automation:
         data: {value: "{{ postoj }}"}
 
   # 3f) v1.37 Prad dzis: o polnocy (i po zmianie encji w Nauce) zapamietaj stan licznika kWh
+  #     v1.38: licznik z hp_energia_kwh_encja; po zmianie wyboru stan "o polnocy" = teraz - dzisiejsza calka mocy (bez czekania do polnocy)
   - id: hp_prad_polnoc
     alias: "HP energia: licznik pradu o polnocy"
     mode: queued
@@ -993,15 +1000,19 @@ automation:
       - trigger: time
         at: "00:00:00"
       - trigger: state
-        entity_id: input_text.hp_energia_encja
+        entity_id: [input_text.hp_energia_encja, input_text.hp_energia_kwh_encja]
     actions:
       - variables:
-          e: "{{ states('input_text.hp_energia_encja') }}"
+          k: "{{ states('input_text.hp_energia_kwh_encja') }}"
+          e: "{{ k if k.startswith('sensor.') and state_attr(k, 'unit_of_measurement') in ['kWh', 'Wh'] else states('input_text.hp_energia_encja') }}"
           ok: "{{ e.startswith('sensor.') and state_attr(e, 'unit_of_measurement') in ['kWh', 'Wh'] and has_value(e) }}"
+          f: "{{ 1000 if state_attr(e, 'unit_of_measurement') == 'Wh' else 1 }}"
       - action: input_number.set_value
         target: {entity_id: input_number.hp_prad_licznik_polnoc}
         data:
-          value: "{{ states(e) | float(0) if ok and trigger.platform == 'time' else -1 }}"
+          value: >-
+            {% if not ok %}-1{% elif trigger.platform == 'time' %}{{ states(e) | float(0) }}
+            {% else %}{{ [0, states(e) | float(0) - states('sensor.hp_prad_calka_dzis') | float(0) * f] | max }}{% endif %}
 
   # 3d) v1.35 Plan cyrkulacji liczony w HA (bez otwierania karty). Dziala tylko przy hp_auto_cyrk = on.
   #     Z modelu (input_text.hp_cyrk_model: pora wstawania Pn-Pt / So-Nd, ile min przed, pora snu na kazdy dzien)
@@ -1247,6 +1258,9 @@ automation:
     triggers:
       - trigger: state
         entity_id: [input_boolean.hp_plan_cwu, input_boolean.hp_auto_cwu, input_boolean.hp_plan_cyrk, input_boolean.hp_auto_cyrk, input_boolean.hp_plan_noc, input_boolean.hp_plan_grz, input_select.hp_cwu_tryb_w_oknie, input_select.hp_cwu_tryb_poza, input_select.hp_cwu_tryb_tania, input_number.hp_cwu_czekaj_min, input_number.hp_cyrk_praca, input_number.hp_cyrk_postoj, input_number.hp_noc_przesuniecie, input_number.hp_dzien_przesuniecie, input_text.hp_g12_strefy, input_boolean.hp_g12_weekend_tani, input_text.hp_cyrk_plan]
+      # v1.38: zmiana okien harmonogramu (karta zapisuje schedule) -> od razu do ESP
+      - trigger: state
+        entity_id: [schedule.hp_plan_tryb_cwu, schedule.hp_plan_cyrkulacja_cwu, schedule.hp_plan_obnizenie_co, schedule.hp_plan_grzalka]
       - trigger: state
         entity_id: text.hydrolution_plan_offline_parametry
         from: unavailable

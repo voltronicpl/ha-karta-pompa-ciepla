@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.37';
+const PKG_VER = '1.38';
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];
 const PKG = __PKG__;   // v1.28: spis pakietu HA (tools/pkgspec.py) - karta zaklada brakujace elementy przez API
@@ -137,19 +137,22 @@ const V135_CSS = '.el.hpp{border-radius:calc(var(--u)*8);box-shadow:0 0 0 2px #b
 const V136_CSS = '#sch .rg2,#nau .rg2{display:flex;flex-wrap:wrap;align-items:center;gap:.4em;margin:0 0 .9em}#sch .rg2 button,#nau .rg2 button{padding:.3em .7em}#sch .rg2 button.on,#nau .rg2 button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
   '#sch .rg2 input,#nau .rg2 input{height:2em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;padding:0 .4em;color-scheme:dark}#sch .rgl,#nau .rgl{margin-left:.6em;opacity:.8}' +
   '#sch .dn.dt{flex:0 0 5.6em;font-size:.9em;white-space:nowrap}#sch .hr.dt{margin-left:6.1em}#sch .dr.ps .bk{opacity:.55}#sch .dr.cp2{margin:.15em 0}#sch .dr.cp2 .tl{height:1.6em}#sch .dr.cp2 .bk{font-size:.7em}' +
-  '#sch .hh{position:absolute;inset:0;pointer-events:none;z-index:3}#sch .hh i{position:absolute}#sch .hh i.hp{top:0;height:3px;background:#ffe0ef;opacity:.9;border-radius:1px}#sch .hh i.hw{bottom:0;height:5px;background:#ff3b2f;border-radius:1px;box-shadow:0 0 4px rgba(255,59,47,.8)}' +
+  '#sch .hh{position:absolute;inset:0;pointer-events:none;z-index:3}#sch .hh i{position:absolute}#sch .hh i.hp{top:0;height:3px;background:#ffe0ef;opacity:.9;border-radius:1px}#sch .hh i.hw{bottom:0;height:13px;background:rgba(255,59,47,.85);border-radius:2px;box-shadow:0 0 5px rgba(255,59,47,.8)}' +
   '#sch .hsum{margin-left:.6em;opacity:.9}#sch .lgh{display:flex;flex-wrap:wrap;gap:.3em 1.2em;margin:.5em 0 0 6.1em;opacity:.8;font-size:.9em}#sch .lgh i{display:inline-block;width:1.4em;margin-right:.4em;vertical-align:middle;border-radius:2px}' +
   '#nau .dsw select{height:2em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit}#nau .en select{max-width:28em}';
 // v1.37: wiersze z datami i historia takze w Nauce, bloki trybu CWU poza oknami, pasek zakresu przyklejony u gory Nauki
 const V137_CSS = ('#sch .dn.dt{flex:0 0 5.6em;font-size:.9em;white-space:nowrap}#sch .hr.dt{margin-left:6.1em}#sch .dr.ps .bk{opacity:.55}#sch .dr.cp2{margin:.15em 0}#sch .dr.cp2 .tl{height:1.6em}#sch .dr.cp2 .bk{font-size:.7em}' +
-  '#sch .hh{position:absolute;inset:0;pointer-events:none;z-index:3}#sch .hh i{position:absolute}#sch .hh i.hp{top:0;height:3px;background:#ffe0ef;opacity:.9;border-radius:1px}#sch .hh i.hw{bottom:0;height:5px;background:#ff3b2f;border-radius:1px;box-shadow:0 0 4px rgba(255,59,47,.8)}' +
+  '#sch .hh{position:absolute;inset:0;pointer-events:none;z-index:3}#sch .hh i{position:absolute}#sch .hh i.hp{top:0;height:3px;background:#ffe0ef;opacity:.9;border-radius:1px}#sch .hh i.hw{bottom:0;height:13px;background:rgba(255,59,47,.85);border-radius:2px;box-shadow:0 0 5px rgba(255,59,47,.8)}' +
   '#sch .hsum{margin-left:.6em;opacity:.9}#sch .lgh{display:flex;flex-wrap:wrap;gap:.3em 1.2em;margin:.5em 0 0 6.1em;opacity:.8;font-size:.9em}#sch .lgh i{display:inline-block;width:1.4em;margin-right:.4em;vertical-align:middle;border-radius:2px}').replace(/#sch /g, '#nau ') +
   '#sch .gx{position:absolute;top:2px;bottom:2px;border-radius:5px;border:1px dashed rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;font-size:.72em;color:#fff;pointer-events:none;white-space:nowrap;overflow:hidden;z-index:1;text-shadow:0 1px 2px rgba(0,0,0,.8)}' +
   '#sch .gx.L{background:rgba(255,79,163,.38)}#sch .gx.N{background:rgba(158,123,255,.38)}#sch .gx.E{background:rgba(67,211,67,.32)}#sch .gx.S{background:rgba(38,198,218,.35)}' +
   '#nau .rg2.top{position:sticky;top:0;z-index:8;background:rgba(20,24,30,.97);padding:.45em .6em;border:1px solid rgba(110,193,255,.35);border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.5)}#nau .rg2.top::before{content:"Zakres dla całej Nauki:";font-weight:600;margin-right:.3em}' +
   '#nau .tl.ro{cursor:default}#nau .tl.ro .pw{position:absolute;top:30%;bottom:30%;border-radius:4px;background:rgba(67,194,90,.45);border:1px solid rgba(140,230,150,.6);pointer-events:none}#nau .nh{margin-top:1em}#nau .nh .st3{font-weight:600;margin:.2em 0 .3em;display:flex;flex-wrap:wrap;align-items:center;gap:.6em}' +
   '#nau .esp{display:inline-flex;align-items:center;gap:.3em;padding:.1em .65em;border-radius:999px;font-size:.88em;font-weight:600}#nau .esp.ok{background:rgba(67,194,90,.18);border:1px solid #43d343;color:#bff0c8}#nau .esp.w{background:rgba(255,179,0,.14);border:1px solid #ffb300;color:#ffd9a0}#nau .esp.n{opacity:.65;border:1px solid rgba(255,255,255,.2)}' +
-  '#nau .rgt{font-size:.8em;opacity:.75;font-weight:400;margin-left:.5em;padding:.1em .5em;border:1px solid rgba(110,193,255,.35);border-radius:10px}';
+  '#sch .dr.cp2 .hh i.hw,#nau .dr.cp2 .hh i.hw{height:8px}' +
+  '#nau .rgt{font-size:.8em;opacity:.75;font-weight:400;margin-left:.5em;padding:.1em .5em;border:1px solid rgba(110,193,255,.35);border-radius:10px}' +
+  '#nau .rgt2{display:inline-flex;flex-wrap:wrap;align-items:center;gap:.25em;margin-left:.6em;font-size:.72em;font-weight:400;vertical-align:middle}#nau .rgt2 button{padding:.15em .5em;font-size:1em}#nau .rgt2 button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
+  '#nau .rgt2 input{height:1.9em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;padding:0 .3em;color-scheme:dark}#nau .rgt2 em{font-style:normal;opacity:.75;margin-left:.3em}';
 const ELS = [
 __ELEMENTS__
 ];
@@ -412,7 +415,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (MS) h += '<div class="ms">' + MS[i].map((b) => '<i class="' + b.c + '" style="left:' + (b.f / 14.4) + '%;width:' + ((b.t - b.f) / 14.4) + '%" title="' + esc(NMS[b.m]) + ' ' + this._schFmt(b.f) + '–' + this._schFmt(b.t) + '"></i>').join('') + '</div>';
       h += '</div>' + (lk ? '<span class="cp"></span>' : '<button class="cp" data-a="cp" data-d="' + d + '" title="Skopiuj ten dzień na wszystkie dni">⧉</button>') + '</div>';
     });
-    if (this._histIds(lane.k)) h += '<div class="lgh"><span><i style="background:#ffe0ef;height:3px"></i>plan wtedy</span><span><i style="background:#ff3b2f;height:5px"></i>faktyczna praca</span><span>Edycja okna w rzędzie zmienia ten dzień tygodnia (szablon tygodnia).</span></div>';
+    if (this._histIds(lane.k)) h += '<div class="lgh"><span><i style="background:#ffe0ef;height:3px"></i>plan wtedy</span><span><i style="background:#ff3b2f;height:10px"></i>faktyczna praca</span><span>Edycja okna w rzędzie zmienia ten dzień tygodnia (szablon tygodnia).</span></div>';
     if (MS) h += '<div class="lgm"><span>Pasek pod osią = faktyczny tryb CWU:</span><span><i class="' + (NMS.lux ? 'L' : this._cwuCls(NMS.L)) + '"></i>' + esc(NMS.L) + ' (w oknie)</span>' + (this._schAuto(lane) ? '<span><i class="E"></i>Ekonomiczny (czeka na tanią)</span>' : '') + '<span><i class="' + this._cwuCls(NMS.N) + '"></i>' + esc(NMS.N) + ' (poza oknem)</span>' + this._cwuLeg() + '<span><i style="background:#f5a9cd"></i>okna (jasny róż)</span><span><i class="E" style="opacity:.45;border:1px dashed #fff"></i>poza oknem (blok trybu, tylko podgląd)</span></div>';
     if (lk) { el.innerHTML = h + '<div class="ft"><span class="hint">Automatyczny harmonogram z Nauki. Czerwona kreska = teraz.</span></div></div>'; return; }
     if (S.sel && dr[S.sel.d] && dr[S.sel.d][S.sel.i]) {
@@ -486,6 +489,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         const e = t.getAttribute('data-e');
         if (e.startsWith('input_select')) hass.callService('input_select', 'select_option', { entity_id: e, option: t.value });
         else { const v = parseFloat(String(t.value).replace(',', '.')); if (!isNaN(v)) hass.callService('input_number', 'set_value', { entity_id: e, value: v }); }
+        this._espKick();
       } else if ((a === 'tf' || a === 'tt') && S().sel) {
         const s = S().sel, b = dr[s.d][s.i]; if (!b) return;
         let m = this._schMin(t.value); if (a === 'tt' && m === 0) m = 1440;
@@ -524,9 +528,21 @@ class HaKartaPompaCiepla extends HTMLElement {
       S.syncTry = S.syncTry || {}; S.syncTry[l.k] = Date.now(); S.syncing[l.k] = true;
       const body = { type: 'schedule/update', schedule_id: S.data[l.k].id, name: l.t, icon: l.ic };
       days.forEach((d) => { body[d] = tgt[d].map((b) => ({ from: this._schFmt(b.f, true), to: this._schFmt(b.t, true) })); });
-      hass.callWS(body).then(() => { S.syncAt[l.k] = Date.now(); S.syncing[l.k] = false; return this._schLoad(); })
+      hass.callWS(body).then(() => { S.syncAt[l.k] = Date.now(); S.syncing[l.k] = false; this._espKick(); return this._schLoad(); })
         .catch((e) => { S.syncing[l.k] = false; S.err = 'Automatyczny harmonogram: nie udało się zapisać (' + (e && (e.message || e.code) || e) + ').'; this._schRender(); });
     });
+  }
+  // v1.38: po kazdej zmianie harmonogramu od razu wyslij plan do ESP (uruchamia automatyzacje hp_esp_plan, ta liczy maski i zapisuje tylko roznice)
+  _espKick() {
+    clearTimeout(this._espKickTm);
+    this._espKickTm = setTimeout(() => {
+      const st = this._hass && this._hass.states; if (!st) return;
+      const au = Object.keys(st).find((i) => i.startsWith('automation.') && st[i].attributes && st[i].attributes.id === 'hp_esp_plan');
+      if (!au || st[au].state !== 'on') return;
+      this._espKickAt = Date.now();
+      this._hass.callService('automation', 'trigger', { entity_id: au, skip_condition: false }).catch(() => { /* brak */ });
+      if (this._sch) this._schRender();
+    }, 2500);
   }
   async _schSave(l) {
     const S = this._sch, dr = this._schDraft(l);
@@ -536,6 +552,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (S.data[l.k]) await this._hass.callWS(Object.assign({ type: 'schedule/update', schedule_id: S.data[l.k].id }, body));
       else await this._hass.callWS(Object.assign({ type: 'schedule/create' }, body));
       delete S.dirty[l.k]; delete S.draft[l.k]; S.sel = null; S.err = ''; S.note = null;
+      this._espKick();
       await this._schLoad();
     } catch (e) { S.err = 'Nie udało się zapisać harmonogramu: ' + (e && (e.message || e.code) || e); this._schRender(); }
   }
@@ -888,7 +905,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       }
     }
     // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
-    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja', E.cwu_tania, E.cwu_lux_on, E.cwu_poza]);
+    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja', E.cwu_tania, E.cwu_lux_on, E.cwu_poza, 'input_text.hp_energia_encja', 'input_text.hp_energia_kwh_encja']);
     const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|') + '|' + Math.floor(Date.now() / 300000);
     // v1.25: wstrzymaj odswiezanie tylko przy pisaniu w polu (klikniety suwak ma focus i blokowal odswiezenie, przelacznik wygladal na martwy)
     const ae = this.shadowRoot && this.shadowRoot.activeElement;
@@ -1008,7 +1025,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!D) return h + '<div class="info">Wczytuję pomiar i prognozy dla zakresu…</div></div>';
     if (!D.prev) return h + '<div class="info">Brak archiwum prognoz Open-Meteo (' + (D.errs || []).join('; ') + ').</div></div>';
     const P = D.prev, M = D.meas, t0 = RG.from, t1 = Math.min(RG.to, now);
-    if (t0 >= now) return h + '<div class="info">Zakres w przyszłości: nie ma jeszcze z czym porównać.</div></div>';
+    if (t0 >= now) return h + '<div class="info">Zakres w przyszłości: nie ma jeszcze pomiaru do porównania. Prognozę na jutro widzisz na wykresie „Temperatura zewnętrzna” (linia prognozy za „teraz”).</div></div>';
     const pairs = Object.keys(P).map(Number).filter((t) => t >= t0 && t <= t1 && M[t] !== undefined).sort((a, b) => a - b).map((t) => [t, P[t], M[t]]);
     const sg = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1);
     if (pairs.length >= 3) {
@@ -1784,7 +1801,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       '<div class="lh dsw">' + btn('dser', 'cwu', ser, 'Woda CWU (BT7)') + btn('dser', 'co', ser, 'Zasilanie CO (BT25)') + btn('dser', 'dom', ser, 'Dom (salon)') +
       '<label><input type="checkbox" data-a="dcpr"' + (showCpr ? ' checked' : '') + '> praca sprężarki (słupki)</label></div>';
     if (!D) return h + '<div class="info">Brak historii z HA do wykresu doby.</div></div>';
-    if (!days.length) return h + '<div class="info">Zakres w przyszłości: nie ma jeszcze realnych danych.</div></div>';
+    if (!days.length) return h + '<div class="info">Zakres w przyszłości: nie ma jeszcze realnych danych. Plan na jutro widzisz w Harmonogramie i w wierszach „Po datach” niżej.</div></div>';
     const A = days[0].getTime(), lastD = new Date(days[days.length - 1]); lastD.setDate(lastD.getDate() + 1);
     const B = lastD.getTime(), Bend = Math.min(B, now), nD = days.length, one = nD === 1;
     if (A < D.from) {
@@ -2010,7 +2027,13 @@ class HaKartaPompaCiepla extends HTMLElement {
         const t = ev.target, a = t.getAttribute && t.getAttribute('data-a');
         if (a === 'kpt') { this._krzPt(t); return; }
         if (a === 'dday2') { N.dday = Number(t.value) || 0; this._nauRender(); return; }
-        if (a === 'enent') { const id = 'input_text.hp_energia_encja'; if (this._hass.states[id]) this._hass.callService('input_text', 'set_value', { entity_id: id, value: t.value }); N.en = null; return; }
+        if (a === 'enent' || a === 'enkwh') {
+          const id = a === 'enent' ? 'input_text.hp_energia_encja' : 'input_text.hp_energia_kwh_encja';
+          if (this._hass.states[id]) this._hass.callService('input_text', 'set_value', { entity_id: id, value: t.value });
+          // v1.38: stary wybor licznika kWh w "mocy" -> przenies do licznika
+          if (a === 'enkwh' && this._hass.states['input_text.hp_energia_encja'] && /^(Wh|kWh)$/.test(this._enUnit(this._enRaw('input_text.hp_energia_encja') || ''))) this._hass.callService('input_text', 'set_value', { entity_id: 'input_text.hp_energia_encja', value: '' });
+          N.en = null; return;
+        }
         if (a === 'g12') { const v = String(t.value).replace(/\s+/g, ''); if (this._g12Parse(v).length && this._hass.states[this._E.g12]) this._hass.callService('input_text', 'set_value', { entity_id: this._E.g12, value: v }); else this._nauRender(); return; }
         if (a === 'g12we') { const id = this._E.g12_we; if (this._hass.states[id]) this._hass.callService('input_boolean', t.checked ? 'turn_on' : 'turn_off', { entity_id: id }); return; }
         if (a === 'ctania' || a === 'cpoza') { const id = a === 'ctania' ? this._E.cwu_tania : this._E.cwu_poza; if (this._hass.states[id]) this._hass.callService('input_select', 'select_option', { entity_id: id, option: t.value }); return; }
@@ -2178,13 +2201,19 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
   _rngIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   _rngTag() {
-    const R = this._rngDays(), f = R.days[0], l = R.days[R.days.length - 1], fd = (d) => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
-    return '<span class="rgt" title="Zmieniasz na pasku „Zakres dla całej Nauki” u góry">zakres: ' + fd(f) + (R.days.length > 1 ? '–' + fd(l) : '') + '</span>';
+    // v1.38: przy kazdym wykresie wlasny wybor zakresu (wspolny dla calej Nauki - zmiana tu zmienia wszystkie wykresy)
+    const r = this._rngGet(), R = this._rngDays(), f = R.days[0], l = R.days[R.days.length - 1], fd = (d) => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
+    const b = (k, off, txt) => '<button data-a="rng" data-k="' + k + '" data-o="' + off + '" class="' + (r.k === k && (r.off || 0) === off ? 'on' : '') + '">' + txt + '</button>';
+    return '<span class="rgt2" title="Zakres wspólny dla całej Nauki – zmiana tutaj zmienia wszystkie wykresy">' + b('d', -1, 'Wczoraj') + b('d', 0, 'Dziś') + b('d', 1, 'Jutro') + b('pm3', 0, '±3 dni') + b('w', 0, 'Tydzień') + b('m', 0, 'Miesiąc') +
+      '<button data-a="rng" data-k="cal" data-o="0" class="' + (r.k === 'cal' ? 'on' : '') + '">Kalendarz</button>' +
+      (r.k === 'cal' ? '<input type="date" data-a="rngf" value="' + (r.f || this._rngIso(f)) + '"><input type="date" data-a="rngt" value="' + (r.t || this._rngIso(l)) + '">'
+        : '<button data-a="rngs" data-v="-1" title="Wcześniej">◀</button><button data-a="rngs" data-v="1" title="Później">▶</button>') +
+      '<em>' + fd(f) + (R.days.length > 1 ? '–' + fd(l) : '') + '</em></span>';
   }
   _rngHtml(top) {
     const r = this._rngGet(), R = this._rngDays(), b = (k, off, txt) => '<button data-a="rng" data-k="' + k + '" data-o="' + off + '" class="' + (r.k === k && (r.off || 0) === off ? 'on' : '') + '">' + txt + '</button>';
     const f = R.days[0], l = R.days[R.days.length - 1], fd = (d) => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0');
-    return '<div class="rg2' + (top ? ' top' : '') + '">' + b('pm3', 0, '±3 dni') + b('d', 0, 'Dziś') + b('d', -1, 'Wczoraj') + b('w', 0, 'Ten tydzień') + b('w', -1, 'Poprzedni tydz.') + b('m', 0, 'Ten miesiąc') + b('m', -1, 'Poprzedni mies.') +
+    return '<div class="rg2' + (top ? ' top' : '') + '">' + b('pm3', 0, '±3 dni') + b('d', 0, 'Dziś') + b('d', -1, 'Wczoraj') + b('d', 1, 'Jutro') + b('w', 0, 'Ten tydzień') + b('w', -1, 'Poprzedni tydz.') + b('m', 0, 'Ten miesiąc') + b('m', -1, 'Poprzedni mies.') +
       '<button data-a="rng" data-k="cal" data-o="0" class="' + (r.k === 'cal' ? 'on' : '') + '">Kalendarz</button>' +
       (r.k === 'cal' ? '<label>od <input type="date" data-a="rngf" value="' + (r.f || this._rngIso(f)) + '"></label><label>do <input type="date" data-a="rngt" value="' + (r.t || this._rngIso(l)) + '"></label><span class="ds">maks. 31 dni</span>'
         : '<button data-a="rngs" data-v="-1" title="Wcześniej">◀</button><button data-a="rngs" data-v="1" title="Później">▶</button>') +
@@ -2274,7 +2303,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (isT) h += '<div class="nw" style="left:' + (nowMin / 14.4) + '%"></div>';
       h += this._schHistRow(HS, dt.getTime()) + '</div><span class="cp"></span></div>';
     });
-    return h + '<div class="lgh"><span><i style="background:rgba(67,194,90,.6);height:.7em"></i>okna z Nauki</span><span><i style="background:#ffe0ef;height:3px"></i>plan wtedy</span><span><i style="background:#ff3b2f;height:5px"></i>faktyczna praca</span></div></div>';
+    return h + '<div class="lgh"><span><i style="background:rgba(67,194,90,.6);height:.7em"></i>okna z Nauki</span><span><i style="background:#ffe0ef;height:3px"></i>plan wtedy</span><span><i style="background:#ff3b2f;height:10px"></i>faktyczna praca</span></div></div>';
   }
   _schHistRow(H, d0) {
     if (!H) return '';
@@ -2297,26 +2326,34 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
 
   // --- encja pradu (wybor w Nauce, zapis w HA: input_text.hp_energia_encja) ---
-  _enEnt() {
-    const st = this._hass && this._hass.states, s = st && st['input_text.hp_energia_encja'];
+  // v1.38: dwie encje: moc elektryczna (W/kW, input_text.hp_energia_encja) i licznik energii (kWh/Wh, input_text.hp_energia_kwh_encja).
+  //        Zgodnosc z v1.36/1.37: licznik kWh zapisany w hp_energia_encja traktujemy jak wybor licznika.
+  _enRaw(k) {
+    const st = this._hass && this._hass.states, s = st && st[k];
     const id = s && s.state && /^sensor\./.test(s.state) ? s.state : '';
     return id && st[id] ? id : '';
+  }
+  _enEnt() { const id = this._enRaw('input_text.hp_energia_encja'); return id && /^(W|kW)$/.test(this._enUnit(id)) ? id : ''; }
+  _enKwh() {
+    const id = this._enRaw('input_text.hp_energia_kwh_encja');
+    if (id && /^(Wh|kWh)$/.test(this._enUnit(id))) return id;
+    const o = this._enRaw('input_text.hp_energia_encja'); return o && /^(Wh|kWh)$/.test(this._enUnit(o)) ? o : '';
   }
   _enUnit(id) { const s = this._hass.states[id]; return String((s && s.attributes && s.attributes.unit_of_measurement) || ''); }
   async _enLoad() {
     const hass = this._hass, st = hass.states, R = this._rngDays(), now = Date.now(), end = Math.min(R.to, now);
     if (R.from >= now) return { err: 'Zakres w przyszłości.' };
-    const sel = this._enEnt(), elId = sel || (st['sensor.hp_moc_elektryczna'] ? 'sensor.hp_moc_elektryczna' : '');
-    const elU = elId ? this._enUnit(elId) : '', elKwh = /wh$/i.test(elU), elDiv = /^w$/i.test(elU) ? 1000 : /^wh$/i.test(elU) ? 1000 : 1;
+    const sel = this._enEnt(), kw = this._enKwh(), elId = sel || (st['sensor.hp_moc_elektryczna'] ? 'sensor.hp_moc_elektryczna' : '');
+    const elDiv = /^w$/i.test(this._enUnit(elId || '')) ? 1000 : 1, kwDiv = /^wh$/i.test(kw ? this._enUnit(kw) : '') ? 1000 : 1, elKwh = false;
     const hMet = ['sensor.hp_cieplo_co_dzis', 'sensor.hp_cieplo_cwu_dzis'].filter((i) => st[i]);
-    const ids = ['sensor.hp_moc_grzewcza'].concat(elId ? [elId] : [], hMet).filter((i, k, a) => st[i] && a.indexOf(i) === k);
+    const ids = ['sensor.hp_moc_grzewcza'].concat(elId ? [elId] : [], kw ? [kw] : [], hMet).filter((i, k, a) => st[i] && a.indexOf(i) === k);
     const r = (await hass.callWS({ type: 'recorder/statistics_during_period', start_time: new Date(R.from).toISOString(), end_time: new Date(end).toISOString(), statistic_ids: ids, period: 'hour', types: ['mean', 'change'] })) || {};
     const ser = (id, f) => { const o = {}; (r[id] || []).forEach((x) => { const t = typeof x.start === 'number' ? x.start : Date.parse(x.start); const v = f(x); if (isFinite(t) && v !== null && isFinite(v)) o[t] = v; }); return o; };
     const hP = ser('sensor.hp_moc_grzewcza', (x) => (x.mean === null || x.mean === undefined ? null : x.mean));
-    const eP = elId && !elKwh ? ser(elId, (x) => (x.mean === null || x.mean === undefined ? null : x.mean / elDiv)) : {};
-    const eE = elId ? (elKwh ? ser(elId, (x) => (x.change === null || x.change === undefined ? null : Math.max(0, x.change / elDiv))) : eP) : {};
-    // v1.37: jedna encja na oba wykresy - z licznika kWh srednia moc godzinowa = kWh w tej godzinie
-    if (elKwh) Object.keys(eE).forEach((t) => { eP[t] = eE[t]; });
+    // v1.38: moc z encji mocy (srednie godzinowe), kWh z licznika (przyrost w godzinie); bez licznika kWh = moc x 1 h, bez mocy = kWh / 1 h
+    let eP = elId ? ser(elId, (x) => (x.mean === null || x.mean === undefined ? null : x.mean / elDiv)) : {};
+    let eE = kw ? ser(kw, (x) => (x.change === null || x.change === undefined ? null : Math.max(0, x.change / kwDiv))) : eP;
+    if (kw && !sel && !Object.keys(eP).length) eP = eE;
     // cieplo kWh: liczniki ciepla CO + CWU (zmiana na godzine), bez nich calka z mocy grzewczej (srednia godzinowa x 1 h)
     // v1.37: gdy liczniki stoja (na SMO40 rejestry licznikow ciepla daja 0), tez calka z mocy
     let hE = hP, hSrc = 'calka';
@@ -2326,16 +2363,20 @@ class HaKartaPompaCiepla extends HTMLElement {
       const sm = Object.values(m).reduce((x, y) => x + y, 0), sp = Object.values(hP).reduce((x, y) => x + y, 0);
       if (sm > 0.05 && sm >= 0.5 * sp) { hE = m; hSrc = 'licznik'; } else if (sp > 0.3) hSrc = 'calka0';
     }
-    return { R, hP, eP, hE, eE, elId, sel, elKwh, hSrc, at: now };
+    return { R, hP, eP, hE, eE, elId, sel, kw, elKwh, hSrc, at: now };
   }
   _enHtml(esc) {
-    const N = this._nau, st = this._hass.states, R = this._rngDays(), key = R.from + ':' + R.to + ':' + (st['input_text.hp_energia_encja'] || {}).state;
-    let h = '<div class="sec en"><div class="st2">Moc i energia: ciepło vs prąd' + this._rngTag() + '<small> – godzinowe statystyki HA; jedna encja prądu na oba wykresy</small></div>';
-    const cand = Object.keys(st).filter((i) => i.startsWith('sensor.') && /^(W|kW|Wh|kWh)$/.test(this._enUnit(i)) && !/^sensor\.hp_(moc_grzewcza|cieplo_)/.test(i)).sort();
-    const cur = (st['input_text.hp_energia_encja'] || {}).state || '';
-    h += '<div class="lh wk"><label>Prąd (encja): <select data-a="enent"' + (st['input_text.hp_energia_encja'] ? '' : ' disabled') + '><option value="">– brak (szacunek pakietu) –</option>' +
-      cand.map((i) => '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(((st[i].attributes || {}).friendly_name || i) + ' (' + this._enUnit(i) + ')') + '</option>').join('') + '</select></label>' +
-      '<span class="ds">' + (st['input_text.hp_energia_encja'] ? 'Wybrana encja pokazuje się też na głównej pod „Moc grzewcza”. Bez wyboru wykres bierze szacunek <code>sensor.hp_moc_elektryczna</code> (prąd jednostki × 230 V + grzałka), a kafel na głównej jest ukryty.' : 'brak <code>input_text.hp_energia_encja</code>: wklej / zainstaluj pakiet ' + PKG_VER) + '</span></div>';
+    const N = this._nau, st = this._hass.states, R = this._rngDays(), key = R.from + ':' + R.to + ':' + (st['input_text.hp_energia_encja'] || {}).state + ':' + (st['input_text.hp_energia_kwh_encja'] || {}).state;
+    let h = '<div class="sec en"><div class="st2">Moc i energia: ciepło vs prąd' + this._rngTag() + '<small> – godzinowe statystyki HA</small></div>';
+    const own = (i) => /^sensor\.hp_(moc_grzewcza|cieplo_|moc_elektryczna|prad_)/.test(i);
+    const cW = Object.keys(st).filter((i) => i.startsWith('sensor.') && /^(W|kW)$/.test(this._enUnit(i)) && !own(i)).sort();
+    const cE = Object.keys(st).filter((i) => i.startsWith('sensor.') && /^(Wh|kWh)$/.test(this._enUnit(i)) && !own(i)).sort();
+    const sel = this._enEnt(), kw = this._enKwh(), hasW = !!st['input_text.hp_energia_encja'], hasE = !!st['input_text.hp_energia_kwh_encja'];
+    const opt = (l, cur) => l.map((i) => '<option value="' + i + '"' + (i === cur ? ' selected' : '') + '>' + esc(((st[i].attributes || {}).friendly_name || i) + ' – ' + i + ' (' + this._enUnit(i) + ')') + '</option>').join('');
+    h += '<div class="lh wk"><label>Moc elektryczna: <select data-a="enent"' + (hasW ? '' : ' disabled') + '><option value="">– brak (szacunek pakietu) –</option>' + opt(cW, sel) + '</select></label>' +
+      '<label>Energia elektryczna (licznik): <select data-a="enkwh"' + (hasE ? '' : ' disabled') + '><option value="">– brak (z mocy w czasie) –</option>' + opt(cE, kw) + '</select></label>' +
+      '<span class="ds">' + (hasW && hasE ? 'Wybierasz z listy encji HA, niczego nie trzeba przemianowywać. Moc idzie na kafel „Moc elektr.” na głównej i na wykres mocy, licznik na kafel „Prąd dziś” (przyrost od północy) i na wykres kWh. Bez mocy: szacunek <code>sensor.hp_moc_elektryczna</code> (prąd jednostki × 230 V + grzałka); bez licznika: kWh z mocy w czasie.'
+        : 'brak <code>input_text.hp_energia_kwh_encja</code>: zaktualizuj pakiet do ' + PKG_VER + ' (do tego czasu jedna lista jak w v1.37)') + '</span></div>';
     if (!N.en || N.en.key !== key) { if (!N.enBusy) { N.enBusy = true; this._enLoad().then((d) => { N.en = { key, d }; N.enBusy = false; this._nauRender(); }).catch((e) => { N.en = { key, d: { err: String(e && (e.message || e.code) || e) } }; N.enBusy = false; this._nauRender(); }); } return h + '<div class="info">Liczę…</div></div>'; }
     const D = N.en.d; if (D.err) return h + '<div class="info">' + esc(D.err) + '</div></div>';
     const A = R.from, B = Math.min(R.to, Date.now()), span = R.to - R.from;
@@ -2349,8 +2390,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     const pl = (o, col, dash) => { const p = ts.filter((t) => isFinite(o[t])).map((t) => (sx(t + 18e5)).toFixed(1) + ',' + sy(o[t]).toFixed(1)); return p.length > 1 ? '<polyline points="' + p.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2"' + (dash ? ' stroke-dasharray="5 4"' : '') + ' stroke-linejoin="round"/>' : ''; };
     let g = axisX(Y1); for (let v = 0; v <= hi; v += Math.max(1, Math.ceil(hi / 5))) g += '<line x1="' + X0 + '" y1="' + sy(v) + '" x2="' + X1 + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.07)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + v + ' kW</text>';
     const elN = D.elId ? ((st[D.elId] && st[D.elId].attributes.friendly_name) || D.elId) : 'brak';
-    h += '<div class="st2" style="font-size:1em">Moc grzewcza vs moc elektryczna (średnie godzinowe)</div><svg viewBox="0 0 600 190" style="width:100%;max-width:60em;height:auto;display:block"><g font-size="11" fill="#c8d0da">' + g + '</g>' + pl(D.hP, '#ff9100') + (D.elKwh ? '' : pl(D.eP, '#29b6f6', true)) +
-      '<g font-size="12"><line x1="60" y1="10" x2="84" y2="10" stroke="#ff9100" stroke-width="2.5"/><text x="90" y="14" fill="#e3e8ee">Moc grzewcza</text><line x1="220" y1="10" x2="244" y2="10" stroke="#29b6f6" stroke-width="2.5" stroke-dasharray="5 4"/><text x="250" y="14" fill="#e3e8ee">' + esc(D.elKwh ? 'prąd: encja kWh, moc tylko na wykresie energii' : 'Moc elektryczna') + '</text></g></svg>';
+    h += '<div class="st2" style="font-size:1em">Moc grzewcza vs moc elektryczna (średnie godzinowe)</div><svg viewBox="0 0 600 190" style="width:100%;max-width:60em;height:auto;display:block"><g font-size="11" fill="#c8d0da">' + g + '</g>' + pl(D.hP, '#ff9100') + pl(D.eP, '#29b6f6', true) +
+      '<g font-size="12"><line x1="60" y1="10" x2="84" y2="10" stroke="#ff9100" stroke-width="2.5"/><text x="90" y="14" fill="#e3e8ee">Moc grzewcza</text><line x1="220" y1="10" x2="244" y2="10" stroke="#29b6f6" stroke-width="2.5" stroke-dasharray="5 4"/><text x="250" y="14" fill="#e3e8ee">' + esc(false ? 'prąd: encja kWh, moc tylko na wykresie energii' : 'Moc elektryczna') + '</text></g></svg>';
     // (2) energia: slupki dzien (albo godzina, gdy zakres <= 2 dni)
     const hourly = R.days.length <= 2, bk = (t) => { if (hourly) return t; const d = new Date(Number(t)); d.setHours(0, 0, 0, 0); return d.getTime(); };
     const agg = (o) => { const a = {}; Object.keys(o).forEach((t) => { const k = bk(Number(t)); a[k] = (a[k] || 0) + o[t]; }); return a; };
@@ -2364,7 +2405,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     h += '<div class="st2" style="font-size:1em;margin-top:.8em">Ciepło kWh vs prąd kWh (' + (hourly ? 'na godzinę' : 'na dzień') + ')</div><svg viewBox="0 0 600 190" style="width:100%;max-width:60em;height:auto;display:block"><g font-size="11" fill="#c8d0da">' + g2 + '</g>' +
       '<g font-size="12"><rect x="60" y="4" width="14" height="10" fill="#ff9100"/><text x="80" y="14" fill="#e3e8ee">Ciepło</text><rect x="160" y="4" width="14" height="10" fill="#29b6f6"/><text x="180" y="14" fill="#e3e8ee">Prąd</text></g></svg>';
     h += '<div class="kt" style="margin-top:.6em"><div class="k"><span>Ciepło w zakresie</span><b>' + sh.toFixed(1) + ' kWh</b><i>' + (D.hSrc === 'licznik' ? 'liczniki ciepła CO + CWU z pompy' : D.hSrc === 'calka0' ? 'policzone z mocy grzewczej (średnia godzinowa × 1 h): liczniki ciepła z pompy stoją na 0' : 'policzone z mocy grzewczej (średnia godzinowa × 1 h), brak liczników ciepła') + '</i></div>' +
-      '<div class="k"><span>Prąd w zakresie</span><b>' + se.toFixed(1) + ' kWh</b><i>' + esc(elN) + (D.sel ? (D.elKwh ? ' (licznik kWh)' : ' (z mocy × 1 h)') : ' (szacunek pakietu)') + '</i></div>' +
+      '<div class="k"><span>Prąd w zakresie</span><b>' + se.toFixed(1) + ' kWh</b><i>' + (D.kw ? esc((st[D.kw] && st[D.kw].attributes.friendly_name) || D.kw) + ' (licznik)' : esc(elN) + (D.sel ? ' (z mocy × 1 h)' : ' (szacunek pakietu × 1 h)')) + '</i></div>' +
       '<div class="k"><span>COP w zakresie</span><b>' + (se > 0.05 ? (sh / se).toFixed(2) : '–') + '</b><i>ciepło / prąd</i></div></div>';
     return h + '</div>';
   }
@@ -2432,7 +2473,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const m = /(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2})/.exec(at);
     const atTxt = m ? m[3] + '.' + m[2] + ' ' + m[4] : at;
     return es.state === want ? '<span class="esp ok" title="Okna tego harmonogramu są w pamięci ESP (plan offline)">✓ zapisany do ESP ' + atTxt + '</span>'
-      : '<span class="esp w" title="Automatyzacja „wyślij plan tygodnia do ESP” wysyła zmiany co 15 min i po każdej zmianie">⏳ jeszcze nie w ESP</span>';
+      : '<span class="esp w" title="Automatyzacja „wyślij plan tygodnia do ESP” wysyła od razu po każdej zmianie i co 15 min">⏳ ' + (this._espKickAt && Date.now() - this._espKickAt < 180000 ? 'wysłane do ESP ' + new Date(this._espKickAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ', czekam na potwierdzenie' : 'jeszcze nie w ESP') + '</span>';
   }
   // --- tryb CWU -> klasa koloru: Luksus rozowy, Normalny fioletowy, Ekonomiczny zielony ---
   _cwuCls(name) { const n = String(name || '').toLowerCase(); return n.indexOf('luks') >= 0 ? 'L' : n.indexOf('eko') >= 0 ? 'E' : n.indexOf('smart') >= 0 ? 'S' : 'N'; }

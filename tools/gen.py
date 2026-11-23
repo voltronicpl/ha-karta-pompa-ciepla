@@ -83,6 +83,7 @@ E = dict(
     cyrk_plan_at='input_datetime.hp_cyrk_plan_przeliczony',
     prad='sensor.hp_moc_elektryczna_wybrana',  # v1.37: karta podstawia encje mocy wybrana w Nauce (W/kW), inaczej ten czujnik pakietu
     prad_dzis='sensor.hp_prad_dzis',  # v1.37: prad dzis kWh (pakiet)
+    kwh_sel='input_text.hp_energia_kwh_encja',  # v1.38: wybrany licznik kWh (Nauka)
     wstali='input_datetime.hp_wstalismy',
     aktyw='binary_sensor.hp_aktywnosc_w_domu',
     auto_cwu='input_boolean.hp_auto_cwu',
@@ -198,36 +199,29 @@ return '<div style="position:absolute;left:'+u(3)+';top:'+u(3)+';width:'+u(62)+'
 """ % LOGO.replace("'", "\\'"))
 
 # ====================== KAFLE KPI ======================
-def kpi(x, w, icon, icol, label, value_js, vcol="'#ffffff'", ent=None):
+def kpi(x, w, icon, icol, label, value_js, vcol="'#ffffff'", ent=None, sub=None):
+    # v1.38: wezsze kafle (7 w rzedzie): ikona 28 px, tekst od x+46; sub = maly dopisek pod wartoscia (JS)
     el(x, 118, w, 61, """
-const val=%s; const vc=%s;
-return %s + P(%d,148,I('%s',32,'%s')) + P(%d,134,'%s',F(13.5,400,'#d9e0e7')) + P(%d,157,val,F(20,600,vc));
-""" % (value_js, vcol, glass(), x + 16, icon, icol, x + 56, label, x + 56), tap=more(ent) if ent else None,
+const val=%s; const vc=%s; const sub=%s;
+return %s + P(%d,148,I('%s',24,'%s')) + P(%d,133,'%s',F(12,400,'#d9e0e7')) + P(%d,155,val,F(18,600,vc)) + (sub?P(%d,172,sub,F(9.5,400,'#aab4bf')):'');
+""" % (value_js, vcol, sub or "''", glass(), x + 10, icon, icol, x + 40, label, x + 40, x + 40), tap=more(ent) if ent else None,
        template='hp_hit' if ent else 'hp')
 
-kpi(15, 172, 'mdi:power', '#7ee04a', 'Tryb pracy',
+kpi(15, 156, 'mdi:power', '#7ee04a', 'Tryb pracy',
     "(()=>{if(st(@defrost)==='Aktywne')return'Odszranianie';const p=st(@prio);return p==='Wylaczona'?'Postój':(p||'–')})()",
     "(()=>{const p=st(@prio);return st(@defrost)==='Aktywne'?'#81d4fa':p==='Ogrzewanie'?'#7ee04a':p==='CWU'?'#29b6f6':'#b0bac5'})()",
     'prio')
-kpi(193, 148, 'mdi:flash', '#ffc21a', 'Moc grzewcza', "f(@pwr,2)+' kW'", ent='pwr')
-# v1.36/v1.37: pod "Moc grzewcza" moc elektryczna (encja wybrana w Nauce albo szacunek pakietu), zawsze widoczna
-el(193, 184, 148, 30, """
-const s=states[@prad]; if(!s||s.state==='unknown'||s.state==='unavailable') return '';
-let v=parseFloat(s.state); const un=(s.attributes&&s.attributes.unit_of_measurement)||'';
-if(un==='W'&&!isNaN(v)) v=v/1000;
-const t=isNaN(v)?s.state:v.toFixed(2)+' kW';
-const est=/hp_moc_elektryczna/.test(@prad);
-return %s + P(207,199,I('mdi:transmission-tower',18,'#ffc21a')) + P(231,199,'Prąd: <b>'+t+'</b>'+(est?' <span style="opacity:.6;font-size:.8em">szac.</span>':''),F(14,400,'#e9eef3'));
-""" % glass(), template='hp_hit', tap=more('prad'))
-# v1.37: pod "Energia dzis" prad dzis (kWh), z tej samej encji co wyzej (licznik od polnocy albo calka z mocy)
-el(511, 184, 153, 30, """
-const s=states[@prad_dzis]; if(!s||s.state==='unknown'||s.state==='unavailable') return '';
-const v=parseFloat(s.state);
-return %s + P(525,199,I('mdi:transmission-tower',18,'#ffc21a')) + P(549,199,'Prąd dziś: <b>'+(isNaN(v)?s.state:v.toFixed(1))+' kWh</b>',F(14,400,'#e9eef3'));
-""" % glass(), template='hp_hit', tap=more('prad_dzis'))
-kpi(347, 158, 'mdi:leaf', '#7ee04a', 'COP (chwilowy)', "f(@cop,2)", ent='cop')
-kpi(511, 153, 'mdi:chart-bar', '#ffa31a', 'Energia dziś', "f(@e_day,1)+' kWh'", ent='e_day')
-kpi(670, 146, 'mdi:water-outline', '#29b6f6', 'CWU dziś', "f(@e_cwu,1)+' kWh'", ent='e_cwu')
+kpi(177, 130, 'mdi:flash', '#ffc21a', 'Moc grzewcza', "f(@pwr,2)+' kW'", ent='pwr')
+# v1.38: moc elektryczna (encja mocy z Nauki albo szacunek pakietu) i prad dzis (licznik od polnocy albo calka) w gornym rzedzie
+kpi(313, 130, 'mdi:transmission-tower', '#ffc21a', 'Moc elektr.',
+    "(()=>{const s=states[@prad];if(!s||s.state==='unknown'||s.state==='unavailable')return'–';let v=parseFloat(s.state);const u=(s.attributes&&s.attributes.unit_of_measurement)||'';if(u==='W')v=v/1000;return isNaN(v)?s.state:v.toFixed(2)+' kW'})()",
+    ent='prad', sub="(/hp_moc_elektryczna/.test(@prad)?'szacunek pakietu':'')")
+kpi(449, 112, 'mdi:leaf', '#7ee04a', 'COP (chwil.)', "f(@cop,2)", ent='cop')
+kpi(567, 132, 'mdi:chart-bar', '#ffa31a', 'Ciepło dziś', "f(@e_day,1)+' kWh'", ent='e_day')
+kpi(705, 136, 'mdi:meter-electric-outline', '#ffc21a', 'Prąd dziś',
+    "(()=>{const s=states[@prad_dzis];if(!s||s.state==='unknown'||s.state==='unavailable')return'–';const v=parseFloat(s.state);return isNaN(v)?s.state:v.toFixed(1)+' kWh'})()",
+    ent='prad_dzis', sub="((st(@kwh_sel)||'').startsWith('sensor.')?'':'z mocy w czasie')")
+kpi(847, 126, 'mdi:water-outline', '#29b6f6', 'CWU dziś', "f(@e_cwu,1)+' kWh'", ent='e_cwu')
 
 # ====================== SCENA ======================
 # BT1
@@ -247,7 +241,7 @@ return '<div class="g" style="background:%s;border-radius:'+u(6)+'"></div>'
  + C(%d,%d,f(@%s)+' °C',F(17,600,'#fff')) + C(%d,%d,'%s',F(11.5,400,'#e9eef3'));
 """ % (bg, x + w / 2, y + 14, ent, x + w / 2, y + h - 10, sub), template='hp_hit', tap=more(ent))
 
-pill(829, 137, 98, 40, 'bt7', 'CWU góra (BT7)', True)
+pill(829, 183, 98, 38, 'bt7', 'CWU góra (BT7)', True)  # v1.38: nizej, pod kaflami gornego rzedu
 pill(829, 229, 102, 40, 'bt6', 'CWU środek (BT6)', False)
 pill(585, 317, 98, 40, 'bt12', 'Zasilanie (BT12)', True)
 pill(548, 456, 112, 40, 'bt3', 'Powrót (BT3)', False)
