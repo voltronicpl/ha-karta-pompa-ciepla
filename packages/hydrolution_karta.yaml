@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.42 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.43 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.42"
+        state: "1.43"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -172,8 +172,8 @@ template:
         state_class: measurement
         availability: "{{ states('sensor.hp_moc_elektryczna') | float(0) > 0.15 }}"
         state: >
-          {{ (states('sensor.hp_moc_grzewcza') | float(0)
-              / states('sensor.hp_moc_elektryczna') | float(1)) | round(2) }}
+          {%- set e = states('sensor.hp_moc_elektryczna') | float(0) -%}
+          {{ ((states('sensor.hp_moc_grzewcza') | float(0)) / e) | round(2) if e > 0 else 0 }}
 
       # v1.37: liczniki ciepla z pompy (rejestry 44306/44308) na SMO40 stoja na 0 -> gdy licznik nic nie nabil,
       #        a calka z mocy grzewczej tak, bierzemy calke (sensor.hp_cieplo_calka_dzis).
@@ -791,8 +791,10 @@ automation:
           bt7: "{{ states('sensor.hydrolution_cwu_gora_bt7') | float(99) }}"
           cel: "{{ states('number.hydrolution_cwu_temp_stop_luksus') | float(53) }}"
           boost: "{{ states('input_text.hp_cwu_boost') not in ['', 'unknown', 'unavailable'] }}"
-          ost: "{{ states('input_datetime.hp_cwu_boost_ostatnio') | as_datetime(none) }}"
-          moze: "{{ ost is none or (now() - (ost | as_local)).total_seconds() > 5400 }}"
+          # v1.43: data liczona w tym samym szablonie (zmienna z datetime zamienia sie w tekst -> blad tzinfo, automat padal co minute)
+          moze: >-
+            {%- set o = states('input_datetime.hp_cwu_boost_ostatnio') | as_datetime(none) -%}
+            {{ o is none or (now() - (o | as_local)).total_seconds() > 5400 }}
       - if:
           - condition: template
             value_template: "{{ states('select.hydrolution_tryb_cwu') != target }}"
@@ -956,8 +958,10 @@ automation:
           # v1.20: po wstaniu cyrkulacja chodzi caly czas, dopoki ktos jest w domu i nie spimy
           #        (okno w harmonogramie: od wstania do pory snu). Wylacza: wszyscy wyszli (po hp_cyrk_po_wyjsciu min) albo koniec okna (sen).
           # weekend: od pierwszej aktywnosci rano (input_datetime.hp_wstalismy) do poludnia, potem przejmuje okno z harmonogramu
-          wst: "{{ states('input_datetime.hp_wstalismy') | as_datetime(none) }}"
-          od_wst: "{{ (now() - (wst | as_local)).total_seconds() if wst is not none and (wst | as_local).date() == now().date() else -1 }}"
+          # v1.43: data liczona w tym samym szablonie (blad tzinfo - automat cyrkulacji padal i nie wylaczal pompy)
+          od_wst: >-
+            {%- set w = states('input_datetime.hp_wstalismy') | as_datetime(none) -%}
+            {{ (now() - (w | as_local)).total_seconds() if w is not none and (w | as_local).date() == now().date() else -1 }}
           rano: "{{ now().isoweekday() >= 6 and od_wst >= 0 and now().hour < 12 }}"
           wl: "{{ (w_oknie or rano) and not pusto_dlugo }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if wl else 1 }}"
@@ -1297,11 +1301,12 @@ automation:
       # v1.39: ESP niedostepny -> zapisz stan i koniec
       - if:
           - condition: template
-            value_template: "{{ states('text.hydrolution_plan_offline_parametry') in ['unavailable', 'unknown'] or states('text.hydrolution_plan_offline_cwu') in ['unavailable', 'unknown'] }}"
+            # v1.43: "unknown" = ESP pusty (nigdy nie dostal planu) -> wysylamy; offline tylko "unavailable"
+            value_template: "{{ states('text.hydrolution_plan_offline_parametry') == 'unavailable' or states('text.hydrolution_plan_offline_cwu') == 'unavailable' }}"
         then:
           - if:
               - condition: template
-                value_template: "{{ states('input_text.hp_esp_plan_status') not in ['unavailable', 'unknown'] and not states('input_text.hp_esp_plan_status').startswith('ESP offline') }}"
+                value_template: "{{ states('input_text.hp_esp_plan_status') != 'unavailable' and not states('input_text.hp_esp_plan_status').startswith('ESP offline') }}"
             then:
               - action: input_text.set_value
                 target: {entity_id: input_text.hp_esp_plan_status}
@@ -1484,7 +1489,7 @@ automation:
           stan: "{{ 'OK' if braki2 | count == 0 else 'brak: ' ~ (braki2 | join(', ')) ~ ' (3 proby, ' ~ now().strftime('%H:%M') ~ ')' }}"
       - if:
           - condition: template
-            value_template: "{{ states('input_text.hp_esp_plan_status') not in ['unavailable', 'unknown'] and states('input_text.hp_esp_plan_status') != stan }}"
+            value_template: "{{ states('input_text.hp_esp_plan_status') != 'unavailable' and states('input_text.hp_esp_plan_status') != stan }}"
         then:
           - action: input_text.set_value
             target: {entity_id: input_text.hp_esp_plan_status}
