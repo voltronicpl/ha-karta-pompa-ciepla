@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.40';
+const PKG_VER = '1.42';
 const PKG_YAML = __PKGYAML__;   // v1.41: pelna tresc pakietu YAML tej wersji (naprawa starego pliku przez File editor)
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];
@@ -22,9 +22,9 @@ const TREND = __TREND__;          // klucze encji do wykresu trendow
 const EXTRA = __EXTRA__;
 const FONT = __FONT__;
 const DIA_CSS = '#dia{box-sizing:border-box;padding:12px;color:#eef2f6;font-family:' + FONT + ';font-size:13px;background:#0e1013}' +
-  '#dia .sh button{margin-left:.5em}#dia .dl{display:flex;flex-direction:column;gap:.35em;margin-bottom:.7em}#dia .dl>div{display:flex;flex-wrap:wrap;gap:.3em .8em;align-items:center}#dia .dl>div>span:first-child{min-width:13em;opacity:.7}' +
+  '#dia .sh button{margin-left:.5em}#dia.all .lg{max-height:none}#dia textarea.cp{width:100%;height:14em;box-sizing:border-box;font-family:ui-monospace,Consolas,monospace;font-size:.85em;background:#05070a;color:#eef2f6;border:1px solid #6ec1ff;border-radius:8px}#dia .dl{display:flex;flex-direction:column;gap:.35em;margin-bottom:.7em}#dia .dl>div{display:flex;flex-wrap:wrap;gap:.3em .8em;align-items:center}#dia .dl>div>span:first-child{min-width:13em;opacity:.7}' +
   '#dia .dl code{font-size:.9em;word-break:break-all}#dia .good{color:#7ee04a}#dia .bad{color:#ffb300}' +
-  '#dia .lg{max-height:26em;overflow:auto;font-family:ui-monospace,Consolas,monospace;font-size:.86em;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:.4em .6em;background:rgba(0,0,0,.35)}' +
+  '#dia .lg{max-height:66vh;overflow:auto;font-family:ui-monospace,Consolas,monospace;font-size:.86em;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:.4em .6em;background:rgba(0,0,0,.35)}' +
   '#dia .lg>div{display:flex;flex-wrap:wrap;gap:.2em .8em;padding:.18em 0;border-bottom:1px solid rgba(255,255,255,.06)}#dia .lg .t{opacity:.6;min-width:9.5em}#dia .lg .e{min-width:12em;font-weight:600}';
 const POP_CSS = '.el.ok{border-radius:8px;animation:hpok 1.5s ease-out}' +
   '@keyframes hpok{0%,40%{box-shadow:0 0 0 2px #43d343,0 0 16px rgba(67,211,67,.85)}100%{box-shadow:0 0 0 2px transparent,0 0 0 transparent}}' +
@@ -181,6 +181,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     w.callService = (d, sv, data, ...r) => this._logP('usługa', d + '.' + sv, data, hass.callService(d, sv, data, ...r));
     w.callWS = (m) => { const p = hass.callWS(m); return /update|create|save|remove|set_user_data|execute/.test(m && m.type || '') ? this._logP('WS', m.type, m, p) : p.catch((e) => { this._log('WS', m && m.type, 'BŁĄD ' + this._errTxt(e)); throw e; }); };
     this._hass = w;
+    try { this._obecPub(); } catch (e) { /* brak */ }
     this._render(first);
     this._maybeHistory();
     if (this._tabCur === 'dia') this._diaRender(false);
@@ -348,7 +349,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const ids = []; this._schLanes().forEach((l) => { ids.push(l.sch, l.en); if (l.au) ids.push(l.au); l.p.forEach((q) => ids.push(q.e)); });
     ids.push(E.sch_n, E.sch_hw);
     // v1.39: znacznik ESP + linia "teraz" (tryb CWU w pompie, cyrkulacja, obecnosc)
-    ids.push(E.esp_plan, E.esp_cwu, E.esp_cyrk, E.esp_noc, E.esp_grz, E.esp_stat, E.cwu_plan, E.cyrk_plan, E.hwmode, E.hwc_run, E.hwc_still, 'zone.home', E.g12_tania, E.cwu_boost);
+    ids.push(E.esp_plan, E.esp_cwu, E.esp_cyrk, E.esp_noc, E.esp_grz, E.esp_stat, E.cwu_plan, E.cyrk_plan, E.hwmode, E.hwc_run, E.hwc_still, 'input_text.hp_obecnosc_encje', E.g12_tania, E.cwu_boost); this._obecIds().forEach((i) => ids.push(i));
     const sig = ids.map((i) => (st[i] ? st[i].state + (st[i].attributes && st[i].attributes.next_event || '') : '?')).join('|');
     const busy = S.drag || (this._schEl.shadowRoot ? false : false) || (this._root && this._root.activeElement && this._schEl.contains(this._root.activeElement));
     if (sig !== S.sig && !busy) { S.sig = sig; this._schRender(true); }
@@ -616,7 +617,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (el._sig === sig) return; el._sig = sig;
     el.hidden = !P.old && !K.busy;
     if (K.busy) el.innerHTML = '⏳ <b>Karta instaluje / aktualizuje pakiet HA</b>… szczegóły w zakładce Nauka.';
-    else if (P.old) el.innerHTML = '⚠ <b>' + (P.ver ? 'Masz stary pakiet w HA' : 'Brak pakietu w HA') + '</b> (' + (P.ver ? 'v' + P.ver : 'brak wersji') + ', karta chce v' + P.want + '). Brakuje ' + P.miss.length + ' elementów. Kliknij: zakładka Nauka → ' + (mode === 'yaml' ? '„Napraw pakiet (podmień plik)”' : '„Zainstaluj / napraw pakiet”') + '.';
+    else if (P.old) el.innerHTML = '⚠ <b>' + (P.ver ? 'Masz stary pakiet w HA' : 'Brak pakietu w HA') + '</b> (' + (P.ver ? 'v' + P.ver : 'brak wersji') + ', karta chce v' + P.want + '). Brakuje ' + P.miss.length + ' elementów. Kliknij: zakładka Nauka (albo Diagnostyka) → ' + (mode === 'yaml' || !P.miss.length ? '„Napraw pakiet (podmień plik)”' : '„Zainstaluj / napraw pakiet”') + '.';
   }
   _pkHtml(esc) {
     const hass = this._hass, P = this._pkgCheck(), K = this._pk || (this._pk = {}), admin = !!(hass.user && hass.user.is_admin);
@@ -631,8 +632,9 @@ class HaKartaPompaCiepla extends HTMLElement {
         (K.err.length ? '<br><b style="color:#ff8a80">Nie wyszło (' + K.err.length + '):</b><br>' + K.err.map(esc).join('<br>') : '') + ' <button data-a="pkok">OK</button></div>';
     }
     if (K.busy) return h;
+    const P0 = this._pkgCheck();
     if (R.mode === 'yaml') {
-      if (!R.paste.length && !R.restart.length) return h;
+      if (!R.paste.length && !R.restart.length) return h + (P0.old ? '<div class="pkw">⚠ <b>Pakiet w pliku jest starszy</b> (v' + esc(R.yv) + ', karta ma v' + PKG.ver + ').' + this._pkFixHtml(esc) + '</div>' : '');
       if (!R.paste.length) return h + '<div class="pkw">⚠ <b>Pakiet YAML v' + esc(R.yv) + ' jest aktualny, ale HA nie załadował ' + R.restart.length + ' jego elementów:</b> ' + lst(R.restart) + '. Zrób <b>pełny restart HA</b> (Ustawienia → ⋮ → Uruchom ponownie). Jeśli po restarcie dalej brakuje, sprawdź log HA (np. zajęta nazwa encji, wtedy HA dokłada „_2”).</div>';
       return h + '<div class="pkw">⚠ <b>Pakiet masz w pliku YAML</b> (<code>/config/packages/hydrolution_karta.yaml</code>, v' + esc(R.yv) + '), karta oczekuje <b>v' + PKG.ver + '</b>.' + this._pkFixHtml(esc) +
         (R.paste.length ? '<br>Nowe albo zmienione w v' + PKG.ver + ' (' + R.paste.length + '): ' + lst(R.paste) + '.' : '') +
@@ -640,7 +642,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         '<br><b>Droga A (jak dotąd):</b> wklej całą treść <code>packages/hydrolution_karta.yaml</code> z repo do tego pliku, Narzędzia deweloperskie → YAML → Sprawdź konfigurację, potem <b>pełny restart HA</b>.' +
         '<br><b>Droga B (raz, potem samo z HACS):</b> 1) w File editor zmień nazwę pliku na <code>hydrolution_karta.yaml.bak</code> (nic nie kasujesz, HA go po prostu nie wczyta), 2) <b>pełny restart HA</b>, 3) wróć tutaj i kliknij „Zainstaluj / napraw pakiet”. Karta założy wszystko przez API pod tymi samymi nazwami encji, a przy każdej aktualizacji karty z HACS sama dołoży i poprawi swoje elementy.</div>';
     }
-    if (!R.create.length && !R.update.length && !R.orphan.length) return h;
+    if (!R.create.length && !R.update.length && !R.orphan.length) return h + (P0.old && admin ? '<div class="pkw">⚠ <b>Pakiet HA starszy niż karta</b> (v' + esc(P0.ver || '–') + ', karta ma v' + PKG.ver + '), a karta nie widzi, co dołożyć: pakiet jest pewnie w pliku YAML.' + this._pkFixHtml(esc) + '</div>' : '');
     if (!admin) return h + '<div class="pkw">⚠ <b>Pakiet HA trzeba zainstalować albo uzupełnić</b> (' + (R.create.length + R.update.length) + ' elementów). Zrobi to karta, ale tylko na koncie administratora HA: otwórz tę zakładkę jako admin.</div>';
     h += '<div class="pkw">' + (R.mode === 'card' ? '⚙ <b>Pakiet HA z karty</b> (zainstalowany v' + esc(R.inst || '–') + ', karta ma v' + PKG.ver + ')' : '⚙ <b>Brak pakietu HA</b> (albo niepełny)') + '. Karta założy go sama przez API Home Assistanta, bez wklejania plików i bez restartu. Niczego nie kasuje i nie rusza Twoich własnych encji ani automatyzacji.';
     if (R.create.length) h += '<br><b>Dołoży (' + R.create.length + '):</b> ' + lst(R.create) + '.';
@@ -666,23 +668,29 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
   _pkCopy() {
     const F = this._pkF || (this._pkF = {});
-    const done = () => { F.copied = true; this._nauRender(); };
+    const done = () => { F.copied = true; this._nauRender(); if (this._tabCur === 'dia') this._diaRender(true); };
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(PKG_YAML).then(done, () => { F.log = (F.log || []).concat(['Schowek niedostępny w tej przeglądarce: skopiuj plik z GitHuba (packages/hydrolution_karta.yaml).']); this._nauRender(); });
     else { F.log = (F.log || []).concat(['Schowek niedostępny: skopiuj plik z GitHuba (packages/hydrolution_karta.yaml).']); this._nauRender(); }
   }
   async _pkFix() {
     const F = this._pkF = { busy: true, log: [] }, hass = this._hass;
-    const say = (t) => { F.log.push(t); this._log('karta', 'Napraw pakiet', t); this._nauRender(); };
+    const say = (t) => { F.log.push(t); this._log('karta', 'Napraw pakiet', t); this._nauRender(); if (this._tabCur === 'dia') this._diaRender(true); };
     const old = (this._hass.states['sensor.hp_pakiet_wersja'] || {}).state || 'stary';
     try {
-      const info = await hass.callWS({ type: 'supervisor/api', endpoint: '/addons/core_configurator/info', method: 'get' }).catch(() => null);
-      if (!info) throw new Error('brak dodatku File editor (Ustawienia → Dodatki → File editor → Zainstaluj i Uruchom), albo HA bez Supervisora. Użyj „Kopiuj pakiet do schowka”.');
+      say('Szukam dodatku File editor…');
+      const lst = await hass.callWS({ type: 'supervisor/api', endpoint: '/addons', method: 'get' }).catch((e) => { say('Lista dodatków: BŁĄD ' + this._errTxt(e) + ' (HA bez Supervisora albo brak uprawnień).'); return null; });
+      const ad = lst && (lst.addons || []).find((x) => /file editor/i.test(x.name || '') || /configurator$/.test(x.slug || ''));
+      const slug = ad ? ad.slug : 'core_configurator';
+      say(ad ? 'Dodatek: ' + ad.name + ' (' + slug + '), stan: ' + ad.state + '.' : 'Nie widzę File editora na liście, próbuję core_configurator.');
+      const info = await hass.callWS({ type: 'supervisor/api', endpoint: '/addons/' + slug + '/info', method: 'get' }).catch((e) => { say('Info dodatku: BŁĄD ' + this._errTxt(e)); return null; });
+      if (!info) throw new Error('brak dodatku File editor (Ustawienia → Dodatki → Sklep → File editor → Zainstaluj i Uruchom). Do tego czasu „Kopiuj pakiet do schowka”.');
       if (info.state !== 'started') throw new Error('dodatek File editor jest zatrzymany: Ustawienia → Dodatki → File editor → Uruchom, potem kliknij jeszcze raz.');
       const ses = await hass.callWS({ type: 'supervisor/api', endpoint: '/ingress/session', method: 'post' });
       document.cookie = 'ingress_session=' + ses.session + ';path=/api/hassio_ingress/;SameSite=Strict' + (location.protocol === 'https:' ? ';Secure' : '');
       const base = String(info.ingress_url || '').replace(/\/$/, '');
       if (!base) throw new Error('File editor nie ma adresu ingress.');
-      const get = async (f) => { const r = await fetch(base + '/api/file?filename=' + encodeURIComponent(f), { credentials: 'same-origin' }); if (!r.ok) throw new Error('odczyt ' + f + ': HTTP ' + r.status); return r.text(); };
+      say('Sesja File editora OK (' + base + ').');
+      const get = async (f) => { const r = await fetch(base + '/api/file?filename=' + encodeURIComponent(f), { credentials: 'same-origin' }); if (!r.ok) { say('Odczyt ' + f + ': HTTP ' + r.status); throw new Error('odczyt ' + f + ': HTTP ' + r.status); } return r.text(); };
       const post = async (ep, body) => {
         const r = await fetch(base + '/api/' + ep, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(body).toString() });
         let j = null; try { j = await r.json(); } catch (e) { /* brak */ }
@@ -694,7 +702,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         const t = await get(f).catch(() => '');
         if (t && t !== 'File not found' && !/^\[Errno/.test(t)) { path = f; cur = t; break; }
       }
-      if (!path) throw new Error('nie znalazłem pliku packages/hydrolution_karta.yaml (ani w /homeassistant, ani w /config).');
+      if (!path) throw new Error('nie znalazłem pliku (sprawdzone /homeassistant/packages i /config/packages) packages/hydrolution_karta.yaml (ani w /homeassistant, ani w /config).');
       say('Plik: ' + path + ' (' + cur.length + ' znaków).');
       const bak = path + '.bak-v' + old + '-' + new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
       await post('save', { filename: bak, text: cur });
@@ -717,7 +725,10 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._hass.callService('homeassistant', 'restart', {}).catch(() => { /* HA sie wylacza */ });
   }
   _pkMode() {
-    const st = this._hass.states;
+    const st = this._hass.states, reg = this._pk && this._pk.reg;
+    // v1.42: wersja pakietu z pliku YAML (szablon bez config entry) = tryb plik, nawet gdy zostal znacznik pakietu z karty
+    const rv = reg && reg.find((x) => x.entity_id === 'sensor.hp_pakiet_wersja');
+    if (rv && rv.platform === 'template' && !rv.config_entry_id && this._pkLive('sensor.hp_pakiet_wersja')) return 'yaml';
     if (st['input_text.hp_pakiet_karta']) return 'card';
     if (this._pkLive('sensor.hp_pakiet_wersja')) return 'yaml';
     for (const k in st) if (/^input_[a-z]+\.hp_/.test(k) && st[k].attributes && st[k].attributes.editable === false && !st[k].attributes.restored) return 'yaml';
@@ -737,7 +748,7 @@ class HaKartaPompaCiepla extends HTMLElement {
   async _pkReg(force) {
     const K = this._pk || (this._pk = {});
     if (!force && K.reg && Date.now() - K.regAt < 60000) return K.reg;
-    try { const r = await this._hass.callWS({ type: 'config/entity_registry/list' }); K.reg = Array.isArray(r) ? r : []; K.regFail = false; } catch (e) { K.reg = null; K.regFail = true; }
+    try { const r = await this._hass.callWS({ type: 'config/entity_registry/list' }); K.reg = Array.isArray(r) ? r : []; K.regFail = false; if (this._pkEl) this._pkEl._sig = null; } catch (e) { K.reg = null; K.regFail = true; }
     K.regAt = Date.now();
     return K.reg;
   }
@@ -911,14 +922,36 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (this._fit) setTimeout(this._fit, 0);
   }
 
+  // v1.42: obecnosc TYLKO z osob / telefonow wskazanych w Nauce (bez zone.home)
+  _obecIds() {
+    const st = this._hass.states, src = this._nauSrc('osoby'), c = this._nauCfg();
+    if (src && src.length) return src;
+    return c.osoby ? [].concat(c.osoby).filter((i) => st[i]) : [];
+  }
+  _obecStan() {
+    const st = this._hass.states, ids = this._obecIds(), ok = ids.filter((i) => st[i] && !/^(unknown|unavailable)$/.test(st[i].state));
+    const home = ok.filter((i) => st[i].state === 'home');
+    let od = null; if (ok.length && !home.length) od = new Date(Math.max.apply(null, ok.map((i) => Date.parse(st[i].last_changed) || 0)));
+    return { ids, ok, home, n: home.length, od, none: !ids.length, unav: ids.length > 0 && !ok.length };
+  }
+  _obecPub() {
+    const N = this._nau, hass = this._hass, ent = 'input_text.hp_obecnosc_encje';
+    if (!N || !hass || !hass.states[ent]) return;
+    if (!N.srcLoaded) { if (!N.srcLoading) { N.srcLoading = true; this._nauSrcLoad().then(() => { N.srcLoading = false; this._obecPub(); }); } return; }
+    let v = ''; this._obecIds().forEach((i) => { if ((v ? v.length + 1 : 0) + i.length <= 255) v += (v ? ',' : '') + i; });
+    if (hass.states[ent].state === v || (this._obecPubAt && Date.now() - this._obecPubAt < 30000)) return;
+    this._obecPubAt = Date.now();
+    hass.callService('input_text', 'set_value', { entity_id: ent, value: v }).catch(() => { /* brak */ });
+  }
+
   // ====================== DIAGNOSTYKA (v1.40) ======================
   _errTxt(e) { return String(e && (e.message || e.code) || e); }
   _log(kind, what, res, data) {
     const L = this._lg || (this._lg = (() => { try { return JSON.parse(localStorage.getItem('hkpc_log') || '[]'); } catch (e) { return []; } })());
     let d = ''; try { d = data === undefined ? '' : JSON.stringify(data); } catch (e) { d = ''; }
-    if (d.length > 160) d = d.slice(0, 157) + '…';
+    if (d.length > 1000) d = d.slice(0, 997) + '…';
     const it = { t: Date.now(), k: kind, w: String(what || ''), r: res, d };
-    L.push(it); while (L.length > 200) L.shift();
+    L.push(it); while (L.length > 500) L.shift();
     this._logSave();
     return it;
   }
@@ -933,15 +966,16 @@ class HaKartaPompaCiepla extends HTMLElement {
   _diaIds() {
     const st = this._hass.states, E = this._E;
     const au = Object.keys(st).filter((i) => i.startsWith('automation.') && st[i].attributes && /^hp_(esp_plan|auto_cwu|auto_cyrk|plan_cwu|plan_cyrk|cyrk_przelicz|cyrk_wymus)$/.test(st[i].attributes.id || ''));
-    return ['sensor.hydrolution_diagnostyka_esp', E.hwmode, E.hwc_run, E.hwc_still, E.esp_plan, E.esp_cwu, E.esp_cyrk, E.esp_noc, E.esp_grz, E.esp_off, E.esp_stat, E.cwu_plan, E.cyrk_plan, E.g12_tania, 'zone.home'].concat(au).filter((i) => i && st[i]);
+    return ['sensor.hydrolution_diagnostyka_esp', E.hwmode, E.hwc_run, E.hwc_still, E.esp_plan, E.esp_cwu, E.esp_cyrk, E.esp_noc, E.esp_grz, E.esp_off, E.esp_stat, E.cwu_plan, E.cyrk_plan, E.g12_tania, 'input_text.hp_obecnosc_encje'].concat(this._obecIds(), au).filter((i) => i && st[i]);
   }
   async _diaLoad() {
     const D = this._dia || (this._dia = {}), hass = this._hass; if (D.busy) return;
     D.busy = true; D.err = '';
     try {
+      if (hass.user && hass.user.is_admin) await this._pkReg(true).catch(() => null);
       const ids = this._diaIds();
       const ev = await hass.callWS({ type: 'logbook/get_events', start_time: new Date(Date.now() - 24 * 3600e3).toISOString(), entity_ids: ids });
-      D.ev = (ev || []).slice(-300).reverse();
+      D.ev = (ev || []).slice(-1000).reverse();
     } catch (e) { D.ev = null; D.err = 'Dziennik HA: ' + this._errTxt(e); }
     try {
       if (hass.user && hass.user.is_admin) {
@@ -963,8 +997,12 @@ class HaKartaPompaCiepla extends HTMLElement {
     const tm = (ms) => { const d = new Date(ms); return isNaN(d) ? '' : d.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
     const fn = (i) => (st[i] && st[i].attributes && st[i].attributes.friendly_name) || i;
     let h = '<div class="sh"><div class="sht">Diagnostyka<small>co karta, HA i ESP robią i czemu coś nie wchodzi</small><span style="flex:1"></span>' +
-      '<button data-a="dcopy">Kopiuj wszystko</button><button data-a="drel"' + (D.busy ? ' disabled' : '') + '>' + (D.busy ? 'Wczytuję…' : 'Odśwież') + '</button></div>';
-    if (D.copied && Date.now() - D.copied < 3000) h += '<div class="info">Skopiowane do schowka: wklej w czacie.</div>';
+      '<button data-a="dcopy">Kopiuj wszystko</button><button data-a="dall">' + (D.all ? 'Okna z przewijaniem' : 'Pokaż wszystko bez przewijania') + '</button><button data-a="drel"' + (D.busy ? ' disabled' : '') + '>' + (D.busy ? 'Wczytuję…' : 'Odśwież') + '</button></div>';
+    el.classList.toggle('all', !!D.all);
+    if (D.copied && Date.now() - D.copied < 4000) h += '<div class="info">Skopiowane do schowka (' + D.copiedN + ' znaków): wklej w czacie.</div>';
+    if (D.copyTxt) h += '<div class="info">Schowek zablokowany w tej przeglądarce: tekst jest zaznaczony niżej, zrób Ctrl+C (na telefonie: przytrzymaj → Kopiuj). <button data-a="dcpx">Zamknij</button><textarea class="cp" readonly>' + esc(D.copyTxt) + '</textarea></div>';
+    // v1.42: pakiet HA (wersja + naprawa) tez tutaj
+    { const P = this._pkgCheck(); h += '<div class="sec"><div class="st2">Pakiet HA</div><div class="dl"><div><span>Wersja</span><b class="' + (P.old ? 'bad' : 'good') + '">' + esc(P.ver || 'brak') + '</b> (karta chce ' + PKG_VER + ', tryb: ' + esc(this._pkMode()) + ')' + (P.miss.length ? ' · brakuje: ' + esc(P.miss.join(', ')) : '') + '</div></div>' + (P.old ? '<div class="pkw">' + this._pkFixHtml(esc) + '</div>' : '') + '</div>'; }
     if (D.err) h += '<div class="warn">' + esc(D.err) + '</div>';
     // 1) ESP
     const dg = st['sensor.hydrolution_diagnostyka_esp'], pe = st[E.esp_plan], off = st[E.esp_off], ss = st[E.esp_stat];
@@ -983,14 +1021,18 @@ class HaKartaPompaCiepla extends HTMLElement {
     }).join('') + '</div></div>';
     // 2) pompa teraz
     h += '<div class="sec"><div class="st2">Pompa teraz</div>' + this._schNowHtml(this._schLanes().find((x) => x.k === 'cwu'), esc) + this._schNowHtml(this._schLanes().find((x) => x.k === 'cyrk'), esc) + '</div>';
+    // 3a) v1.42: zdarzenia ESP (pelna historia encji "Diagnostyka ESP")
+    const evE = (D.ev || []).filter((x) => x.entity_id === 'sensor.hydrolution_diagnostyka_esp'), evH = (D.ev || []).filter((x) => x.entity_id !== 'sensor.hydrolution_diagnostyka_esp');
+    h += '<div class="sec"><div class="st2">Zdarzenia ESP (24 h, ' + evE.length + ')</div>' + (!dg ? '<div class="info">Brak encji „Diagnostyka ESP”: wgraj ESP v5.7.</div>' : !evE.length ? '<div class="info">' + (D.busy ? 'Wczytuję…' : 'Brak zdarzeń ESP w 24 h.') + '</div>' :
+      '<div class="lg">' + evE.map((x) => '<div><span class="t">' + tm(x.when * 1000) + '</span><span class="' + (/NIE |ODRZUC|PELNA/.test(x.state || '') ? 'bad' : '') + '">' + esc(x.state || x.message || '') + '</span></div>').join('') + '</div>') + '</div>';
     // 3) dziennik HA
-    h += '<div class="sec"><div class="st2">Dziennik HA (24 h): ESP, tryb CWU, cyrkulacja, plan, automatyzacje</div>';
+    h += '<div class="sec"><div class="st2">Dziennik HA (24 h, ' + evH.length + '): tryb CWU, cyrkulacja, plan, automatyzacje, obecność</div>';
     if (!D.ev) h += '<div class="info">' + (D.busy ? 'Wczytuję…' : 'Brak danych.') + '</div>';
-    else if (!D.ev.length) h += '<div class="info">Brak zdarzeń w ostatnich 24 h.</div>';
-    else h += '<div class="lg">' + D.ev.map((x) => {
+    else if (!evH.length) h += '<div class="info">Brak zdarzeń w ostatnich 24 h.</div>';
+    else h += '<div class="lg">' + evH.map((x) => {
       const ctx = x.context_event_type === 'automation_triggered' || x.context_domain === 'automation' ? 'automatyzacja: ' + (x.context_name || x.context_entity_id_name || x.context_entity_id || '') : x.context_user_id ? 'użytkownik / karta' : x.context_service ? 'usługa ' + x.context_domain + '.' + x.context_service : '';
       const txt = x.state !== undefined ? x.state : x.message || '';
-      return '<div><span class="t">' + tm(x.when * 1000) + '</span><span class="e">' + esc(x.name || fn(x.entity_id)) + '</span><span>' + esc(String(txt).length > 60 && /^[0-9a-f]+$/.test(txt) ? txt.slice(0, 24) + '… (' + txt.length + ' zn.)' : txt) + '</span>' + (ctx ? '<span class="ds">' + esc(ctx) + '</span>' : '') + '</div>';
+      return '<div><span class="t">' + tm(x.when * 1000) + '</span><span class="e">' + esc(x.name || fn(x.entity_id)) + '</span><span>' + esc(txt) + '</span>' + (ctx ? '<span class="ds">' + esc(ctx) + '</span>' : '') + '</div>';
     }).join('') + '</div>';
     h += '</div>';
     // 4) bledy HA
@@ -1014,10 +1056,27 @@ class HaKartaPompaCiepla extends HTMLElement {
         else if (a === 'drel') { D.at = 0; this._diaRender(true); }
         else if (a === 'dclr') { this._lg = []; try { localStorage.removeItem('hkpc_log'); } catch (e) { /* brak */ } this._diaRender(true); }
         else if (a === 'dcopy') {
-          const txt = 'Karta ' + VERSION + ' / pakiet ' + PKG_VER + '\n' + el.innerText;
-          const ok = () => { D.copied = Date.now(); this._diaRender(true); };
-          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, () => { D.copyTxt = txt; });
+          // v1.42: caly tekst (wszystkie sekcje i linie, takze ukryte za przewijaniem); bez https / w apce: execCommand, a na koniec pole do recznego Ctrl+C
+          const was = D.all; el.classList.add('all');
+          const txt = 'Karta ' + VERSION + ' / pakiet ' + PKG_VER + ' / ' + new Date().toLocaleString('pl-PL') + '\n' + el.innerText;
+          el.classList.toggle('all', !!was);
+          const ok = () => { D.copied = Date.now(); D.copiedN = txt.length; D.copyTxt = null; this._diaRender(true); };
+          const old = () => {
+            try {
+              const ta = document.createElement('textarea'); ta.value = txt; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '-1000px';
+              document.body.appendChild(ta); ta.select(); const r = document.execCommand('copy'); document.body.removeChild(ta);
+              if (r) { ok(); return; }
+            } catch (e) { /* brak */ }
+            D.copyTxt = txt; this._diaRender(true);
+            const t2 = el.querySelector('textarea.cp'); if (t2) { t2.focus(); t2.select(); }
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) navigator.clipboard.writeText(txt).then(ok, old); else old();
         }
+        else if (a === 'dcpx') { D.copyTxt = null; this._diaRender(true); }
+        else if (a === 'dall') { D.all = !D.all; this._diaRender(true); }
+        else if (a === 'pkfix') this._pkFix();
+        else if (a === 'pkfixr') this._pkFixRestart();
+        else if (a === 'pkcopy') this._pkCopy();
         else if (a === 'more') this._more(t.getAttribute('data-e'));
       });
     }
@@ -1096,7 +1155,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       }
     }
     // odswiez tylko linie "teraz" (obecnosc, temperatura zewn.)
-    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'zone.home', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja', E.cwu_tania, E.cwu_lux_on, E.cwu_poza, 'input_text.hp_energia_encja', 'input_text.hp_energia_kwh_encja', E.esp_stat, E.esp_cwu, E.esp_cyrk, E.esp_plan, E.cwu_plan]);
+    const st = this._hass.states, E = this._E, ids = this._nauPersons().concat([E.bt1, E.auto_cyrk, E.pl_cyrk, E.hwc_run, E.hwc_still, 'input_text.hp_obecnosc_encje', E.wstali, 'input_number.hp_cyrk_po_wyjsciu', E.auto_cwu, E.g12, E.g12_we, E.g12_tania, E.cwu_wait, E.hwmode, E.bt6, E.pl_cwu, E.cwu_boost, E.cwu_lux_max, E.tmp_lux, E.opmode, E.heat_ok, 'input_text.hp_pakiet_karta', 'sensor.hp_pakiet_wersja', E.cwu_tania, E.cwu_lux_on, E.cwu_poza, 'input_text.hp_energia_encja', 'input_text.hp_energia_kwh_encja', E.esp_stat, E.esp_cwu, E.esp_cyrk, E.esp_plan, E.cwu_plan]);
     const sig = ids.map((i) => (st[i] ? st[i].state : '?')).join('|') + '|' + Math.floor(Date.now() / 300000);
     // v1.25: wstrzymaj odswiezanie tylko przy pisaniu w polu (klikniety suwak ma focus i blokowal odswiezenie, przelacznik wygladal na martwy)
     const ae = this.shadowRoot && this.shadowRoot.activeElement;
@@ -1511,6 +1570,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (!v) { try { v = JSON.parse(localStorage.getItem('hkpc_nauka_zrodla') || 'null'); } catch (e) { v = null; } }
     N.src = v && typeof v === 'object' ? v : {};
     N.srcLoaded = true;
+    try { this._obecPub(); } catch (e) { /* brak */ }
   }
   async _nauSrcSave() {
     const N = this._nau;
@@ -1662,9 +1722,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     const au = st[E.auto_cyrk], auOn = au && au.state === 'on';
     const run = parseFloat((st[E.hwc_run] || {}).state), still = parseFloat((st[E.hwc_still] || {}).state);
     const isOn = !isNaN(run) && !(run <= 1 && still >= 60);
-    const zh = st['zone.home'] ? parseInt(st['zone.home'].state, 10) : null;
-    const pers = Y ? Y.pers : this._nauPersons(), homeN = pers.filter((i) => st[i] && st[i].state === 'home').length;
-    const ktos = zh !== null && !isNaN(zh) ? zh > 0 : homeN > 0;
+    const OB = this._obecStan(), ktos = OB.n > 0;   // v1.42: tylko wskazane osoby
+    const pers = OB.ids, homeN = OB.n;
     const inWin = st[E.pl_cyrk] && st[E.pl_cyrk].state === 'on';
     const now = new Date(), wd = (now.getDay() + 6) % 7, slot = now.getHours() * 4 + Math.floor(now.getMinutes() / 15);
     const sleepNow = Y && Y.ps[wd] && Y.ps[wd][slot] !== null && Y.ps[wd][slot] >= 0.5;
@@ -1674,7 +1733,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     let why;
     if (wy) why = 'wymuszona ręcznie z karty do ' + new Date(wy * 1000).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ' (automatyzacja w tym czasie nic nie zmienia)';
     else if (!auOn) why = 'automatyzacja wyłączona, cyrkulacją sterujesz ręcznie albo przez harmonogram na głównej';
-    else if (!ktos) why = 'pusty dom (nikogo z telefonem w domu), po ' + (st['input_number.hp_cyrk_po_wyjsciu'] ? Math.round(Number(st['input_number.hp_cyrk_po_wyjsciu'].state)) : 10) + ' min cyrkulacja się wyłącza';
+    else if (OB.none) why = 'nie wskazałeś osób w Źródłach nauki → Obecność: HA nie przełącza cyrkulacji wg obecności';
+    else if (OB.unav) why = 'wskazane osoby / telefony są niedostępne: HA nic nie zmienia';
+    else if (!ktos) why = 'pusty dom (nikogo ze wskazanych w domu), po ' + (st['input_number.hp_cyrk_po_wyjsciu'] ? Math.round(Number(st['input_number.hp_cyrk_po_wyjsciu'].state)) : 10) + ' min cyrkulacja się wyłącza';
     else if (inWin) why = 'ktoś jest w domu i trwa okno harmonogramu';
     else if (rano) why = 'weekend: wstaliście o ' + wsD.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + ' (sygnał: ' + this._nauSig() + ')';
     else if (sleepNow) why = 'pora snu (poza oknem harmonogramu)';
@@ -2709,8 +2770,8 @@ class HaKartaPompaCiepla extends HTMLElement {
     }
     if (l.k === 'cyrk') {
       const run = parseFloat((st[E.hwc_run] || {}).state), still = parseFloat((st[E.hwc_still] || {}).state);
-      const off = !isNaN(run) && run <= 1 && still >= 60, zh = st['zone.home'], n = zh ? parseInt(zh.state, 10) : NaN;
-      const ob = !zh ? 'brak zone.home' : isNaN(n) ? 'obecność nieznana (zone.home: ' + esc(zh.state) + ', HA nic nie zmienia)' : n > 0 ? 'w domu: <b>' + n + '</b>' : 'pusto od <b>' + hm(new Date(zh.last_changed)) + '</b>';
+      const off = !isNaN(run) && run <= 1 && still >= 60, OB = this._obecStan();
+      const ob = OB.none ? '<span class="bad">nie wskazano osób (Nauka → Źródła → Obecność), HA nie reaguje na obecność</span>' : OB.unav ? '<span class="bad">wskazane osoby niedostępne, HA nic nie zmienia</span>' : OB.n > 0 ? 'w domu (wskazani): <b>' + OB.n + '</b>' : 'pusto od <b>' + hm(OB.od) + '</b>';
       return '<div class="now"><span>HA ustawił cyrkulację: <b class="' + (off ? '' : 'good') + '">' + (isNaN(run) ? '–' : off ? 'wyłączona' : 'pracuje') + '</b>' + (isNaN(run) ? '' : ' (praca ' + run + ' / postój ' + still + ' min)') + '</span><span>' + ob + '</span>' +
         (off ? '<span class="ds">Jeśli pompka mimo to kręci, to nie wisi na wyjściu sterownika (AA3-X7), tylko na stałej fazie.</span>' : '') + '</div>';
     }
@@ -2718,15 +2779,17 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
   // v1.39: Nauka - maly pasek obecnosci domownikow (person.* / telefony): w domu / poza, od kiedy
   _obecHtml(esc) {
-    const st = this._hass.states, pers = this._nauPersons().filter((i) => st[i]); if (!pers.length) return '';
-    const od = (s) => { const d = new Date(s.last_changed); if (isNaN(d)) return ''; const t = d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }); return d.toDateString() === new Date().toDateString() ? t : d.toLocaleDateString('pl-PL', { weekday: 'short' }) + ' ' + t; };
-    const zh = st['zone.home'], n = zh ? parseInt(zh.state, 10) : NaN;
-    return '<div class="obc"><b>Obecność:</b>' + pers.map((i) => {
-      const s = st[i], home = s.state === 'home', nm = (s.attributes && s.attributes.friendly_name) || i.split('.')[1];
+    const st = this._hass.states, OB = this._obecStan();
+    const od = (t) => { const d = typeof t === 'string' ? new Date(t) : t; if (!d || isNaN(d)) return ''; const x = d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }); return d.toDateString() === new Date().toDateString() ? x : d.toLocaleDateString('pl-PL', { weekday: 'short' }) + ' ' + x; };
+    if (OB.none) return '<div class="obc"><b>Obecność:</b><span class="p a" style="border-color:#ffb300;color:#ffd9a0">nie wskazano osób: dodaj je niżej w „Źródła nauki → Obecność”. Do tego czasu cyrkulacja nie reaguje na obecność.</span></div>';
+    return '<div class="obc"><b>Obecność:</b>' + OB.ids.map((i) => {
+      const s = st[i]; if (!s) return '<span class="p a">' + esc(i) + ' ❔ brak encji</span>';
+      const home = s.state === 'home', nm = (s.attributes && s.attributes.friendly_name) || i.split('.')[1];
       const where = home ? '🏠 w domu' : s.state === 'not_home' ? '🚶 poza' : /^(unknown|unavailable)$/.test(s.state) ? '❔ nieznane' : '📍 ' + s.state;
-      return '<span class="p ' + (home ? 'h' : 'a') + '" data-a="more" data-e="' + i + '">' + esc(nm) + ' ' + where + ' od ' + od(s) + '</span>';
-    }).join('') + (zh ? '<span class="ds">' + (isNaN(n) ? 'zone.home: ' + esc(zh.state) : n > 0 ? 'w domu: ' + n : 'pusto od ' + od(zh)) + '</span>' : '') + '</div>';
+      return '<span class="p ' + (home ? 'h' : 'a') + '" data-a="more" data-e="' + i + '">' + esc(nm) + ' ' + where + ' od ' + od(s.last_changed) + '</span>';
+    }).join('') + '<span class="ds">' + (OB.unav ? 'wszyscy niedostępni: HA nic nie zmienia' : OB.n > 0 ? 'w domu: ' + OB.n : 'pusto od ' + od(OB.od)) + ' (liczone tylko z tej listy)</span></div>';
   }
+
   // --- tryb CWU -> klasa koloru: Luksus rozowy, Normalny fioletowy, Ekonomiczny zielony ---
   _cwuCls(name) { const n = String(name || '').toLowerCase(); return n.indexOf('luks') >= 0 ? 'L' : n.indexOf('eko') >= 0 ? 'E' : n.indexOf('smart') >= 0 ? 'S' : 'N'; }
   _cwuLeg() { return '<span>Kolory: <i class="L"></i>Luksus <i class="N" style="margin-left:.6em"></i>Normalny <i class="E" style="margin-left:.6em"></i>Ekonomiczny</span>'; }
