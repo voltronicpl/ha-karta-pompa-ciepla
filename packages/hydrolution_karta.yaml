@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.43 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.44 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -61,7 +61,7 @@ template:
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.43"
+        state: "1.44"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
@@ -476,6 +476,10 @@ script:
 # (karta ustawia domyslne przy pierwszym tworzeniu: -2 / 0 / Luksus / Normalny / 60 / 0).
 # =====================================================================
 input_boolean:
+  # v1.44: imitacja obecnosci (Diagnostyka): automat cyrkulacji traktuje to jak "ktos w domu"; sama sie wylacza po 30 min (hp_imitacja_off)
+  hp_imitacja_obecnosci:
+    name: "HP obecnosc: imitacja (ktos w domu)"
+    icon: mdi:account-question
   hp_plan_noc:
     name: "HP plan: obnizenie CO aktywne"
     icon: mdi:weather-night
@@ -653,6 +657,10 @@ input_text:
   # v1.42: obecnosc TYLKO z osob / telefonow wskazanych w Nauce (karta wpisuje, po przecinku). Pusta = cyrkulacja nie reaguje na obecnosc.
   hp_obecnosc_encje:
     name: "HP obecnosc: wskazane osoby"
+    max: 255
+  # v1.44: co ostatnio zdecydowal automat cyrkulacji i czemu (Diagnostyka)
+  hp_cyrk_powod:
+    name: "HP cyrkulacja: powod"
     max: 255
   # v1.35: dwie pamieci krzywej grzewczej z Nauki (P1..P7 po przecinku, np. "40,30,29,28,25,18,5").
   #        Do pompy ida dopiero po "Wyslij na glowna" + potwierdzeniu w karcie. Fabryczna jest w kodzie karty (nie do zmiany).
@@ -920,7 +928,7 @@ automation:
       - trigger: template
         value_template: "{{ (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('is_state', 'home') | list | count > 0 }}"
       - trigger: state
-        entity_id: input_text.hp_obecnosc_encje
+        entity_id: [input_text.hp_obecnosc_encje, input_boolean.hp_imitacja_obecnosci]
       - trigger: state
         entity_id: number.hydrolution_cyrkulacja_cwu_czas_pracy
         from: unavailable
@@ -937,14 +945,16 @@ automation:
       # v1.33: reczne wymuszenie z karty ma pierwszenstwo (co 5 min go nie nadpisuje)
       - condition: template
         value_template: "{{ (state_attr('input_datetime.hp_cyrk_wymus_do', 'timestamp') | float(0)) <= now().timestamp() }}"
-      # v1.42: brak wskazanych osob albo wszystkie niedostepne = nic nie zmieniaj
+      # v1.42: brak wskazanych osob albo wszystkie niedostepne = nic nie zmieniaj (v1.44: chyba ze wlaczona imitacja obecnosci)
       - condition: template
-        value_template: "{{ (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('has_value') | list | count > 0 }}"
+        value_template: "{{ is_state('input_boolean.hp_imitacja_obecnosci', 'on') or (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('has_value') | list | count > 0 }}"
     actions:
       - variables:
           osoby: "{{ (states('input_text.hp_obecnosc_encje').split(',') | map('trim') | select('match', '^(person|device_tracker)[.]') | list) | select('has_value') | list }}"
-          ktos: "{{ osoby | select('is_state', 'home') | list | count > 0 }}"
-          pusto_dlugo: "{{ not ktos and (now() - (expand(osoby) | map(attribute='last_changed') | max)).total_seconds() >= (states('input_number.hp_cyrk_po_wyjsciu') | int(5)) * 60 }}"
+          imit: "{{ is_state('input_boolean.hp_imitacja_obecnosci', 'on') }}"
+          ktos: "{{ imit or osoby | select('is_state', 'home') | list | count > 0 }}"
+          pusto_min: "{{ ((now() - (expand(osoby) | map(attribute='last_changed') | max)).total_seconds() / 60) | round(0) if osoby | count > 0 else 0 }}"
+          pusto_dlugo: "{{ not ktos and pusto_min >= (states('input_number.hp_cyrk_po_wyjsciu') | int(5)) }}"
           # v1.35: okno z planu policzonego w HA (input_text.hp_cyrk_plan, 168 znakow hex), bez planu jak dawniej z harmonogramu
           w_oknie: >-
             {%- set pl = states('input_text.hp_cyrk_plan') -%}
@@ -966,6 +976,19 @@ automation:
           wl: "{{ (w_oknie or rano) and not pusto_dlugo }}"
           praca: "{{ states('input_number.hp_cyrk_praca') | float(60) if wl else 1 }}"
           postoj: "{{ [1, states('input_number.hp_cyrk_postoj') | float(1)] | max if wl else 60 }}"
+          # v1.44: powod decyzji (Diagnostyka)
+          powod: >-
+            {{ now().strftime('%H:%M') }}
+            {{ 'imitacja obecnosci' if imit else ('w domu: ' ~ (expand(osoby) | selectattr('state', 'eq', 'home') | map(attribute='name') | join(', ')) if ktos else 'pusto od ' ~ pusto_min ~ ' min') }},
+            {{ 'okno planu' if w_oknie else ('weekend rano' if rano else 'poza oknem (sen)') }}
+            -> {{ 'pracuje ' ~ (praca | int) ~ '/' ~ (postoj | int) if wl else 'wylaczona 1/60' }}
+      - if:
+          - condition: template
+            value_template: "{{ states('input_text.hp_cyrk_powod') != 'unavailable' and states('input_text.hp_cyrk_powod')[6:] != (powod | string)[6:255] }}"
+        then:
+          - action: input_text.set_value
+            target: {entity_id: input_text.hp_cyrk_powod}
+            data: {value: "{{ (powod | string)[:255] }}"}
       - condition: template
         value_template: "{{ (states('number.hydrolution_cyrkulacja_cwu_czas_pracy') | float(0)) != praca or (states('number.hydrolution_cyrkulacja_cwu_czas_postoju') | float(0)) != postoj }}"
       - action: number.set_value
@@ -974,6 +997,25 @@ automation:
       - action: number.set_value
         target: {entity_id: number.hydrolution_cyrkulacja_cwu_czas_postoju}
         data: {value: "{{ postoj }}"}
+
+  # 3g) v1.44 Imitacja obecnosci (Diagnostyka) sama sie wylacza po 30 min
+  - id: hp_imitacja_off
+    alias: "HP obecnosc: imitacja - wylacz po 30 min"
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: input_boolean.hp_imitacja_obecnosci
+        to: "on"
+        for: {minutes: 30}
+      - trigger: homeassistant
+        event: start
+    conditions:
+      - condition: state
+        entity_id: input_boolean.hp_imitacja_obecnosci
+        state: "on"
+    actions:
+      - action: input_boolean.turn_off
+        target: {entity_id: input_boolean.hp_imitacja_obecnosci}
 
   # 3a) v1.33 Reczne wymuszenie cyrkulacji z karty (klik w pompke): do input_datetime.hp_cyrk_wymus_do
   #     praca 60 min / postoj 1 (v1.35: min. postoj sterownika = 1 min; prawie caly czas). Automatyzacje 3) i 3b) w tym czasie nic nie zmieniaja.

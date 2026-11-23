@@ -11,7 +11,7 @@
 (() => {
 const VERSION = '__VERSION__';
 // v1.22: wersja pakietu HA (packages/hydrolution_karta.yaml), ktorej oczekuje karta
-const PKG_VER = '1.43';
+const PKG_VER = '1.44';
 const PKG_YAML = __PKGYAML__;   // v1.41: pelna tresc pakietu YAML tej wersji (naprawa starego pliku przez File editor)
 // v1.35: krzywa fabryczna P1..P7 (stala, z pompy 22.11.2026; nie da sie jej zmienic ani zapisac, tylko przywolac)
 const KRZ_FAB = [40, 30, 29, 28, 25, 18, 5];
@@ -672,11 +672,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(PKG_YAML).then(done, () => { F.log = (F.log || []).concat(['Schowek niedostępny w tej przeglądarce: skopiuj plik z GitHuba (packages/hydrolution_karta.yaml).']); this._nauRender(); });
     else { F.log = (F.log || []).concat(['Schowek niedostępny: skopiuj plik z GitHuba (packages/hydrolution_karta.yaml).']); this._nauRender(); }
   }
-  async _pkFix() {
-    const F = this._pkF = { busy: true, log: [] }, hass = this._hass;
-    const say = (t) => { F.log.push(t); this._log('karta', 'Napraw pakiet', t); this._nauRender(); if (this._tabCur === 'dia') this._diaRender(true); };
-    const old = (this._hass.states['sensor.hp_pakiet_wersja'] || {}).state || 'stary';
-    try {
+  // v1.44: dostep do plikow HA przez dodatek File editor (wspolne dla naprawy pakietu i zapisu logow)
+  async _feOpen(say) {
+    const hass = this._hass;
       say('Szukam dodatku File editor…');
       const lst = await hass.callWS({ type: 'supervisor/api', endpoint: '/addons', method: 'get' }).catch((e) => { say('Lista dodatków: BŁĄD ' + this._errTxt(e) + ' (HA bez Supervisora albo brak uprawnień).'); return null; });
       const ad = lst && (lst.addons || []).find((x) => /file editor/i.test(x.name || '') || /configurator$/.test(x.slug || ''));
@@ -697,6 +695,14 @@ class HaKartaPompaCiepla extends HTMLElement {
         if (!r.ok || !j || j.error) throw new Error(ep + ': ' + (j && j.message || ('HTTP ' + r.status)));
         return j;
       };
+      return { base, get, post };
+  }
+  async _pkFix() {
+    const F = this._pkF = { busy: true, log: [] }, hass = this._hass;
+    const say = (t) => { F.log.push(t); this._log('karta', 'Napraw pakiet', t); this._nauRender(); if (this._tabCur === 'dia') this._diaRender(true); };
+    const old = (this._hass.states['sensor.hp_pakiet_wersja'] || {}).state || 'stary';
+    try {
+      const { get, post } = await this._feOpen(say);
       let path = null, cur = '';
       for (const f of ['/homeassistant/packages/hydrolution_karta.yaml', '/config/packages/hydrolution_karta.yaml']) {
         const t = await get(f).catch(() => '');
@@ -966,7 +972,7 @@ class HaKartaPompaCiepla extends HTMLElement {
   _diaIds() {
     const st = this._hass.states, E = this._E;
     const au = Object.keys(st).filter((i) => i.startsWith('automation.') && st[i].attributes && /^hp_(esp_plan|auto_cwu|auto_cyrk|plan_cwu|plan_cyrk|cyrk_przelicz|cyrk_wymus)$/.test(st[i].attributes.id || ''));
-    return ['sensor.hydrolution_diagnostyka_esp', E.hwmode, E.hwc_run, E.hwc_still, E.esp_plan, E.esp_cwu, E.esp_cyrk, E.esp_noc, E.esp_grz, E.esp_off, E.esp_stat, E.cwu_plan, E.cyrk_plan, E.g12_tania, 'input_text.hp_obecnosc_encje'].concat(this._obecIds(), au).filter((i) => i && st[i]);
+    return ['sensor.hydrolution_diagnostyka_esp', E.hwmode, E.hwc_run, E.hwc_still, E.esp_plan, E.esp_cwu, E.esp_cyrk, E.esp_noc, E.esp_grz, E.esp_off, E.esp_stat, E.cwu_plan, E.cyrk_plan, E.g12_tania, 'input_text.hp_obecnosc_encje', 'input_text.hp_cyrk_powod', 'input_boolean.hp_imitacja_obecnosci', E.cyrk_wymus].concat(this._obecIds(), au).filter((i) => i && st[i]);
   }
   async _diaLoad() {
     const D = this._dia || (this._dia = {}), hass = this._hass; if (D.busy) return;
@@ -985,6 +991,33 @@ class HaKartaPompaCiepla extends HTMLElement {
     } catch (e) { D.sl = null; D.err += (D.err ? ' · ' : '') + 'Błędy HA: ' + this._errTxt(e); }
     D.at = Date.now(); D.busy = false; this._diaRender(true);
   }
+  _diaStamp() { const d = new Date(), z = (x) => String(x).padStart(2, '0'); return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()); }
+  _diaText() {
+    const el = this._diaEl, D = this._dia || {}, was = D.all; el.classList.add('all');
+    const txt = 'Karta ' + VERSION + ' / pakiet ' + PKG_VER + ' / ' + new Date().toLocaleString('pl-PL') + '\n' + el.innerText;
+    el.classList.toggle('all', !!was);
+    return txt;
+  }
+  // v1.44: zapis logu w HA: nowy plik /config/hp_logi/diagnostyka-RRRRMMDD-GGMM.txt przez File editor (nic nie nadpisuje)
+  async _diaSave() {
+    const D = this._dia || (this._dia = {}), txt = this._diaText();
+    const say = (t) => { this._log('karta', 'Zapis logu w HA', t); };
+    D.saveMsg = 'Zapisuję log w HA…'; this._diaRender(true);
+    try {
+      const { get, post } = await this._feOpen(say);
+      let root = null;
+      for (const r of ['/homeassistant', '/config']) { const t = await get(r + '/configuration.yaml').catch(() => ''); if (t && t !== 'File not found' && !/^\[Errno/.test(t)) { root = r; break; } }
+      if (!root) throw new Error('nie znalazłem katalogu konfiguracji HA');
+      await post('newfolder', { path: root, name: 'hp_logi' }).catch(() => null);   // juz jest = OK
+      let f = root + '/hp_logi/diagnostyka-' + this._diaStamp() + '.txt';
+      const ex = await get(f).catch(() => 'File not found');
+      if (ex && ex !== 'File not found') f = f.replace('.txt', '-' + String(Date.now()).slice(-4) + '.txt');
+      await post('save', { filename: f, text: txt });
+      D.saveMsg = 'Zapisane w HA: ' + f.replace(root, '/config') + ' (' + txt.length + ' znaków). Otworzysz go w File editorze.';
+      say('OK ' + f);
+    } catch (e) { D.saveMsg = 'Zapis w HA nie wyszedł: ' + this._errTxt(e).replace(/\.$/, '') + '. Użyj „Pobierz log (.txt)” albo „Kopiuj wszystko”.'; say('BŁĄD ' + this._errTxt(e)); }
+    this._diaRender(true);
+  }
   _diaRender(force) {
     const el = this._diaEl, hass = this._hass; if (!el || !hass || el.hidden) return;
     const D = this._dia || (this._dia = {}), st = hass.states, E = this._E, S = this._sch;
@@ -997,8 +1030,11 @@ class HaKartaPompaCiepla extends HTMLElement {
     const tm = (ms) => { const d = new Date(ms); return isNaN(d) ? '' : d.toLocaleString('pl-PL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
     const fn = (i) => (st[i] && st[i].attributes && st[i].attributes.friendly_name) || i;
     let h = '<div class="sh"><div class="sht">Diagnostyka<small>co karta, HA i ESP robią i czemu coś nie wchodzi</small><span style="flex:1"></span>' +
-      '<button data-a="dcopy">Kopiuj wszystko</button><button data-a="dall">' + (D.all ? 'Okna z przewijaniem' : 'Pokaż wszystko bez przewijania') + '</button><button data-a="drel"' + (D.busy ? ' disabled' : '') + '>' + (D.busy ? 'Wczytuję…' : 'Odśwież') + '</button></div>';
+      '<button data-a="dcopy">Kopiuj wszystko</button><button data-a="dtxt">Pobierz log (.txt)</button><button data-a="dsave">Zapisz log w HA</button><button data-a="dall">' + (D.all ? 'Okna z przewijaniem' : 'Pokaż wszystko bez przewijania') + '</button><button data-a="drel"' + (D.busy ? ' disabled' : '') + '>' + (D.busy ? 'Wczytuję…' : 'Odśwież') + '</button></div>';
     el.classList.toggle('all', !!D.all);
+    if (D.hideAt === undefined) { try { D.hideAt = Number(localStorage.getItem('hkpc_dia_hide')) || 0; } catch (e) { D.hideAt = 0; } }
+    if (D.saveMsg) h += '<div class="info">' + esc(D.saveMsg) + '</div>';
+    h += '<div class="lh" style="flex-wrap:wrap;gap:.4em"><button data-a="dhide">Ukryj starsze niż teraz</button>' + (D.hideAt ? '<button data-a="dunhide">Pokaż wszystko znowu (ukryte do ' + tm(D.hideAt) + ')</button>' : '') + '<button data-a="dclr">Wyczyść log karty</button>' + (hass.user && hass.user.is_admin ? '<button data-a="dslclr">Wyczyść błędy HA</button>' : '') + '<span class="ds">Ukrywanie zmienia tylko widok, historia w HA zostaje.</span></div>';
     if (D.copied && Date.now() - D.copied < 4000) h += '<div class="info">Skopiowane do schowka (' + D.copiedN + ' znaków): wklej w czacie.</div>';
     if (D.copyTxt) h += '<div class="info">Schowek zablokowany w tej przeglądarce: tekst jest zaznaczony niżej, zrób Ctrl+C (na telefonie: przytrzymaj → Kopiuj). <button data-a="dcpx">Zamknij</button><textarea class="cp" readonly>' + esc(D.copyTxt) + '</textarea></div>';
     // v1.42: pakiet HA (wersja + naprawa) tez tutaj
@@ -1020,9 +1056,17 @@ class HaKartaPompaCiepla extends HTMLElement {
       return '<span><b>' + esc(l.n) + ':</b> ' + (S && S.loaded ? this._espBadge(l, true) : '…') + (es ? ' <span class="ds">(' + (es.state === 'unavailable' ? 'niedostępne' : es.state.length + ' zn.') + ')</span>' : '') + '</span>';
     }).join('') + '</div></div>';
     // 2) pompa teraz
-    h += '<div class="sec"><div class="st2">Pompa teraz</div>' + this._schNowHtml(this._schLanes().find((x) => x.k === 'cwu'), esc) + this._schNowHtml(this._schLanes().find((x) => x.k === 'cyrk'), esc) + '</div>';
+    { // v1.44: powod decyzji automatu cyrkulacji, wymuszenie z karty, imitacja obecnosci
+      const pw = st['input_text.hp_cyrk_powod'], im = st['input_boolean.hp_imitacja_obecnosci'], wy = this._hwcWymus();
+      const imOn = im && im.state === 'on', imDo = imOn ? new Date(Date.parse(im.last_changed) + 30 * 60000) : null;
+      h += '<div class="sec"><div class="st2">Pompa teraz</div>' + this._schNowHtml(this._schLanes().find((x) => x.k === 'cwu'), esc) + this._schNowHtml(this._schLanes().find((x) => x.k === 'cyrk'), esc) +
+        '<div class="dl"><div><span>Automat cyrkulacji zdecydował</span>' + (pw ? '<b>' + esc(pw.state) + '</b>' : '<i>brak input_text.hp_cyrk_powod (pakiet 1.44)</i>') + '</div>' +
+        '<div><span>Wymuszenie z karty</span>' + (wy ? '<b class="bad">trwa do ' + new Date(wy * 1000).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) + '</b> (automat w tym czasie nic nie zmienia)' : 'nie') + '</div>' +
+        '<div><span>Imitacja: ktoś jest w domu</span>' + (im ? '<button class="tg' + (imOn ? ' on' : '') + '" data-a="dimit" title="Testowo: automat cyrkulacji uzna, że ktoś jest w domu"><i></i></button> <b class="' + (imOn ? 'bad' : '') + '">' + (imOn ? 'WŁĄCZONA, sama wyłączy się o ' + imDo.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' }) : 'wyłączona') + '</b>' : '<i>brak input_boolean.hp_imitacja_obecnosci (pakiet 1.44)</i>') + '</div></div></div>';
+    }
     // 3a) v1.42: zdarzenia ESP (pelna historia encji "Diagnostyka ESP")
-    const evE = (D.ev || []).filter((x) => x.entity_id === 'sensor.hydrolution_diagnostyka_esp'), evH = (D.ev || []).filter((x) => x.entity_id !== 'sensor.hydrolution_diagnostyka_esp');
+    const evA = (D.ev || []).filter((x) => !D.hideAt || x.when * 1000 >= D.hideAt);
+    const evE = evA.filter((x) => x.entity_id === 'sensor.hydrolution_diagnostyka_esp'), evH = evA.filter((x) => x.entity_id !== 'sensor.hydrolution_diagnostyka_esp');
     h += '<div class="sec"><div class="st2">Zdarzenia ESP (24 h, ' + evE.length + ')</div>' + (!dg ? '<div class="info">Brak encji „Diagnostyka ESP”: wgraj ESP v5.7.</div>' : !evE.length ? '<div class="info">' + (D.busy ? 'Wczytuję…' : 'Brak zdarzeń ESP w 24 h.') + '</div>' :
       '<div class="lg">' + evE.map((x) => '<div><span class="t">' + tm(x.when * 1000) + '</span><span class="' + (/NIE |ODRZUC|PELNA/.test(x.state || '') ? 'bad' : '') + '">' + esc(x.state || x.message || '') + '</span></div>').join('') + '</div>') + '</div>';
     // 3) dziennik HA
@@ -1038,14 +1082,14 @@ class HaKartaPompaCiepla extends HTMLElement {
     // 4) bledy HA
     h += '<div class="sec"><div class="st2">Błędy i ostrzeżenia HA (hydrolution / esphome / pakiet)</div>';
     if (D.sl === null || D.sl === undefined) h += '<div class="info">' + (hass.user && hass.user.is_admin ? (D.busy ? 'Wczytuję…' : 'Brak danych.') : 'Tylko dla administratora HA.') + '</div>';
-    else if (!D.sl.length) h += '<div class="info">Brak błędów związanych z pompą w dzienniku systemowym HA.</div>';
-    else h += '<div class="lg">' + D.sl.map((x) => '<div><span class="t">' + tm((x.timestamp || 0) * 1000) + '</span><span class="e ' + (x.level === 'ERROR' ? 'bad' : '') + '">' + esc(x.level) + (x.count > 1 ? ' ×' + x.count : '') + '</span><span>' + esc((x.message || []).join(' | ')) + '</span><span class="ds">' + esc(x.name) + '</span></div>').join('') + '</div>';
+    else if (!D.sl.filter((x) => !D.hideAt || (x.timestamp || 0) * 1000 >= D.hideAt).length) h += '<div class="info">Brak błędów związanych z pompą w dzienniku systemowym HA.</div>';
+    else h += '<div class="lg">' + D.sl.filter((x) => !D.hideAt || (x.timestamp || 0) * 1000 >= D.hideAt).map((x) => '<div><span class="t">' + tm((x.timestamp || 0) * 1000) + '</span><span class="e ' + (x.level === 'ERROR' ? 'bad' : '') + '">' + esc(x.level) + (x.count > 1 ? ' ×' + x.count : '') + '</span><span>' + esc((x.message || []).join(' | ')) + '</span><span class="ds">' + esc(x.name) + '</span></div>').join('') + '</div>';
     h += '</div>';
     // 5) log karty
-    const L = this._lg || [];
+    const L = (this._lg || []).filter((x) => !D.hideAt || x.t >= D.hideAt);
     h += '<div class="sec"><div class="st2">Log karty (ostatnie ' + L.length + ', w tej przeglądarce)</div>' +
       (L.length ? '<div class="lg">' + L.slice().reverse().map((x) => '<div><span class="t">' + tm(x.t) + '</span><span class="e ' + (/^BŁĄD/.test(x.r) ? 'bad' : '') + '">' + esc(x.r) + '</span><span>' + esc(x.k + ' ' + x.w) + '</span><span class="ds">' + esc(x.d) + '</span></div>').join('') + '</div>' : '<div class="info">Pusto: karta jeszcze nic nie zapisywała.</div>') +
-      '<div class="ft"><button data-a="dclr">Wyczyść log karty</button></div></div>';
+      '</div>';
     el.innerHTML = h;
     if (!el._bound) {
       el._bound = true;
@@ -1057,9 +1101,7 @@ class HaKartaPompaCiepla extends HTMLElement {
         else if (a === 'dclr') { this._lg = []; try { localStorage.removeItem('hkpc_log'); } catch (e) { /* brak */ } this._diaRender(true); }
         else if (a === 'dcopy') {
           // v1.42: caly tekst (wszystkie sekcje i linie, takze ukryte za przewijaniem); bez https / w apce: execCommand, a na koniec pole do recznego Ctrl+C
-          const was = D.all; el.classList.add('all');
-          const txt = 'Karta ' + VERSION + ' / pakiet ' + PKG_VER + ' / ' + new Date().toLocaleString('pl-PL') + '\n' + el.innerText;
-          el.classList.toggle('all', !!was);
+          const txt = this._diaText();
           const ok = () => { D.copied = Date.now(); D.copiedN = txt.length; D.copyTxt = null; this._diaRender(true); };
           const old = () => {
             try {
@@ -1073,6 +1115,20 @@ class HaKartaPompaCiepla extends HTMLElement {
           if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) navigator.clipboard.writeText(txt).then(ok, old); else old();
         }
         else if (a === 'dcpx') { D.copyTxt = null; this._diaRender(true); }
+        else if (a === 'dimit') { this._hass.callService('input_boolean', 'toggle', { entity_id: 'input_boolean.hp_imitacja_obecnosci' }); }
+        else if (a === 'dhide') { D.hideAt = Date.now(); try { localStorage.setItem('hkpc_dia_hide', String(D.hideAt)); } catch (e) { /* brak */ } this._diaRender(true); }
+        else if (a === 'dunhide') { D.hideAt = 0; try { localStorage.removeItem('hkpc_dia_hide'); } catch (e) { /* brak */ } this._diaRender(true); }
+        else if (a === 'dslclr') { if (window.confirm('Wyczyścić CAŁY dziennik błędów HA (wszystkie integracje, nie tylko pompa)?')) this._hass.callService('system_log', 'clear', {}).then(() => { D.at = 0; this._diaRender(true); }); }
+        else if (a === 'dtxt') {
+          const txt = this._diaText();
+          try {
+            const u = URL.createObjectURL(new Blob([txt], { type: 'text/plain;charset=utf-8' })), ln = document.createElement('a');
+            ln.href = u; ln.download = 'diagnostyka-' + this._diaStamp() + '.txt'; document.body.appendChild(ln); ln.click(); document.body.removeChild(ln); setTimeout(() => URL.revokeObjectURL(u), 5000);
+            D.saveMsg = 'Pobrany plik diagnostyka-' + this._diaStamp() + '.txt (folder Pobrane).';
+          } catch (e) { D.saveMsg = 'Pobieranie nie działa tutaj (' + this._errTxt(e) + '): użyj „Zapisz log w HA” albo „Kopiuj wszystko”.'; }
+          this._diaRender(true);
+        }
+        else if (a === 'dsave') this._diaSave();
         else if (a === 'dall') { D.all = !D.all; this._diaRender(true); }
         else if (a === 'pkfix') this._pkFix();
         else if (a === 'pkfixr') this._pkFixRestart();
