@@ -161,6 +161,19 @@ const V137_CSS = ('#sch .dn.dt{flex:0 0 5.6em;font-size:.9em;white-space:nowrap}
   '#nau .rgt{font-size:.8em;opacity:.75;font-weight:400;margin-left:.5em;padding:.1em .5em;border:1px solid rgba(110,193,255,.35);border-radius:10px}' +
   '#nau .rgt2{display:inline-flex;flex-wrap:wrap;align-items:center;gap:.25em;margin-left:.6em;font-size:.72em;font-weight:400;vertical-align:middle}#nau .rgt2 button{padding:.15em .5em;font-size:1em}#nau .rgt2 button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}' +
   '#nau .rgt2 input{height:1.9em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;padding:0 .3em;color-scheme:dark}#nau .rgt2 em{font-style:normal;opacity:.75;margin-left:.3em}';
+// v1.50: pasek daty nad mapa (przewija sie razem z ekranem) + zakladka Historia
+const HIS_CSS = '#db{display:flex;flex-wrap:wrap;align-items:center;gap:.45em;padding:.55em .9em;background:#0e1013;color:#eef2f6;font-family:' + FONT + ';font-size:14px;border-bottom:1px solid rgba(255,255,255,.08)}' +
+  '#db button{font:inherit;color:#eef2f6;cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(62,70,82,.85);border-radius:8px;padding:.4em 1em}#db button:hover{border-color:rgba(110,193,255,.8)}' +
+  '#db button.on{background:linear-gradient(180deg,#2b8cf2,#1260bf);border-color:#6ec1ff;font-weight:600}#db ha-icon{--mdc-icon-size:1.35em;color:#6ec1ff;margin-right:.2em}' +
+  '#db label{display:inline-flex;align-items:center;gap:.3em}#db input{height:2.1em;border-radius:6px;background:rgba(10,12,16,.85);border:1px solid rgba(110,193,255,.5);color:#fff;font:inherit;padding:0 .4em;color-scheme:dark}' +
+  '#db .dl{margin-left:auto;font-weight:600;opacity:.9;white-space:nowrap}#db .dl small{font-weight:400;opacity:.7;margin-left:.4em}' +
+  '#his{box-sizing:border-box;padding:12px;color:#eef2f6;font-family:' + FONT + ';font-size:13px;background:#0e1013}#his[hidden]{display:none}' +
+  '#his .kt{grid-template-columns:repeat(auto-fit,minmax(12em,1fr))}#his .k b.h{color:#ffa31a}#his .k b.e{color:#29b6f6}#his .k b.c{color:#7ee04a}#his .k b.w{color:#4fc3f7}#his .k b.y{color:#57e04a}' +
+  '#his .sh{border-radius:12px;padding:1.4em 1.6em;background:linear-gradient(180deg,rgba(42,48,58,.85),rgba(20,24,31,.9));border:1px solid rgba(255,255,255,.13);box-shadow:0 6px 18px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.07)}' +
+  '#his .sht{display:flex;flex-wrap:wrap;align-items:baseline;gap:.8em;font-size:1.45em;font-weight:600;margin-bottom:.9em}#his .sht small{font-size:.65em;font-weight:400;opacity:.7}' +
+  '#his .info{margin:0 0 1em;padding:.7em 1em;border-radius:8px;background:rgba(41,182,246,.12);border:1px solid rgba(41,182,246,.45)}' +
+  '#his svg text{font-family:inherit}#his .lg2{display:flex;gap:1.4em;margin:.2em 0 .4em;font-size:.95em}#his .lg2 i{display:inline-block;width:1em;height:.75em;border-radius:2px;margin-right:.4em;vertical-align:middle}';
+const HI_K = ['e_day', 'e_co', 'e_cwu', 'prad_dzis', 't_all', 't_co', 't_cwu', 'starts', 'cop'];   // kafle glownej karty liczone dla zakresu z paska daty
 const ELS = [
 __ELEMENTS__
 ];
@@ -200,8 +213,9 @@ class HaKartaPompaCiepla extends HTMLElement {
       '.el{position:absolute}.el.t{cursor:pointer}' + EXTRA.replace(':host { --u: calc(100cqw / 1672); }', '').replace(':host', '.el') + POP_CSS +
       NAU_CSS + POP_CSS.replace(/#sch\b/g, '#nau') + V135_CSS + V136_CSS + V137_CSS +
       NAU_CSS.replace(/#nau\b/g, '#dia') + POP_CSS.replace(/#sch\b/g, '#dia') + DIA_CSS +
-      '</style><ha-card><div id="fw"><div id="mw"><div id="c"><img alt="" src="' + img + '"></div></div>' +
-      '<div id="pk" hidden></div><div id="tb"><button data-t="sch">Harmonogram</button><button data-t="nau">Nauka</button><button data-t="dia">Diagnostyka</button></div><div id="sch"></div><div id="nau" hidden></div><div id="dia" hidden></div></div></ha-card>';
+      NAU_CSS.replace(/#nau\b/g, '#his') + HIS_CSS +
+      '</style><ha-card><div id="fw"><div id="db"></div><div id="mw"><div id="c"><img alt="" src="' + img + '"></div></div>' +
+      '<div id="pk" hidden></div><div id="tb"><button data-t="sch">Harmonogram</button><button data-t="his">Historia</button><button data-t="nau">Nauka</button><button data-t="dia">Diagnostyka</button></div><div id="sch"></div><div id="his" hidden></div><div id="nau" hidden></div><div id="dia" hidden></div></div></ha-card>';
     const c = root.getElementById('c');
     this._nodes = ELS.map((el) => {
       const d = document.createElement('div');
@@ -222,11 +236,17 @@ class HaKartaPompaCiepla extends HTMLElement {
     this._fw = root.getElementById('fw');
     this._nauEl = root.getElementById('nau');
     this._diaEl = root.getElementById('dia');
+    this._hisEl = root.getElementById('his');
+    this._dbEl = root.getElementById('db');
+    // v1.50: pasek daty (Dzis / Wczoraj / Ten tydzien / Ten miesiac / Kalendarz) - kafle glownej karty i zakladka Historia
+    this._dbEl.addEventListener('click', (ev) => this._drEv(ev));
+    this._dbEl.addEventListener('change', (ev) => this._drEv(ev));
+    this._drPaint();
     this._tbEl = root.getElementById('tb');
     this._pkEl = root.getElementById('pk');
     this._pkEl.addEventListener('click', () => this._tab('nau', true));
     this._nau = this._nau || { res: null, loading: false, at: 0, err: '', sig: '' };
-    let tab = 'sch'; try { const lt = localStorage.getItem('hkpc_tab'); tab = lt === 'nau' || lt === 'dia' ? lt : 'sch'; } catch (e) { /* brak */ }
+    let tab = 'sch'; try { const lt = localStorage.getItem('hkpc_tab'); tab = lt === 'nau' || lt === 'dia' || lt === 'his' ? lt : 'sch'; } catch (e) { /* brak */ }
     this._tbEl.addEventListener('click', (ev) => { const b = ev.target.closest && ev.target.closest('[data-t]'); if (b) this._tab(b.getAttribute('data-t'), true); });
     this._tab(tab);
     this._fit = () => {
@@ -237,7 +257,8 @@ class HaKartaPompaCiepla extends HTMLElement {
         const cr = card.getBoundingClientRect();
         if (cr.top >= 0 && cr.top < 260) this._top = cr.top;
         const top = this._config.ekran_gora !== undefined ? Number(this._config.ekran_gora) : (this._top !== undefined ? this._top : 64);
-        const mx = Math.max(480, (window.innerHeight - top - 6) * 1672 / 941);
+        const dbh = this._dbEl ? this._dbEl.getBoundingClientRect().height : 0;
+        const mx = Math.max(480, (window.innerHeight - top - dbh - 6) * 1672 / 941);
         fw.style.maxWidth = mx < cr.width ? Math.floor(mx) + 'px' : '';
       } else fw.style.maxWidth = '';
       const w = c.getBoundingClientRect().width;
@@ -245,6 +266,8 @@ class HaKartaPompaCiepla extends HTMLElement {
       const sw = this._schEl.getBoundingClientRect().width;
       if (sw) { this._schEl.style.fontSize = Math.max(11, Math.min(15, sw * 0.0105)) + 'px'; this._schEl.style.padding = Math.max(8, Math.min(30, sw * 0.02)) + 'px'; }
       const nw = (this._schEl.hidden ? this._nauEl : this._schEl).parentElement.getBoundingClientRect().width;
+      if (nw && this._hisEl) { this._hisEl.style.fontSize = Math.max(11, Math.min(15, nw * 0.0105)) + 'px'; this._hisEl.style.padding = Math.max(8, Math.min(30, nw * 0.02)) + 'px'; }
+      if (nw && this._dbEl) this._dbEl.style.fontSize = Math.max(11, Math.min(15, nw * 0.0105)) + 'px';
       if (nw && this._diaEl) { this._diaEl.style.fontSize = Math.max(11, Math.min(15, nw * 0.0105)) + 'px'; this._diaEl.style.padding = Math.max(8, Math.min(30, nw * 0.02)) + 'px'; }
       if (nw) { [this._nauEl, this._tbEl].forEach((x) => { x.style.fontSize = Math.max(11, Math.min(15, nw * 0.0105)) + 'px'; }); this._nauEl.style.padding = Math.max(8, Math.min(30, nw * 0.02)) + 'px'; this._tbEl.style.paddingLeft = this._tbEl.style.paddingRight = Math.max(8, Math.min(30, nw * 0.02)) + 'px'; }
     };
@@ -271,15 +294,26 @@ class HaKartaPompaCiepla extends HTMLElement {
     const ce = this._config.entities || {};
     if (!ce.prad) { try { const sel = this._enEnt(), u = sel ? this._enUnit(sel) : ''; E.prad = sel && /^(W|kW)$/.test(u) ? sel : st[DEFAULT_E.prad] ? DEFAULT_E.prad : 'sensor.hp_moc_elektryczna'; } catch (e) { E.prad = DEFAULT_E.prad; } }
     if (!ce.e_cwu) E.e_cwu = st['sensor.hp_cieplo_cwu_dzis_razem'] ? 'sensor.hp_cieplo_cwu_dzis_razem' : DEFAULT_E.e_cwu;
+    // v1.50: zakres z paska daty inny niz "Dzis" -> kafle ciepla, pradu, CWU, COP, czasow pracy i startow licza sume zakresu
+    this._drPaint();
+    const DR = this._drGet(), drOn = !(DR.k === 'd' && !(DR.off || 0));
+    let stR = st, rk = '', L = '';
+    if (drOn) {
+      const S = this._hiGet(), T = S && S.d && !S.d.err ? this._hiTot(S.d) : null;
+      stR = this._hiSt(st, T); L = this._drL();
+      rk = '#R' + (S ? S.key + ':' + (S.at || 0) + ':' + (S.busy ? 1 : 0) : '') + (T ? ':' + JSON.stringify(T.tot) : '');
+    }
     ELS.forEach((el, i) => {
-      const sig = el.keys.map((k) => { const s = st[E[k]]; return s ? s.state : '?'; }).join('|') + (el.hist ? '#' + this._histAt : '');
+      const hi = drOn && el.keys.some((k) => HI_K.indexOf(k) >= 0), sx = hi ? stR : st;
+      const sig = el.keys.map((k) => { const s = sx[E[k]]; return s ? s.state : '?'; }).join('|') + (el.hist ? '#' + this._histAt : '') + (hi ? rk : '');
       if (!force && this._nodes[i]._sig === sig) return;
       this._nodes[i]._sig = sig;
       let h = '';
-      try { h = el.fn(st, el.ent ? st[E[el.ent]] : undefined, E, this._hist); }
+      try { h = el.fn(sx, el.ent ? sx[E[el.ent]] : undefined, E, this._hist); if (hi) h = h.replace(' (dziś)', '').replace(/dziś/g, L).replace('chwil.', L); }
       catch (e) { h = ''; console.warn('ha-karta-pompa-ciepla', e); }
       this._nodes[i].innerHTML = h;
     });
+    if (this._tabCur === 'his' && (!this._hisAt || Date.now() - this._hisAt > 30000)) this._hisRender();
     this._checkPend();
     if (this._pop && this._pop._upd) this._pop._upd();
     this._pkBar();
@@ -937,13 +971,14 @@ class HaKartaPompaCiepla extends HTMLElement {
   }
   _tab(t, user) {
     if (!this._schEl || !this._nauEl) return;
-    this._tabCur = t === 'nau' || t === 'dia' ? t : 'sch';
+    this._tabCur = t === 'nau' || t === 'dia' || t === 'his' ? t : 'sch';
     this._schEl.hidden = this._tabCur !== 'sch';
+    if (this._hisEl) this._hisEl.hidden = this._tabCur !== 'his';
     this._nauEl.hidden = this._tabCur !== 'nau';
     if (this._diaEl) this._diaEl.hidden = this._tabCur !== 'dia';
     this._tbEl.querySelectorAll('[data-t]').forEach((b) => b.classList.toggle('on', b.getAttribute('data-t') === this._tabCur));
     if (user) { try { localStorage.setItem('hkpc_tab', this._tabCur); } catch (e) { /* brak */ } }
-    if (this._tabCur === 'nau') { this._nauRender(); this._nauTick(); } else if (this._tabCur === 'dia') this._diaRender(true); else if (this._hass) this._schRender();
+    if (this._tabCur === 'nau') { this._nauRender(); this._nauTick(); } else if (this._tabCur === 'dia') this._diaRender(true); else if (this._tabCur === 'his') this._hisRender(); else if (this._hass) this._schRender();
     if (this._fit) setTimeout(this._fit, 0);
   }
 
@@ -3246,6 +3281,201 @@ class HaKartaPompaCiepla extends HTMLElement {
       const v = Math.min(Number(s.attributes.max), Math.max(Number(s.attributes.min), Number(s.state) + t.d));
       hass.callService('number', 'set_value', { entity_id: E[t.k], value: v });
     }
+  }
+
+  // ====================== v1.50: PASEK DATY + HISTORIA ======================
+  // Zakres: Dzis, Wczoraj, Ten tydzien, Ten miesiac, Kalendarz (od-do). Wspolny dla kafli glownej karty i zakladki Historia.
+  _drGet() {
+    if (!this._dr) { let r = null; try { r = JSON.parse(localStorage.getItem('hkpc_drng') || 'null'); } catch (e) { r = null; } this._dr = r && r.k ? r : { k: 'd', off: 0 }; }
+    return this._dr;
+  }
+  _drDays() {
+    const r = this._drGet(), t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const add = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+    let a, n;
+    if (r.k === 'w') { a = add(t0, -((t0.getDay() + 6) % 7)); n = 7; }
+    else if (r.k === 'm') { a = new Date(t0.getFullYear(), t0.getMonth(), 1); n = new Date(a.getFullYear(), a.getMonth() + 1, 0).getDate(); }
+    else if (r.k === 'cal' && r.f && r.t) {
+      a = new Date(r.f + 'T00:00:00'); let b = new Date(r.t + 'T00:00:00');
+      if (isNaN(a) || isNaN(b)) { a = t0; n = 1; } else { if (b < a) { const x = a; a = b; b = x; } n = Math.max(1, Math.min(366, Math.round((b - a) / 864e5) + 1)); }
+    } else { a = add(t0, r.off || 0); n = 1; }
+    const days = []; for (let i = 0; i < n; i++) days.push(add(a, i));
+    return { days, from: days[0].getTime(), to: add(days[days.length - 1], 1).getTime() };
+  }
+  _drL() {
+    // dopisek w kaflach zamiast "dziś"
+    const r = this._drGet();
+    return r.k === 'd' ? ((r.off || 0) === -1 ? 'wczoraj' : 'dzień') : r.k === 'w' ? 'tydz.' : r.k === 'm' ? 'mies.' : 'zakres';
+  }
+  _drTxt() {
+    const R = this._drDays(), f = R.days[0], l = R.days[R.days.length - 1];
+    const fd = (d) => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+    const DN = ['niedziela', 'poniedziałek', 'wtorek', 'środa', 'czwartek', 'piątek', 'sobota'];
+    return R.days.length === 1 ? DN[f.getDay()] + ', ' + fd(f) : fd(f) + ' – ' + fd(l) + ' (' + R.days.length + ' dni)';
+  }
+  _drHtml() {
+    const r = this._drGet(), R = this._drDays();
+    const b = (k, off, txt) => '<button data-a="dr" data-k="' + k + '" data-o="' + off + '" class="' + (r.k === k && (r.off || 0) === off ? 'on' : '') + '">' + txt + '</button>';
+    return '<ha-icon icon="mdi:calendar-month"></ha-icon>' + b('d', 0, 'Dziś') + b('d', -1, 'Wczoraj') + b('w', 0, 'Ten tydzień') + b('m', 0, 'Ten miesiąc') +
+      '<button data-a="dr" data-k="cal" data-o="0" class="' + (r.k === 'cal' ? 'on' : '') + '">Kalendarz</button>' +
+      (r.k === 'cal' ? '<label>od <input type="date" data-a="drf" value="' + (r.f || this._rngIso(R.days[0])) + '"></label><label>do <input type="date" data-a="drt" value="' + (r.t || this._rngIso(R.days[R.days.length - 1])) + '"></label>' : '') +
+      '<span class="dl">' + this._drTxt() + '</span>';
+  }
+  _drPaint() {
+    if (!this._dbEl) return;
+    const h = this._drHtml();
+    if (this._dbH !== h) { this._dbH = h; this._dbEl.innerHTML = h; if (this._fit) setTimeout(this._fit, 0); }
+  }
+  _drEv(ev) {
+    const t = ev.target && ev.target.closest ? ev.target.closest('[data-a^="dr"]') : null; if (!t) return;
+    const a = t.getAttribute('data-a'), r = Object.assign({}, this._drGet());
+    if (ev.type === 'click' && a === 'dr') {
+      r.k = t.getAttribute('data-k'); r.off = Number(t.getAttribute('data-o')) || 0;
+      if (r.k === 'cal' && !(r.f && r.t)) { const d = new Date(); r.t = this._rngIso(d); d.setDate(d.getDate() - 6); r.f = this._rngIso(d); }
+    } else if (ev.type === 'change' && (a === 'drf' || a === 'drt')) { if (!t.value) return; r[a === 'drf' ? 'f' : 't'] = t.value; }
+    else return;
+    ev.stopPropagation();
+    this._dr = r; try { localStorage.setItem('hkpc_drng', JSON.stringify(r)); } catch (e) { /* brak */ }
+    this._drPaint(); this._render(true);
+    if (this._tabCur === 'his') this._hisRender();
+  }
+  // dane zakresu: statystyki HA (godzinowe przy 1-2 dniach, dzienne dla dluzszych) + cykle CWU
+  _hiGet() {
+    if (!this._hass) return null;
+    const R = this._drDays(), now = Date.now(), st = this._hass.states;
+    const key = R.from + ':' + R.to + ':' + ((st['input_text.hp_energia_kwh_encja'] || {}).state || '');
+    const c = this._hi;
+    if (c && c.key === key && (c.busy || now - c.at < (R.to > now ? 300000 : 3600000))) return c;
+    const ent = { key, busy: true, at: now, d: c && c.key === key ? c.d : null };
+    this._hi = ent;
+    this._hiLoad(R).then((d) => { ent.d = d; }).catch((e) => { ent.d = { err: String(e && (e.message || e.code) || e), R }; })
+      .then(() => { ent.busy = false; ent.at = Date.now(); if (this._hi === ent) { this._render(false); if (this._tabCur === 'his') this._hisRender(); } });
+    return ent;
+  }
+  async _hiLoad(R) {
+    const hass = this._hass, st = hass.states, E = this._E, now = Date.now(), end = Math.min(R.to, now);
+    const out = { R, per: R.days.length <= 2 ? 'hour' : 'day', b: {}, cyc: { starts: [], on: 0 }, src: {} };
+    if (R.from >= now) return out;
+    const kw = this._enKwh(), kwDiv = /^wh$/i.test(kw ? this._enUnit(kw) : '') ? 1000 : 1;
+    const I = { hc: 'sensor.hp_cieplo_calka', wc: 'sensor.hp_cieplo_cwu_calka', pc: 'sensor.hp_prad_calka', hm: 'sensor.hp_cieplo_co_dzis', wm: 'sensor.hp_cieplo_cwu_dzis', s: 'sensor.hp_starty_dzis',
+      hs: 'sensor.hp_hist_sprezarka', ws: 'sensor.hp_hist_cwu_praca', cs: 'sensor.hp_hist_cyrkulacja_praca', hp: 'sensor.hp_moc_grzewcza', wp: 'sensor.hp_moc_grzewcza_cwu', ep: 'sensor.hp_moc_elektryczna_wybrana',
+      ta: E.t_all, tc: E.t_co, tw: E.t_cwu, kw };
+    const ids = Object.values(I).filter((i, k, a) => i && st[i] && a.indexOf(i) === k);
+    const r = ids.length ? ((await hass.callWS({ type: 'recorder/statistics_during_period', start_time: new Date(R.from).toISOString(), end_time: new Date(end).toISOString(), statistic_ids: ids, period: out.per, types: ['mean', 'change', 'max'] })) || {}) : {};
+    const T0 = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
+    const hrs = (t) => { if (out.per === 'hour') return 1; if (t >= T0) return Math.max(0, Math.floor((now - T0) / 36e5)); const d = new Date(t); d.setDate(d.getDate() + 1); return Math.round((d - t) / 36e5); };
+    const ser = (id, f) => { const o = {}; ((id && r[id]) || []).forEach((x) => { const t = typeof x.start === 'number' ? x.start : Date.parse(x.start); const v = f(x); if (isFinite(t) && v !== null && v !== undefined && isFinite(v)) o[t] = v; }); return o; };
+    const ch = (id, d) => ser(id, (x) => (x.change === null || x.change === undefined ? null : Math.max(0, x.change / (d || 1))));
+    const mn = (id, k) => ser(id, (x) => (x.mean === null || x.mean === undefined ? null : x.mean * k * hrs(typeof x.start === 'number' ? x.start : Date.parse(x.start))));
+    const mx = (id) => ser(id, (x) => (x.max === null || x.max === undefined ? null : x.max));
+    const n = (o) => Object.keys(o).length, sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+    // cieplo: liczniki z pompy, gdy cos nabily (jak sensor.hp_cieplo_dzis), inaczej calka z mocy grzewczej, bez niej srednia moc x czas
+    const hm = ch(I.hm), wm = ch(I.wm), hc = ch(I.hc), m = {};
+    Object.keys(hm).forEach((t) => { m[t] = hm[t] + (wm[t] || 0); });
+    let heat, cwu;
+    if (n(m) && (sum(m) > 0.05 || sum(hc) < 0.3)) { heat = m; cwu = wm; out.src.heat = 'liczniki ciepła z pompy'; }
+    else if (n(hc)) { heat = hc; cwu = ch(I.wc); out.src.heat = 'całka z mocy grzewczej'; }
+    else { heat = mn(I.hp, 1); cwu = mn(I.wp, 1); out.src.heat = 'średnia moc grzewcza × czas'; }
+    let prad;
+    if (kw && n(ch(kw, kwDiv))) { prad = ch(kw, kwDiv); out.src.prad = 'licznik ' + ((st[kw].attributes || {}).friendly_name || kw); }
+    else if (n(ch(I.pc))) { prad = ch(I.pc); out.src.prad = 'całka z mocy elektrycznej'; }
+    else { prad = mn(I.ep, 1); out.src.prad = 'średnia moc elektryczna × czas'; }
+    // czasy pracy: dziennie z liczników "czas pracy dziś" (maks. dnia), godzinowo z czujników historii (0/100 %)
+    const dmx = (id, alt) => { const o = out.per === 'day' ? mx(id) : {}; return n(o) ? o : alt; };
+    const comp = dmx(I.ta, mn(I.hs, 0.01)), cwuh = dmx(I.tw, mn(I.ws, 0.01));
+    let co = dmx(I.tc, null);
+    if (!co) { co = {}; Object.keys(comp).forEach((t) => { co[t] = Math.max(0, comp[t] - (cwuh[t] || 0)); }); }
+    const cyrk = mn(I.cs, 0.01);
+    let starts = ch(I.s); if (!n(starts) && out.per === 'day') starts = mx(I.s);
+    const F = { heat, cwu, prad, comp, co, cwuh, cyrk, starts };
+    Object.keys(F).forEach((k) => Object.keys(F[k]).forEach((t) => { (out.b[t] = out.b[t] || {})[k] = F[k][t]; }));
+    // cykle grzania CWU: ostatnie 10 dni z historii stanow, starsze z godzinowych statystyk (godzina z praca po godzinie bez = nowe grzanie)
+    const LIM = now - 10 * 864e5, cid = st['binary_sensor.hp_sprezarka_cwu'] ? 'binary_sensor.hp_sprezarka_cwu' : (st[I.ws] ? I.ws : '');
+    const on = (v) => v === 'on' || parseFloat(v) >= 50;
+    if (R.from < Math.min(LIM, end) && st[I.ws]) {
+      const q = (await hass.callWS({ type: 'recorder/statistics_during_period', start_time: new Date(R.from).toISOString(), end_time: new Date(Math.min(LIM, end)).toISOString(), statistic_ids: [I.ws], period: 'hour', types: ['mean'] })) || {};
+      let pv = false; (q[I.ws] || []).forEach((x) => { const t = typeof x.start === 'number' ? x.start : Date.parse(x.start); const v = (x.mean || 0) > 0; if (v && !pv) out.cyc.starts.push(t); pv = v; });
+    }
+    const hF = Math.max(R.from, LIM);
+    if (cid && hF < end) {
+      const h = (await hass.callApi('GET', 'history/period/' + new Date(hF).toISOString() + '?filter_entity_id=' + cid + '&end_time=' + encodeURIComponent(new Date(end).toISOString()) + '&minimal_response&no_attributes')) || [];
+      let pv = null; ((h[0]) || []).forEach((p) => { const t = Date.parse(p.last_changed || p.last_updated); if (isNaN(t)) return; const v = on(p.state); if (v && pv === false) out.cyc.starts.push(t); if (v && pv === null) out.cyc.on = 1; pv = v; });
+      if (out.cyc.on) out.cyc.starts.unshift(hF);   // grzalo juz na poczatku zakresu
+    }
+    return out;
+  }
+  // sumy dzienne i calego zakresu; dzisiejszy dzien z encji "dziś" na zywo (dokladniej niz pelne godziny ze statystyk)
+  _hiTot(D) {
+    const st = this._hass.states, E = this._E, days = {}, K = ['heat', 'cwu', 'prad', 'comp', 'co', 'cwuh', 'cyrk', 'starts'];
+    const dk = (t) => { const d = new Date(Number(t)); d.setHours(0, 0, 0, 0); return d.getTime(); };
+    Object.keys(D.b || {}).forEach((t) => { const k = dk(t), o = days[k] = days[k] || {}; K.forEach((f) => { if (D.b[t][f] !== undefined) o[f] = (o[f] || 0) + D.b[t][f]; }); });
+    const T0 = dk(Date.now()), R = D.R;
+    if (R && T0 >= R.from && T0 < R.to) {
+      const lv = (id) => { const s = id && st[id]; const v = s ? parseFloat(s.state) : NaN; return isFinite(v) ? v : null; };
+      const o = days[T0] = days[T0] || {};
+      [['heat', E.e_day], ['cwu', E.e_cwu], ['prad', E.prad_dzis], ['comp', E.t_all], ['co', E.t_co], ['cwuh', E.t_cwu], ['starts', E.starts]].forEach(([f, id]) => { const v = lv(id); if (v !== null) o[f] = v; });
+    }
+    const tot = {}; K.forEach((f) => { let s = null; Object.keys(days).forEach((k) => { if (days[k][f] !== undefined) s = (s || 0) + days[k][f]; }); tot[f] = s; });
+    return { days, tot };
+  }
+  _hiSt(st, T) {
+    // podstawione stany encji "dziś" dla kafli glownej karty (bez danych: "–")
+    const E = this._E, o = Object.create(st), t = T ? T.tot : {};
+    const put = (k, v, d) => { const id = E[k]; if (!id) return; const s = st[id]; o[id] = { entity_id: id, state: v === null || v === undefined || !isFinite(v) ? 'unknown' : v.toFixed(d), attributes: (s && s.attributes) || {} }; };
+    put('e_day', t.heat, 2); put('e_cwu', t.cwu, 2); put('e_co', t.heat !== null && t.heat !== undefined ? Math.max(0, t.heat - (t.cwu || 0)) : null, 2);
+    put('prad_dzis', t.prad, 2); put('t_all', t.comp, 3); put('t_co', t.co, 3); put('t_cwu', t.cwuh, 3); put('starts', t.starts, 0);
+    put('cop', t.prad > 0.05 && t.heat !== null ? t.heat / t.prad : null, 2);
+    return o;
+  }
+  _hisRender() {
+    const el = this._hisEl; if (!el || !this._hass || this._tabCur !== 'his') return;
+    this._hisAt = Date.now();
+    const R = this._drDays(), S = this._hiGet(), D = S && S.d;
+    const dur = (h) => { if (h === null || h === undefined || !isFinite(h)) return '–'; const m = Math.round(h * 60); return m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min'; };
+    const kwh = (v) => (v === null || v === undefined || !isFinite(v) ? '–' : v.toFixed(v < 100 ? 1 : 0) + ' kWh');
+    const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let h = '<div class="sh"><div class="sht">Historia<small>zakres z paska daty nad mapą: ' + esc(this._drTxt()) + '</small></div>';
+    if (R.from > Date.now()) { el.innerHTML = h + '<div class="info">Zakres w przyszłości: nie ma jeszcze danych.</div></div>'; return; }
+    if (!D) { el.innerHTML = h + '<div class="info">Liczę z historii HA…</div></div>'; return; }
+    if (D.err) { el.innerHTML = h + '<div class="info">Nie udało się pobrać statystyk HA: ' + esc(D.err) + '</div></div>'; return; }
+    const T = this._hiTot(D), t = T.tot, now = Date.now(), hourly = D.per === 'hour';
+    // (1) wykres: cieplo vs prad (kWh na godzine albo na dzien)
+    const keys = hourly ? (() => { const a = []; for (let x = R.from; x < R.to; x += 36e5) a.push(x); return a; })() : R.days.map((d) => d.getTime());
+    const val = (k, f) => { const o = hourly ? D.b[k] : T.days[k]; return o && o[f] !== undefined ? o[f] : null; };
+    const mxv = Math.max(0.5, ...keys.map((k) => Math.max(val(k, 'heat') || 0, val(k, 'prad') || 0)));
+    const X0 = 48, X1 = 592, Y0 = 14, Y1 = 176, bw = (X1 - X0) / keys.length, sy = (v) => Y1 - v / mxv * (Y1 - Y0);
+    let g = '';
+    const step = mxv <= 2 ? 0.5 : mxv <= 5 ? 1 : mxv <= 10 ? 2 : mxv <= 25 ? 5 : mxv <= 60 ? 10 : mxv <= 150 ? 25 : 50;
+    for (let v = 0; v <= mxv + 1e-9; v += step) g += '<line x1="' + X0 + '" y1="' + sy(v).toFixed(1) + '" x2="' + X1 + '" y2="' + sy(v).toFixed(1) + '" stroke="rgba(255,255,255,.08)"/><text x="' + (X0 - 6) + '" y="' + (sy(v) + 4).toFixed(1) + '" text-anchor="end">' + (step < 1 ? v.toFixed(1) : v) + '</text>';
+    const DN = ['nd', 'pn', 'wt', 'śr', 'cz', 'pt', 'sb'], every = hourly ? 3 : Math.max(1, Math.ceil(keys.length / 12));
+    let bars = '';
+    keys.forEach((k, i) => {
+      const x = X0 + i * bw, d = new Date(k), hv = val(k, 'heat'), ev = val(k, 'prad');
+      if (hv) bars += '<rect x="' + (x + bw * 0.1).toFixed(1) + '" y="' + sy(hv).toFixed(1) + '" width="' + (bw * 0.38).toFixed(1) + '" height="' + (Y1 - sy(hv)).toFixed(1) + '" rx="1.5" fill="#ff9100"><title>ciepło ' + hv.toFixed(2) + ' kWh</title></rect>';
+      if (ev) bars += '<rect x="' + (x + bw * 0.52).toFixed(1) + '" y="' + sy(ev).toFixed(1) + '" width="' + (bw * 0.38).toFixed(1) + '" height="' + (Y1 - sy(ev)).toFixed(1) + '" rx="1.5" fill="#29b6f6"><title>prąd ' + ev.toFixed(2) + ' kWh</title></rect>';
+      if (i % every === 0) g += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (Y1 + 15) + '" text-anchor="middle">' + (hourly ? String(d.getHours()).padStart(2, '0') + (R.days.length > 1 && d.getHours() === 0 ? ' ' + d.getDate() + '.' + (d.getMonth() + 1) : '') : (keys.length <= 7 ? DN[d.getDay()] + ' ' : '') + d.getDate() + '.' + (d.getMonth() + 1)) + '</text>';
+    });
+    const nowX = R.from <= now && now < R.to ? X0 + (now - R.from) / (R.to - R.from) * (X1 - X0) : null;
+    h += '<div class="st2">Ciepło i prąd pobrany (' + (hourly ? 'kWh na godzinę' : 'kWh na dzień') + ')</div>' +
+      '<div class="lg2"><span><i style="background:#ff9100"></i>Ciepło oddane</span><span><i style="background:#29b6f6"></i>Prąd pobrany</span></div>' +
+      '<svg viewBox="0 0 600 196" style="width:100%;max-width:70em;height:auto;display:block"><g font-size="11" fill="#c8d0da">' + g + '</g>' + bars +
+      (nowX !== null ? '<line x1="' + nowX.toFixed(1) + '" y1="' + Y0 + '" x2="' + nowX.toFixed(1) + '" y2="' + Y1 + '" stroke="rgba(255,255,255,.35)" stroke-dasharray="3 3"/>' : '') + '</svg>';
+    const cop = t.prad > 0.05 && t.heat !== null ? t.heat / t.prad : null;
+    h += '<div class="kt" style="margin-top:.8em">' +
+      '<div class="k"><span>Ciepło oddane</span><b class="h">' + kwh(t.heat) + '</b><i>' + esc(D.src.heat || '') + '</i></div>' +
+      '<div class="k"><span>Prąd pobrany</span><b class="e">' + kwh(t.prad) + '</b><i>' + esc(D.src.prad || '') + '</i></div>' +
+      '<div class="k"><span>COP w zakresie</span><b class="c">' + (cop === null ? '–' : cop.toFixed(2)) + '</b><i>ciepło / prąd</i></div></div>';
+    // (2) CWU i cyrkulacja
+    const S2 = D.cyc.starts.filter((x) => x >= R.from && x < R.to).sort((a, b) => a - b), N = S2.length;
+    const co = N >= 2 ? (S2[N - 1] - S2[0]) / (N - 1) / 36e5 : null;
+    const fdt = (x) => { const d = new Date(x); return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+    h += '<div class="sec"><div class="st2">CWU i cyrkulacja</div><div class="kt">' +
+      '<div class="k"><span>Czas pracy CWU</span><b class="w">' + dur(t.cwuh) + '</b><i>sprężarka grzała wodę</i></div>' +
+      '<div class="k"><span>Grzań CWU</span><b class="w">' + N + '</b><i>' + (N ? 'ostatnie: ' + fdt(S2[N - 1]) : 'brak w zakresie') + '</i></div>' +
+      '<div class="k"><span>CWU co ile</span><b class="w">' + (co === null ? '–' : (co < 1 ? Math.round(co * 60) + ' min' : 'co ' + co.toFixed(1).replace('.', ',') + ' h')) + '</b><i>średni odstęp między startami grzania</i></div>' +
+      '<div class="k"><span>Średnie grzanie CWU</span><b class="w">' + (N && t.cwuh !== null ? dur(t.cwuh / N) : '–') + '</b><i>czas pracy CWU / liczba grzań</i></div>' +
+      '<div class="k"><span>Cyrkulacja CWU</span><b class="y">' + dur(t.cyrk) + '</b><i>włączona (czas pracy &gt; 1 min)</i></div></div></div>';
+    el.innerHTML = h + '</div>';
   }
 
   async _maybeHistory() {
