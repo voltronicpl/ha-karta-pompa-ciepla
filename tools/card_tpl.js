@@ -1198,7 +1198,7 @@ class HaKartaPompaCiepla extends HTMLElement {
   // Konfiguracja (opcjonalna) w karcie:
   //   nauka:
   //     t_dom: [sensor.salon_temperatura]   # czujniki temperatury w domu (domyslnie wykrywane po nazwie)
-  //     cel: 21.5                           # docelowa temp. w domu (domyslnie mediana z historii)
+  //     cel: 21.5                           # docelowa temp. w domu (domyslnie 21, v1.52)
   //     osoby: [person.misiek]              # obecnosc (domyslnie wszystkie person.*)
   //     aktywnosc: [light.salon]            # aktywnosc do wykrywania snu (domyslnie light.*, media_player.*, ladowanie telefonow)
   //     dni_krzywa: 60                      # max dni historii do krzywej (max 92)
@@ -1442,8 +1442,11 @@ class HaKartaPompaCiepla extends HTMLElement {
           (ps[id] || []).forEach(([t, v]) => { const h = Math.floor(t / 36e5) * 36e5; if (h > now) return; W[h] = W[h] || { t: h }; W[h][k] = v * f; });
         });
       }
-      N.cargs = [stats, tin, W, now - dk * 864e5];
-      res.curve = this._nauCurve(stats, tin, W, now - dk * 864e5);
+      // v1.52: historia przesuniecia krzywej (godziny z obnizeniem / inna krzywa pomijam w ocenie)
+      let offH = null;
+      try { offH = await this._nauStepH(E.offset, now - dk * 864e5); } catch (e) { offH = null; }
+      N.cargs = [stats, tin, W, now - dk * 864e5, offH];
+      res.curve = this._nauCurve(stats, tin, W, now - dk * 864e5, offH);
     } catch (e) { res.errs.push('Krzywa: ' + (e && e.message || e)); }
     try {
       const dc = Math.max(3, Math.min(60, Number(c.dni_cyrkulacja) || 28));
@@ -1471,7 +1474,27 @@ class HaKartaPompaCiepla extends HTMLElement {
     }
     return M.map((r) => r[n]);
   }
-  _nauCurve(stats, tin, W, startMs) {
+  // v1.52: stan encji (np. przesuniecie krzywej) godzina po godzinie: { h: [min, max] } z wartosci obowiazujacych w tej godzinie
+  async _nauStepH(id, startMs) {
+    if (!id || !this._hass.states[id]) return null;
+    const now = Date.now();
+    const r = await this._hass.callApi('GET', 'history/period/' + new Date(startMs).toISOString() + '?filter_entity_id=' + id +
+      '&end_time=' + encodeURIComponent(new Date(now).toISOString()) + '&minimal_response&no_attributes');
+    const pts = ((r && r[0]) || []).map((p) => [Date.parse(p.last_changed || p.last_updated), parseFloat(p.state)]).filter((p) => !isNaN(p[0])).sort((a, b) => a[0] - b[0]);
+    if (!pts.length) return null;
+    const out = {};
+    let j = 0;
+    for (let h = Math.floor(Math.max(startMs, pts[0][0]) / 36e5) * 36e5; h <= now; h += 36e5) {
+      while (j + 1 < pts.length && pts[j + 1][0] <= h) j++;
+      const vs = [];
+      if (pts[j][0] <= h) vs.push(pts[j][1]);
+      for (let k = j + 1; k < pts.length && pts[k][0] < h + 36e5; k++) vs.push(pts[k][1]);
+      const ok = vs.filter((v) => isFinite(v));
+      if (ok.length) out[h] = [Math.min(...ok), Math.max(...ok)];
+    }
+    return out;
+  }
+  _nauCurve(stats, tin, W, startMs, offH) {
     const E = this._E, st = this._hass.states, c = this._nauCfg();
     const T = [-30, -20, -10, 0, 10, 20, 30];
     const num = (k) => { const s = st[E[k]]; const v = s ? parseFloat(s.state) : NaN; return isNaN(v) ? null : v; };
@@ -1490,26 +1513,41 @@ class HaKartaPompaCiepla extends HTMLElement {
     const btNow = num('bt1'); if (btNow !== null) toutH[Math.floor(Date.now() / 36e5) * 36e5] = btNow;
     const outDays = new Set(Object.keys(toutH).filter((h) => h >= startMs).map((h) => new Date(Number(h)).toDateString()));
     Object.keys(W).forEach((h) => { if (h >= startMs && h <= Date.now()) outDays.add(new Date(Number(h)).toDateString()); });
+    // v1.52: przesuniecie "normalne" (poza oknem) = najczestsze w godzinach 8-22; godziny z innym (obnizenie, inna krzywa) pomijam
+    let offRef = off;
+    if (offH) {
+      const cnt = {};
+      Object.keys(offH).forEach((h) => { const hr = new Date(Number(h)).getHours(); if (hr < 8 || hr > 21) return; const [a, b] = offH[h]; if (a === b) cnt[a] = (cnt[a] || 0) + 1; });
+      const ks = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a] || Number(b) - Number(a));   // remis: wyzsze (obnizenie jest nizsze)
+      if (ks.length) offRef = Number(ks[0]);
+      const dzS = st['input_number.hp_dzien_przesuniecie'], dzV = dzS ? parseFloat(dzS.state) : NaN;   // "poza oknem" z pakietu, jesli dosc czesto
+      if (ks.length && isFinite(dzV) && (cnt[dzV] || 0) >= 0.25 * cnt[ks[0]]) offRef = dzV;
+    }
+    const nowMs = Date.now();
+    // v1.52: swieze dni waza wiecej (polowa wagi co 5 dni, min. 5 %), zeby to co jest teraz w domu nie ginelo w 60 dniach historii
+    const wAge = (h) => Math.max(0.05, Math.pow(0.5, (nowMs - h) / 864e5 / 5));
     const S = [];
+    let skipOff = 0;
     Object.keys(tinH).forEach((h) => {
       h = Number(h); if (h < startMs) return;
       const hr = new Date(h).getHours(); if (hr < 8 || hr > 21) return;    // noc pomijam (obnizenie nocne psuje obraz)
+      if (offH && offH[h] && (Math.abs(offH[h][0] - offRef) >= 0.5 || Math.abs(offH[h][1] - offRef) >= 0.5)) { skipOff++; return; }
       const w = W[h] || {};
       const meas = toutH[h] !== undefined;
       const to = meas ? toutH[h] : w.temp;
       if (to === undefined || to === null) return;
       const ti = tinH[h].reduce((a, x) => a + x, 0) / tinH[h].length;
-      S.push({ h, to, ti, meas, sun: isFinite(w.sun) ? w.sun : null, wind: isFinite(w.wind) ? w.wind : null });
+      S.push({ h, to, ti, meas, sun: isFinite(w.sun) ? w.sun : null, wind: isFinite(w.wind) ? w.wind : null, wt: wAge(h) });
     });
     const dayCnt = {}; S.forEach((s) => { const d = new Date(s.h).toDateString(); dayCnt[d] = (dayCnt[d] || 0) + 1; });
     const days = Object.keys(dayCnt).filter((d) => dayCnt[d] >= 4).length;
-    const med = (a) => { const b = a.slice().sort((x, y) => x - y); return b.length ? b[Math.floor(b.length / 2)] : null; };
     const own = this._nau && this._nau.src && Number(this._nau.src.cel);
     let target = Number(c.cel);
     let tsrc = 'ustawiony w konfiguracji karty';
     if (own && isFinite(own)) { target = own; tsrc = 'ustawione przez Ciebie: „Chcę w domu”'; }
-    else if (!isFinite(target) || !c.cel) { target = med(S.map((s) => s.ti)); tsrc = 'mediana temperatury w domu z historii'; }
-    const devAll = S.length ? S.reduce((a, x) => a + x.ti, 0) / S.length - target : 0;
+    else if (!isFinite(target) || !c.cel) { target = 21; tsrc = 'domyślnie 21 °C, wpisz „Chcę w domu”, jeśli chcesz inaczej'; }   // v1.52: nie mediana (krzywa wychodzila „OK” sama ze soba)
+    const wTot = S.reduce((a, x) => a + x.wt, 0);
+    const devAll = wTot ? S.reduce((a, x) => a + x.wt * x.ti, 0) / wTot - target : 0;
     const sunMean = (() => { const a = S.filter((s) => s.sun !== null); return a.length ? a.reduce((x, s) => x + s.sun, 0) / a.length : 100; })();
     const windMean = (() => { const a = S.filter((s) => s.wind !== null); return a.length ? a.reduce((x, s) => x + s.wind, 0) / a.length : 3; })();
     // regresja: odchylka w domu = b_k (punkt krzywej, wagi trojkatne) + cs*slonce/100 + cw*wiatr
@@ -1518,9 +1556,9 @@ class HaKartaPompaCiepla extends HTMLElement {
     const A = Array.from({ length: n }, () => new Array(n).fill(0)), bb = new Array(n).fill(0), wsum = new Array(7).fill(0), dsum = new Array(7).fill(0);
     S.forEach((s) => {
       const x = phi(s.to).concat([((s.sun !== null ? s.sun : sunMean) - sunMean) / 100, (s.wind !== null ? s.wind : windMean) - windMean]);
-      const y = s.ti - target;
-      for (let i = 0; i < n; i++) { bb[i] += x[i] * y; for (let j = 0; j < n; j++) A[i][j] += x[i] * x[j]; }
-      for (let k = 0; k < 7; k++) { wsum[k] += x[k]; dsum[k] += x[k] * y; }
+      const y = s.ti - target, q = s.wt;
+      for (let i = 0; i < n; i++) { bb[i] += q * x[i] * y; for (let j = 0; j < n; j++) A[i][j] += q * x[i] * x[j]; }
+      for (let k = 0; k < 7; k++) { wsum[k] += q * x[k]; dsum[k] += q * x[k] * y; }
     });
     for (let i = 0; i < n; i++) { A[i][i] += lam[i]; bb[i] += lam[i] * prior[i]; }
     const beta = (S.length >= 24 && this._nauSolve(A, bb)) || prior.slice();
@@ -1539,18 +1577,43 @@ class HaKartaPompaCiepla extends HTMLElement {
       const d = Math.max(-6, Math.min(6, rnd(-dev * g)));
       return { d, dev, g, nd: false, h: Math.round(wsum[k]) };
     });
+    // v1.52: teraz w domu vs cel przy obecnej temp. zewnetrznej (BT1): poprawia 2 najblizsze punkty krzywej, gdy roznica >= 0,5 °C
+    const now = Date.now(), h0 = Math.floor(now / 36e5) * 36e5;
+    const toNow = num('bt1') !== null ? num('bt1') : (W[h0] && isFinite(W[h0].temp) ? W[h0].temp : null);
+    const tiNowA = tin.map((i) => parseFloat((st[i] || {}).state)).filter((v) => isFinite(v));
+    const tiNow = tiNowA.length ? tiNowA.reduce((a, x) => a + x, 0) / tiNowA.length : null;
+    const hrNow = new Date(now).getHours();
+    let nowChk = null;
+    if (tiNow !== null && toNow !== null) {
+      const dev0 = tiNow - target;
+      nowChk = { ti: tiNow, to: toNow, dev: dev0, used: false, why: '' };
+      if (hrNow < 8 || hrNow > 21) nowChk.why = 'noc (8–22 tylko)';
+      else if (Math.abs(off - offRef) >= 0.5) nowChk.why = 'teraz krzywa obniżona (przesunięcie ' + off + ', normalnie ' + offRef + ')';
+      else if (Math.abs(dev0) >= 0.5) {
+        const ph0 = phi(toNow);
+        T.forEach((tk, k) => {
+          if (tk >= 20 || ph0[k] <= 0) return;
+          const g = gainAt(tk, P[k] + off), dN = Math.max(-6, Math.min(6, rnd(-dev0 * g * ph0[k])));
+          const x = delta[k];
+          if (!dN) return;
+          if (x.nd || !x.d || Math.sign(x.d) !== Math.sign(dN) || Math.abs(dN) > Math.abs(x.d)) {
+            delta[k] = { d: dN, dev: dev0, g, nd: false, now: true, h: x.h || 0 };
+            nowChk.used = true;
+          }
+        });
+      }
+    }
     delta.forEach((x, k) => {
-      if (!x.nd && x.d && x.all) why.push({ t: 'Przy ' + T[k] + ' °C brak godzin w historii, średnio w domu było ' + (x.dev > 0 ? 'cieplej' : 'zimniej') + ' od celu o ' + Math.abs(x.dev).toFixed(1) + ' °C', v: 'P' + (k + 1) + ' ' + (x.d > 0 ? '+' : '−') + Math.abs(x.d) + ' °C' });
+      if (!x.nd && x.d && x.now) why.push({ t: 'Teraz w domu ' + nowChk.ti.toFixed(1) + ' °C przy ' + nowChk.to.toFixed(1) + ' °C na dworze, cel ' + target.toFixed(1) + ' °C: ' + (x.dev > 0 ? 'za ciepło' : 'za zimno') + ' o ' + Math.abs(x.dev).toFixed(1) + ' °C', v: 'P' + (k + 1) + ' ' + (x.d > 0 ? '+' : '−') + Math.abs(x.d) + ' °C' });
+      else if (!x.nd && x.d && x.all) why.push({ t: 'Przy ' + T[k] + ' °C brak godzin w historii, średnio w domu było ' + (x.dev > 0 ? 'cieplej' : 'zimniej') + ' od celu o ' + Math.abs(x.dev).toFixed(1) + ' °C', v: 'P' + (k + 1) + ' ' + (x.d > 0 ? '+' : '−') + Math.abs(x.d) + ' °C' });
       else if (!x.nd && x.d) why.push({ t: 'Przy ' + T[k] + ' °C w domu było ' + (x.dev > 0 ? 'za ciepło' : 'za zimno') + ' o ' + Math.abs(x.dev).toFixed(1) + ' °C (' + x.h + ' h danych)', v: 'P' + (k + 1) + ' ' + (x.d > 0 ? '+' : '−') + Math.abs(x.d) + ' °C' });
     });
     // pogoda na najblizsze 12 h vs srednia z historii
-    const now = Date.now(), h0 = Math.floor(now / 36e5) * 36e5;
     const F = []; for (let i = 0; i < 12; i++) if (W[h0 + i * 36e5]) F.push(W[h0 + i * 36e5]);
     const avg = (k) => F.length ? F.reduce((a, x) => a + (isFinite(x[k]) ? x[k] : 0), 0) / F.length : null;
     const fc = { sun: avg('sun'), wind: avg('wind'), cloud: avg('cloud'), temp: avg('temp'), n: F.length };
-    const toNow = num('bt1') !== null ? num('bt1') : (W[h0] ? W[h0].temp : 0);
-    const phN = phi(toNow), tsNow = phN.reduce((a, w, k) => a + w * (P[k] + off), 0);
-    const gNow = gainAt(toNow, tsNow);
+    const phN = phi(toNow !== null ? toNow : 0), tsNow = phN.reduce((a, w, k) => a + w * (P[k] + off), 0);
+    const gNow = gainAt(toNow !== null ? toNow : 0, tsNow);
     let ws = 0;
     if (fc.n) {
       const dSun = cs * (fc.sun - sunMean) / 100, dWind = cw * (fc.wind - windMean);
@@ -1566,7 +1629,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       return y;
     });
     const measDays = new Set(Object.keys(toutH).filter((h) => h >= startMs).map((h) => new Date(Number(h)).toDateString())).size;
-    return { T, cur: P.map((v) => v + off), prop, delta, ws, why, target, tsrc, days, outDays: outDays.size, measDays, samples: S.length, sMeas: S.filter((x) => x.meas).length, tin, cs, cw, fc, sunMean, windMean, toutH, ownHist: (stats[E.t_out_hist] || []).length };
+    return { T, cur: P.map((v) => v + off), prop, delta, ws, why, target, tsrc, days, outDays: outDays.size, measDays, samples: S.length, sMeas: S.filter((x) => x.meas).length, tin, cs, cw, fc, sunMean, windMean, toutH, ownHist: (stats[E.t_out_hist] || []).length, skipOff, offRef, nowChk };
   }
   async _nauCyrkLoad(startMs) {
     const hass = this._hass, now = Date.now();
@@ -2270,7 +2333,7 @@ class HaKartaPompaCiepla extends HTMLElement {
       if (sal) { nm = 'Realnie ' + ((st[sal].attributes || {}).friendly_name || sal); real = samp(sal); }
       const cel = N.src && Number(N.src.cel), tg = cel && isFinite(cel) ? cel : (C && C.target !== null ? C.target : null);
       if (tg !== null) { plan.push([A, tg], [B, tg]); pn = 'Cel w domu ' + tg.toFixed(1) + ' °C'; }
-      note = sal ? 'Plan = temperatura, którą chcesz w domu (pole „Chcę w domu” albo mediana z historii).' : 'Brak czujnika salonu: ustaw go w „Źródłach nauki” niżej.';
+      note = sal ? 'Plan = temperatura, którą chcesz w domu (pole „Chcę w domu” albo domyślnie 21 °C).' : 'Brak czujnika salonu: ustaw go w „Źródłach nauki” niżej.';
     }
     const cpr = showCpr ? onMin(E.cpr, 'sensor.hp_hist_sprezarka') : null, cprC = showCpr ? onMin(E.cpr_cwu, 'sensor.hp_hist_cwu_praca') : null;
     const vals = real.concat(real2, plan, plan2).map((p) => p[1]);
@@ -2474,7 +2537,7 @@ class HaKartaPompaCiepla extends HTMLElement {
     const sal = this._nauSalon()[0], salV = sal ? parseFloat(st[sal].state) : NaN;
     h += '<div class="sec"><div class="st2">Krzywa grzewcza: obecna i proponowana</div>' +
       '<div class="lh"><label>Chcę w domu: <input class="cel" type="number" step="0.5" min="15" max="26" data-a="cel" value="' + (cel && isFinite(cel) ? cel : '') + '" placeholder="' + (C && C.target !== null ? C.target.toFixed(1) : '21') + '"> °C</label>' +
-      (cel ? '<button data-a="celx" title="Wróć do mediany z historii">Wyczyść</button>' : '') +
+      (cel ? '<button data-a="celx" title="Wróć do domyślnych 21 °C">Wyczyść</button>' : '') +
       '<span>Salon teraz: <b>' + (isNaN(salV) ? '–' : salV.toFixed(1) + ' °C') + '</b>' + (sal ? ' (' + esc((st[sal].attributes.friendly_name) || sal) + ')' : ' (brak czujnika salonu, ustaw w „Źródłach nauki”)') + '</span>' +
       '<span class="ds">Wpisz temperaturę i Enter: proponowana krzywa przeliczy się dla tej temperatury w domu. Nic nie zmienia w pompie.</span></div>';
     if (C) {
@@ -2498,9 +2561,11 @@ class HaKartaPompaCiepla extends HTMLElement {
         '<div class="pv">' + C.T.map((t, i) => i).reverse().map((i) => { const d = Math.round((C.prop[i] - C.cur[i]) * 10) / 10;
           return '<div><b>P' + (i + 1) + '</b><span>' + C.T[i] + ' °C</span><span>' + C.cur[i].toFixed(0) + ' → <em class="' + (d > 0 ? 'u' : d < 0 ? 'd' : '') + '">' + (Math.round(C.prop[i] * 10) / 10) + '</em> °C</span></div>'; }).join('') + '</div></div>';
       h += '<div class="why"><div class="wt">Co przesunęło propozycję:</div>' + (C.why.length ? C.why.map((w) => '<div class="wr"><span>' + esc(w.t) + '</span><b>' + esc(w.v) + '</b></div>').join('')
-        : '<div class="wr"><span>Nic wyraźnego: obecna krzywa trzyma temperaturę w domu, a pogoda jest typowa.</span><b>0 °C</b></div>') +
+        : C.samples < 24 ? '<div class="wr"><span>Za mało danych do oceny krzywej: ' + C.samples + ' h z historii (godziny 8–22, potrzeba min. 24)' + (C.nowChk ? ', a teraz w domu ' + C.nowChk.ti.toFixed(1) + ' °C przy celu ' + C.target.toFixed(1) + ' °C' + (C.nowChk.why ? ' (' + esc(C.nowChk.why) + ')' : '') : '') + '. To NIE znaczy, że krzywa jest dobra.</span><b>?</b></div>'
+        : '<div class="wr"><span>Nic wyraźnego: obecna krzywa trzyma temperaturę w domu (' + (C.nowChk ? 'teraz ' + C.nowChk.ti.toFixed(1) + ' °C, cel ' + C.target.toFixed(1) + ' °C' : 'cel ' + C.target.toFixed(1) + ' °C') + '), a pogoda jest typowa.</span><b>0 °C</b></div>') +
+        (C.nowChk && C.nowChk.why && C.samples >= 24 && Math.abs(C.nowChk.dev) >= 0.5 ? '<div class="wr"><span>Teraz w domu ' + C.nowChk.ti.toFixed(1) + ' °C (cel ' + C.target.toFixed(1) + ' °C), ale nie poprawiam od „teraz”: ' + esc(C.nowChk.why) + '.</span><b>–</b></div>' : '') +
         '<div class="wn">Cel w domu: ' + (C.target !== null ? C.target.toFixed(1) + ' °C (' + esc(C.tsrc) + ')' : 'brak') + '. Czujniki w domu: ' + (C.tin.length ? C.tin.map((i) => esc((st[i] && st[i].attributes.friendly_name) || i)).join(', ') : '<b>nie znalazłem</b> (ustaw w karcie: nauka: t_dom: sensor.…)') +
-        '. Liczone z godzin 8–22 (nocne obniżenie pomijam). Wykres nic nie zmienia, punkty P1–P7 ustawiasz sam w panelu „Własna krzywa”.</div></div>';
+        '. Liczone z godzin 8–22 (nocne obniżenie pomijam), świeże dni ważą więcej (połowa wagi co 5 dni), plus to, co jest w domu teraz przy obecnej temp. na dworze (BT1)' + (C.skipOff ? '; pominięte ' + C.skipOff + ' h z innym przesunięciem krzywej niż normalne ' + C.offRef : '') + '. Wykres nic nie zmienia, punkty P1–P7 ustawiasz sam w panelu „Własna krzywa”.</div></div>';
     } else h += '<div class="info">Nie da się policzyć krzywej (brak danych).</div>';
     h += this._krzHtml(esc);
     h += '</div>';

@@ -337,6 +337,15 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - Pakiet HA **1.49**: zmienione `binary_sensor.hp_g12_tania_strefa`, `sensor.hp_g12_do_taniej`, `sensor.hp_pakiet_wersja`.
 - `.gitignore` dla `__pycache__/` i `*.pyc`. Plik `tools/__pycache__/pkgspec.cpython-313.pyc` jest dalej w repo (nie usuwałem go), a gitignore nie działa na pliki już dodane. Żeby go wywalić: `git rm --cached tools/__pycache__/pkgspec.cpython-313.pyc`.
 
+## v1.52: poprawiona ocena krzywej grzewczej (Nauka, pakiet bez zmian)
+
+- **Cel w domu:** gdy pole „Chcę w domu” jest puste, cel = **21 °C** (było: mediana z historii, przez co krzywa wychodziła „OK” sama ze sobą, np. przy stałych 23 °C w domu).
+- **Świeże dni ważą więcej:** połowa wagi co 5 dni (min. 5 %), więc to, co jest teraz, nie ginie w 60 dniach historii.
+- **Sprawdzenie „teraz”:** salon teraz vs cel przy obecnej temperaturze na dworze (BT1). Różnica od 0,5 °C poprawia 2 najbliższe punkty krzywej i jest opisana w „Co przesunęło propozycję”. W nocy (poza 8–22) i gdy krzywa jest teraz obniżona, nie poprawia od „teraz”.
+- **Obniżenia pomijane:** godziny, w których przesunięcie krzywej w pompie było inne niż normalne („poza oknem”, `input_number.hp_dzien_przesuniecie`, albo najczęstsze w dzień), nie wchodzą do oceny.
+- **Mało danych:** zamiast „Nic wyraźnego, krzywa trzyma temperaturę” jest „Za mało danych do oceny krzywej”.
+- Nadal nic nie zmienia w pompie: propozycja to tylko wykres, P1–P7 ustawiasz sam.
+
 ## Powiązane repo
 
 - [ems](https://github.com/voltronicpl/ems) – EMS falownika. Daje strefę G12 dla pakietu (`binary_sensor.ems_g12_tania_strefa`) i uczy się zużycia pompy (Ustawienia → Historia do nauki → Pompa ciepła).
