@@ -105,6 +105,10 @@ E = dict(
     cwu_poza='input_select.hp_cwu_tryb_poza',  # v1.31: tryb CWU w drogiej strefie
     cwu_lux_on='input_boolean.hp_cwu_lux_tania',  # v1.31: luksus jednorazowy w taniej (domyslnie wyl.)
     tmp_lux='select.hydrolution_podgrzanie_cwu_jednorazowe',
+    # v1.51: rekuperacja (ESP Compit Nano One, prefiks nano_one jak w karcie compit-nano-one-ha); inny prefiks -> nadpisz w entities:
+    reku_t='sensor.nano_one_temperatura_pokojowa',
+    reku_co2='sensor.nano_one_co2',
+    reku_rh='sensor.nano_one_wilgotnosc',
 )
 
 # cyrkulacja CWU "wlaczona" = nie jest w stanie praca 1 min / postoj 60 min (brak rejestru wl/wyl w SMO40)
@@ -317,6 +321,13 @@ el(1536, 348, 124, 44, """
 return '<div class="g" style="background:linear-gradient(180deg,rgba(32,58,36,.92),rgba(18,36,22,.92));border:1px solid rgba(120,220,130,.7);box-shadow:0 0 calc(var(--u)*10) rgba(80,200,100,.3);border-radius:'+u(6)+'"></div>'
  + C(1598,362,f(@dom)+' °C',F(17,600,'#fff')) + C(1598,382,'W domu (salon)',F(11.5,400,'#e9eef3'));
 """, template='hp_hit', tap=more('dom'))
+
+# v1.51: rekuperacja (karta compit-nano-one-ha) pod temperatura w domu: temp. pokoju, CO2, wilgotnosc; bez encji reku kafel pusty
+el(1536, 398, 124, 62, """
+if(st(@reku_t)===undefined&&st(@reku_co2)===undefined&&st(@reku_rh)===undefined)return '';
+return '<div class="g" style="background:linear-gradient(180deg,rgba(22,44,64,.92),rgba(12,26,40,.92));border:1px solid rgba(90,180,240,.7);box-shadow:0 0 calc(var(--u)*10) rgba(60,160,230,.3);border-radius:'+u(6)+'"></div>'
+ + C(1598,411,'Reku '+f(@reku_t)+' °C',F(14,600,'#fff')) + C(1598,429,'CO₂ '+f(@reku_co2,0)+' ppm',F(11.5,400,'#e9eef3')) + C(1598,446,'Wilgotność '+f(@reku_rh,0)+' %',F(11.5,400,'#e9eef3'));
+""", template='hp_hit', tap=more('reku_t'))
 
 # pompy (wskaznik pracy)
 def pump(cx, cy, cond, ent, jstap=None, sc=1):

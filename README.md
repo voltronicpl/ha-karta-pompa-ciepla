@@ -328,3 +328,16 @@ W v1.23 encja tanie strefy powstawała w HA jako `binary_sensor.hp_g12_tania_str
 - Każda zmiana w Harmonogramie (okna, tryby, synchronizacja z Nauką) od razu uruchamia wysyłkę planu do ESP (automatyzacja `hp_esp_plan`); znacznik pokazuje „⏳ wysłane do ESP gg:mm, czekam na potwierdzenie”.
 - Czerwony znacznik faktycznej pracy w rzędach po datach wyższy (13 px zamiast 5).
 - Pakiet HA **1.38**: nowe `input_text.hp_energia_kwh_encja`. Zmienione: `sensor.hp_prad_dzis` (licznik z nowego pola), `hp_prad_polnoc` (punkt odniesienia także po zmianie wyboru licznika), `hp_esp_plan` (wyzwala się też przy zmianie 4 harmonogramów `schedule.hp_plan_*`). Nic nie usunięte.
+
+## v1.51: strefa G12 z EMS, kafel rekuperacji (pakiet 1.49)
+
+- **Strefa G12 z EMS:** gdy w HA jest integracja [EMS](https://github.com/voltronicpl/ems) od v0.6.68, `binary_sensor.hp_g12_tania_strefa` i `sensor.hp_g12_do_taniej` biorą strefę z `binary_sensor.ems_g12_tania_strefa`. EMS liczy ją tak jak licznik PGE: czas zimowy (CET), latem dzienna strefa 15–17, zimą 13–15, noc 22–6. Atrybut `zrodlo` w `binary_sensor.hp_g12_tania_strefa` mówi, skąd jest strefa.
+- **Zapas:** bez EMS albo gdy EMS jest niedostępny, wszystko liczy się po staremu z `input_text.hp_g12_strefy`. Opcja „So–Nd cała doba tania” działa w obu przypadkach. Plan tygodnia wysyłany do ESP (`hp_esp_plan`) dalej bierze okna z `input_text.hp_g12_strefy`, bo ESP bez HA nie widzi EMS.
+- **Kafel rekuperacji** pod „W domu (salon)”: temperatura pokoju, CO₂ i wilgotność z rekuperatora Compit Nano One (karta [compit-nano-one-ha](https://github.com/voltronicpl/compit-nano-one-ha), prefiks `nano_one`). Klik otwiera temperaturę pokoju. Bez encji reku kafel jest pusty. Inne ID encji ustawiasz w `entities:` kluczami `reku_t`, `reku_co2`, `reku_rh`.
+- Pakiet HA **1.49**: zmienione `binary_sensor.hp_g12_tania_strefa`, `sensor.hp_g12_do_taniej`, `sensor.hp_pakiet_wersja`.
+- `.gitignore` dla `__pycache__/` i `*.pyc`. Plik `tools/__pycache__/pkgspec.cpython-313.pyc` jest dalej w repo (nie usuwałem go), a gitignore nie działa na pliki już dodane. Żeby go wywalić: `git rm --cached tools/__pycache__/pkgspec.cpython-313.pyc`.
+
+## Powiązane repo
+
+- [ems](https://github.com/voltronicpl/ems) – EMS falownika. Daje strefę G12 dla pakietu (`binary_sensor.ems_g12_tania_strefa`) i uczy się zużycia pompy (Ustawienia → Historia do nauki → Pompa ciepła).
+- [compit-nano-one-ha](https://github.com/voltronicpl/compit-nano-one-ha) – karta rekuperacji. Od v1.8 pokazuje temperaturę zewnętrzną z czujnika pompy (BT1).

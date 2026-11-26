@@ -5,7 +5,7 @@
 #     packages: !include_dir_named packages
 # Encje ESP zakladaja domyslne nazwy z v5.3 (sensor.hydrolution_...). Plan offline (v1.34) wymaga ESP v5.5.
 # NAPIECIE ponizej (230 V) - do szacowania mocy elektrycznej z pradu jednostki zewn.
-# WERSJA PAKIETU: 1.48 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
+# WERSJA PAKIETU: 1.49 (sensor.hp_pakiet_wersja). Karta porownuje ja z oczekiwana i pokazuje
 # zolte ostrzezenie, gdy w HA siedzi starszy pakiet. Po wklejeniu: PELNY restart HA.
 # =====================================================================
 
@@ -24,21 +24,27 @@ template:
              or (states.media_player | selectattr('state', 'in', ['on', 'playing']) | list | count > 0) }}
   # v1.23: taryfa G12 (PGE, standard): tania strefa wg input_text.hp_g12_strefy (domyslnie 22:00-06:00,13:00-15:00),
   #        opcjonalnie So-Nd cala doba (input_boolean.hp_g12_weekend_tani, domyslnie wylaczony)
+  # v1.49: jest EMS (binary_sensor.ems_g12_tania_strefa, EMS >= v0.6.68) -> strefa z EMS (lato/zima, czas licznika).
+  #        Brak EMS albo EMS niedostepny -> stare liczenie z input_text.hp_g12_strefy (zapas). Weekend dalej z hp_g12_weekend_tani.
   - binary_sensor:
       - name: "HP G12 tania strefa"
         unique_id: hp_g12_tania
         icon: mdi:cash-clock
         state: >
+          {% set ems = states('binary_sensor.ems_g12_tania_strefa') %}
+          {% set ns = namespace(on = is_state('input_boolean.hp_g12_weekend_tani', 'on') and now().weekday() >= 5) %}
+          {% if ems in ['on', 'off'] %}{{ ns.on or ems == 'on' }}{% else %}
           {% set s = states('input_text.hp_g12_strefy') %}
           {% if s in ['', 'unknown', 'unavailable'] %}{% set s = '22:00-06:00,13:00-15:00' %}{% endif %}
           {% set m = now().hour * 60 + now().minute %}
-          {% set ns = namespace(on = is_state('input_boolean.hp_g12_weekend_tani', 'on') and now().weekday() >= 5) %}
           {% for z in s.split(',') %}{% set p = z.strip().split('-') %}{% if p | count == 2 and ':' in p[0] and ':' in p[1] %}
           {% set a = (p[0].split(':')[0] | int(0)) * 60 + (p[0].split(':')[1] | int(0)) %}
           {% set b = (p[1].split(':')[0] | int(0)) * 60 + (p[1].split(':')[1] | int(0)) %}
           {% if (a < b and a <= m < b) or (a > b and (m >= a or m < b)) %}{% set ns.on = true %}{% endif %}
           {% endif %}{% endfor %}
-          {{ ns.on }}
+          {{ ns.on }}{% endif %}
+        attributes:
+          zrodlo: "{{ 'EMS' if states('binary_sensor.ems_g12_tania_strefa') in ['on', 'off'] else 'pakiet (hp_g12_strefy)' }}"
   - sensor:
       # v1.23: ile minut do poczatku najblizszej taniej strefy G12 (0 = teraz tania)
       - name: "HP G12 do taniej"
@@ -47,21 +53,23 @@ template:
         unit_of_measurement: "min"
         state: >
           {% if is_state('binary_sensor.hp_g12_tania_strefa', 'on') %}0{% else %}
-          {% set s = states('input_text.hp_g12_strefy') %}
-          {% if s in ['', 'unknown', 'unavailable'] %}{% set s = '22:00-06:00,13:00-15:00' %}{% endif %}
           {% set m = now().hour * 60 + now().minute %}
           {% set ns = namespace(d = 9999) %}
+          {% set ed = state_attr('binary_sensor.ems_g12_tania_strefa', 'minut_do_taniej') %}
+          {% if states('binary_sensor.ems_g12_tania_strefa') in ['on', 'off'] and ed is number %}{% set ns.d = ed | int %}{% else %}
+          {% set s = states('input_text.hp_g12_strefy') %}
+          {% if s in ['', 'unknown', 'unavailable'] %}{% set s = '22:00-06:00,13:00-15:00' %}{% endif %}
           {% for z in s.split(',') %}{% set p = z.strip().split('-') %}{% if p | count == 2 and ':' in p[0] %}
           {% set a = (p[0].split(':')[0] | int(0)) * 60 + (p[0].split(':')[1] | int(0)) %}
           {% set ns.d = [ns.d, (a - m) % 1440] | min %}
-          {% endif %}{% endfor %}
+          {% endif %}{% endfor %}{% endif %}
           {% if is_state('input_boolean.hp_g12_weekend_tani', 'on') and now().weekday() < 5 %}{% set ns.d = [ns.d, (5 - now().weekday()) * 1440 - m] | min %}{% endif %}
           {{ ns.d }}{% endif %}
       # v1.22: wersja pakietu - karta sprawdza, czy w HA jest aktualny pakiet
       - name: "HP pakiet wersja"
         unique_id: hp_pakiet_wersja
         icon: mdi:package-variant
-        state: "1.48"
+        state: "1.49"
       # v1.15: temperatura zewnetrzna z czujnika pompy (BT1) do historii nauki krzywej.
       # state_class: measurement => HA trzyma godzinowe statystyki dlugoterminowo (nie kasuje po 10 dniach).
       - name: "HP temperatura zewnetrzna BT1"
